@@ -1,5 +1,7 @@
 package lexLayer.impl;
 
+import exception.LexError;
+import lexLayer.LexPool;
 import lexLayer.Lexer;
 import lexLayer.tokenData.Token;
 import utils.LoggerUtil;
@@ -8,56 +10,54 @@ import utils.RegUtil;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.logging.Logger;
 
 public class LexerImpl implements Lexer {
     private final static Logger LOGGER = LoggerUtil.getLogger();
     private final static Lexer LEXER_INSTANCE;
-
     private final static String FILENAME;
-
-    private final static String SOURCE;
+    private final static String SOURCE_RAW;
+    private final static String SOURCE_UNCOMMENT;
+    private final static int SOURCE_LEN;
 
     static {
         FILENAME = "./testfile.txt";
         try {
-            SOURCE = Files.readString(Paths.get(FILENAME));
+            SOURCE_RAW = Files.readString(Paths.get(FILENAME));
+            SOURCE_UNCOMMENT = removeComment();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
+        SOURCE_LEN = SOURCE_UNCOMMENT.length();
         LEXER_INSTANCE = new LexerImpl();
     }
 
-    /**
-     * The reserved words' dictionary.
-     */
-    private final HashSet<String> reserveWords = new HashSet<>();
 
     /**
      * The line number that may be used for error handler.
      */
     private int lineNum = 1;
     private int curPos = 0;
+    private LexPool lexPool = new LexPool();
 
     private LexerImpl() {
-        LOGGER.fine(SOURCE);
+        LOGGER.fine(SOURCE_RAW);
+        LOGGER.fine(SOURCE_UNCOMMENT);
     }
 
     public static Lexer getInstance() {
         return LEXER_INSTANCE;
     }
 
-    private void addReserve(String... strings) {
-        reserveWords.addAll(Arrays.asList(strings));
+    private static String removeComment() {
+        /*todo not consider line number*/
+        return LexerImpl.SOURCE_RAW
+                .replaceAll(RegUtil.REGION_COMMENT_REG, "")
+                .replaceAll(RegUtil.SINGLE_LINE_COMMENT_REG, "");
     }
 
-    private boolean reserved(String word) {
-        return reserveWords.contains(word);
-    }
 
     /**
      * Handle the next word.
@@ -66,85 +66,89 @@ public class LexerImpl implements Lexer {
      */
     @Override
     public Optional<Token> next() {
-//        int begin = curPos;
-//        char[] charArray = SOURCE.toCharArray();
-//        for (; i < charArray.length; curPos++) {
-//
-//        }
-        String word;
-        while ((word = SOURCE.substring(curPos, curPos + 1)).isBlank()) {
-            if (curPos >= SOURCE.length()) {
-                LOGGER.finest("The last character.");
-                return Optional.empty();
+        String rawSym = null;
+        for (; curPos < SOURCE_LEN; curPos++) {
+            char c = SOURCE_UNCOMMENT.charAt(curPos);
+            if (judgeChar(c) == CharaType.BLANK) {
+
+            } else if (judgeChar(c) == CharaType.ALPHA) {
+                rawSym = readAlpha();
+                break;
+            } else if (judgeChar(c) == CharaType.DIGIT) {
+                rawSym = readNumber();
+                break;
+            } else if (judgeChar(c) == CharaType.SPECIAL_CHAR) {
+                rawSym = readSpecial();
+                break;
             }
-            if (word.equals("\n")) {
-                lineNum++;
-            }
-            curPos++;
         }
+        if (rawSym != null) {
+            var token = new Token(lineNum, getCol(rawSym), rawSym);
+            lexPool.addToken(token);
+            return Optional.of(token);
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public ArrayList<Token> getAllTokens() {
+        this.curPos = 0;
+        this.lineNum = 1;
+        this.lexPool.clean();
+        Optional<Token> t;
+        while ((t = this.next()).isPresent()) ;
+        return lexPool.getTokens();
+    }
+
+    // look back for the first '\n'
+    private int getCol(String rawStr) {
+        int i = (curPos >= SOURCE_UNCOMMENT.length()) ? curPos - 1 : curPos;
+        for (; i > 0 && SOURCE_UNCOMMENT.charAt(i) != '\n'; i--) ;
+        return curPos - i + 1 - rawStr.length();
+    }
+
+    private String readNumber() {
+        int start = curPos;
+        for (curPos++; curPos < SOURCE_LEN; curPos++) {
+            char c = SOURCE_UNCOMMENT.charAt(curPos);
+            if (judgeChar(c) != CharaType.DIGIT) {
+                break;
+            }
+        }
+        return SOURCE_UNCOMMENT.substring(start, curPos);
+    }
+
+    private String readAlpha() {
+        int start = curPos;
+        for (curPos++; curPos < SOURCE_LEN; curPos++) {
+            char c = SOURCE_UNCOMMENT.charAt(curPos);
+            if (judgeChar(c) != CharaType.ALPHA && judgeChar(c) != CharaType.DIGIT) {
+                break;
+            }
+        }
+        return SOURCE_UNCOMMENT.substring(start, curPos);
+    }
+
+    private String readSpecial() {
+        int start = curPos;
         curPos++;
-        String substr = word.substring(begin, curPos);
-        // now curPos is at the first non-blank character, and start is the first blank character
-        Optional<String> str = switch (judgeChar(substr)) {
-            case DIGIT -> readNumber(substr);
-            case ALPHA -> readVarOrKeyword(substr);
-            case SPECIAL_CHAR -> readOperator(substr);
-            case NONE -> Optional.empty();
-        };
-        str.ifPresent(s -> LOGGER.info("get str: " + s));
-        return Optional.empty();
-    }
-
-
-    private Optional<String> readNumber(String word) {
-        String substr;
-        int begin = curPos;
-        while (!(substr = word.substring(curPos, curPos + 1)).isBlank()) {
-            if (curPos >= SOURCE.length()) {
-                LOGGER.finest("The last character.");
-                return Optional.empty();
+        //handle "
+        if (SOURCE_UNCOMMENT.charAt(start) == '"') {
+            //todo add support for \
+            for (; curPos < SOURCE_LEN; curPos++) {
+                char c = SOURCE_UNCOMMENT.charAt(curPos);
+                if (c == '"') {
+                    curPos++;
+                    return SOURCE_UNCOMMENT.substring(start, curPos);
+                }
             }
-            if (judgeChar(substr) != CharaType.DIGIT) {
-                curPos++;
-                return Optional.of(word.substring(begin, curPos));
-            }
+        }
+        //to see whether c1 can LIGATURE or not
+        var substr = SOURCE_UNCOMMENT.substring(start, curPos);
+        if (judgeChar(substr) == CharaType.LIGATURE) {
             curPos++;
         }
-        return Optional.empty();
-    }
-
-    private Optional<String> readVarOrKeyword(String word) {
-        String substr;
-        int begin = curPos;
-        while (!(substr = word.substring(curPos, curPos + 1)).isBlank()) {
-            if (curPos >= SOURCE.length()) {
-                LOGGER.finest("The last character.");
-                return Optional.empty();
-            }
-            if (judgeChar(substr) != CharaType.ALPHA) {
-                curPos++;
-                return Optional.of(word.substring(begin, curPos));
-            }
-            curPos++;
-        }
-        return Optional.empty();
-    }
-
-    private Optional<String> readOperator(String word) {
-        String substr;
-        int begin = curPos;
-        while (!(substr = word.substring(curPos, curPos + 1)).isBlank()) {
-            if (curPos >= SOURCE.length()) {
-                LOGGER.finest("The last character.");
-                return Optional.empty();
-            }
-            if (judgeChar(substr) != CharaType.ALPHA) {
-                curPos++;
-                return Optional.of(word.substring(begin, curPos));
-            }
-            curPos++;
-        }
-        return Optional.empty();
+        return SOURCE_UNCOMMENT.substring(start, curPos);
     }
 
     private CharaType judgeChar(char c) {
@@ -159,9 +163,15 @@ public class LexerImpl implements Lexer {
             return CharaType.ALPHA;
         } else if (RegUtil.specialChar(word)) {
             return CharaType.SPECIAL_CHAR;
+        } else if (RegUtil.linkableString(word)) {
+            return CharaType.LIGATURE;
         } else if (word.isBlank()) {
+            if (word.equals("\n")) {
+                lineNum++;
+            }
             return CharaType.BLANK;
         }
+        throw new LexError("You should not walk here when handling [" + word + "].");
     }
 
     private enum CharaType {
@@ -169,6 +179,7 @@ public class LexerImpl implements Lexer {
         SPECIAL_CHAR,
         ALPHA,
         BLANK,
+        LIGATURE,
     }
 
 }

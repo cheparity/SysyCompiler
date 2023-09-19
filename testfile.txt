@@ -1,1 +1,11 @@
-11 12
+const int array[2] = {1,2};
+// main this is comment
+/*
+* { } this is comment too
+*/
+int main(){
+    int c;
+    c = getint();
+    printf("output is %d",c);
+    return c;
+}

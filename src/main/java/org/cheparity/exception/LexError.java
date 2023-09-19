@@ -1,6 +1,6 @@
 package exception;
 
-public class LexTypeNotFoundException extends RuntimeException {
+public class LexError extends RuntimeException {
 
     /**
      * Constructs a new runtime exception with the specified detail message.
@@ -10,7 +10,7 @@ public class LexTypeNotFoundException extends RuntimeException {
      * @param message the detail message. The detail message is saved for
      *                later retrieval by the {@link #getMessage()} method.
      */
-    public LexTypeNotFoundException(String message) {
+    public LexError(String message) {
         super(message);
     }
 }

@@ -13,43 +13,31 @@ public final class Token {
     private String rawValue;
 
 
-    public Token(int lineNum, int colNum, LexType type) {
+    public Token(int lineNum, int colNum, String rawValue) {
         this.lineNum = lineNum;
         this.colNum = colNum;
-        this.lexType = type;
+        this.lexType = LexType.ofValue(rawValue);
+        this.rawValue = rawValue;
     }
-
 
     public int getLineNum() {
         return lineNum;
     }
 
-    public void setLineNum(int lineNum) {
-        this.lineNum = lineNum;
+    public LexType getLexType() {
+        return this.lexType;
     }
 
     public int getColNum() {
         return colNum;
     }
 
-    public void setColNum(int colNum) {
-        this.colNum = colNum;
-    }
-
-    public LexType getLexType() {
-        return lexType;
-    }
-
-    public void setLexType(LexType lexType) {
-        this.lexType = lexType;
-    }
-
-
     public String getRawValue() {
         return rawValue;
     }
 
-    public void setRawValue(String str) {
-        this.rawValue = str;
+    @Override
+    public String toString() {
+        return "Token[" + this.lexType + "\t" + rawValue + "\t(" + lineNum + "," + colNum + ")" + "]";
     }
 }

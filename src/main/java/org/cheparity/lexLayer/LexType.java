@@ -1,6 +1,6 @@
 package lexLayer;
 
-import exception.LexTypeNotFoundException;
+import exception.LexError;
 import utils.LoggerUtil;
 import utils.RegUtil;
 
@@ -43,9 +43,9 @@ public enum LexType {
     RBRACE("}"),
     ELSETK("else"),
     VOIDTK("void"),
-    IDENFR(null),
-    INTCON(null),
-    STRCON(null);
+    IDENFR(""),
+    INTCON(""),
+    STRCON("");
 
     private final String value;
 
@@ -76,7 +76,7 @@ public enum LexType {
             return IDENFR;
         }
         LoggerUtil.getLogger().severe("LexType [" + value + "] not found.");
-        throw new LexTypeNotFoundException("LexType [" + value + "] not found.");
+        throw new LexError("LexType [" + value + "] not found.");
     }
 
     public String getValue() {

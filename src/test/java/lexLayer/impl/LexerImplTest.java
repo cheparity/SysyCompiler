@@ -1,10 +1,13 @@
 package lexLayer.impl;
 
+import lexLayer.LexType;
 import lexLayer.Lexer;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class LexerImplTest {
+    Lexer l = LexerImpl.getInstance();
+
     @Test
     public void testEmpty() {
         String str1 = "";
@@ -21,7 +24,23 @@ public class LexerImplTest {
 
     @Test
     public void testReadNumber() {
-        Lexer l = LexerImpl.getInstance();
+
         l.next();
+        System.out.println("-----");
+        l.next();
+        System.out.println("-----");
+        l.next();
+        System.out.println("-----");
+    }
+
+    @Test
+    public void testTokens() {
+
+    }
+
+    @Test
+    public void testLexType() {
+        Assert.assertEquals(LexType.ofValue("main"), LexType.MAINTK);
+        Assert.assertEquals(LexType.ofValue("["), LexType.LBRACK);
     }
 }
