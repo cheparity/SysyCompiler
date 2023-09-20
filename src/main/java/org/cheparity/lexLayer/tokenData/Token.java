@@ -38,6 +38,6 @@ public final class Token {
 
     @Override
     public String toString() {
-        return "Token[" + this.lexType + "\t" + rawValue + "\t(" + lineNum + "," + colNum + ")" + "]";
+        return String.format("%-20s\t%-20s\t%-20s", lexType, rawValue, "(" + lineNum + "," + colNum + ")");
     }
 }

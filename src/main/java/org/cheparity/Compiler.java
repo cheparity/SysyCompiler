@@ -18,7 +18,6 @@ public class Compiler {
         File f = new File("output.txt");
         if (f.exists()) f.delete();
         allTokens.forEach(token -> {
-            LOGGER.info(String.valueOf(token));
             try (FileWriter fw = new FileWriter("output.txt", true)) {
                 fw.append(String.valueOf(token.getLexType())).append(" ").append(token.getRawValue()).append("\n").flush();
             } catch (IOException e) {

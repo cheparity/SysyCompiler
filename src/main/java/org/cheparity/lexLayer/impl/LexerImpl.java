@@ -1,6 +1,5 @@
 package lexLayer.impl;
 
-import exception.LexError;
 import lexLayer.LexPool;
 import lexLayer.Lexer;
 import lexLayer.tokenData.Token;
@@ -43,8 +42,7 @@ public class LexerImpl implements Lexer {
     private LexPool lexPool = new LexPool();
 
     private LexerImpl() {
-        LOGGER.fine(SOURCE_RAW);
-        LOGGER.fine(SOURCE_UNCOMMENT);
+        LOGGER.config(SOURCE_UNCOMMENT);
     }
 
     public static Lexer getInstance() {
@@ -69,20 +67,21 @@ public class LexerImpl implements Lexer {
         String rawSym = null;
         for (; curPos < SOURCE_LEN; curPos++) {
             char c = SOURCE_UNCOMMENT.charAt(curPos);
-            if (judgeChar(c) == CharaType.BLANK) {
-
-            } else if (judgeChar(c) == CharaType.ALPHA) {
+            CharaType charaType = judgeChar(c);
+            if (charaType == CharaType.BLANK) {
+            } else if (charaType == CharaType.ALPHA) {
                 rawSym = readAlpha();
                 break;
-            } else if (judgeChar(c) == CharaType.DIGIT) {
+            } else if (charaType == CharaType.DIGIT) {
                 rawSym = readNumber();
                 break;
-            } else if (judgeChar(c) == CharaType.SPECIAL_CHAR) {
+            } else if (charaType == CharaType.SPECIAL_CHAR) {
                 rawSym = readSpecial();
                 break;
             }
         }
         if (rawSym != null) {
+            LOGGER.fine("get rawSys: " + rawSym);
             var token = new Token(lineNum, getCol(rawSym), rawSym);
             lexPool.addToken(token);
             return Optional.of(token);
@@ -132,6 +131,12 @@ public class LexerImpl implements Lexer {
     private String readSpecial() {
         int start = curPos;
         curPos++;
+        if (SOURCE_UNCOMMENT.charAt(start) == '&') {
+            LOGGER.finest("& entered");
+        }
+        if (SOURCE_UNCOMMENT.charAt(start) == '=') {
+            LOGGER.finest("= entered");
+        }
         //handle "
         if (SOURCE_UNCOMMENT.charAt(start) == '"') {
             //todo add support for \
@@ -144,9 +149,11 @@ public class LexerImpl implements Lexer {
             }
         }
         //to see whether c1 can LIGATURE or not
-        var substr = SOURCE_UNCOMMENT.substring(start, curPos);
-        if (judgeChar(substr) == CharaType.LIGATURE) {
-            curPos++;
+        if (curPos + 1 < SOURCE_LEN) {
+            var substr = SOURCE_UNCOMMENT.substring(start, curPos + 1);
+            if (judgeChar(substr) == CharaType.LIGATURE) {
+                curPos++;
+            }
         }
         return SOURCE_UNCOMMENT.substring(start, curPos);
     }
@@ -169,9 +176,8 @@ public class LexerImpl implements Lexer {
             if (word.equals("\n")) {
                 lineNum++;
             }
-            return CharaType.BLANK;
         }
-        throw new LexError("You should not walk here when handling [" + word + "].");
+        return CharaType.BLANK;
     }
 
     private enum CharaType {
