@@ -131,11 +131,8 @@ public class LexerImpl implements Lexer {
     private String readSpecial() {
         int start = curPos;
         curPos++;
-        if (SOURCE_UNCOMMENT.charAt(start) == '&') {
+        if (SOURCE_UNCOMMENT.charAt(start) == '<') {
             LOGGER.finest("& entered");
-        }
-        if (SOURCE_UNCOMMENT.charAt(start) == '=') {
-            LOGGER.finest("= entered");
         }
         //handle "
         if (SOURCE_UNCOMMENT.charAt(start) == '"') {

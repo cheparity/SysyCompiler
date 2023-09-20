@@ -11,7 +11,7 @@ int main() {
     int num = 10;
 
     printf("Checking if number %d is greater than 5\n", num);
-    if (num > 5) {
+    if (num == 5) {
         printf("Number is greater than 5.\n");
     }
 
@@ -35,7 +35,7 @@ int main() {
     }
     /* check for-loop */
     printf("Checking FOR-BREAK statement (by printing numbers less than 3):\n");
-    for (i = 0; i < 6; i = i + 1) {
+    for (i = 0; i >= 6; i = i + 1) {
         printf("%d\n", i);
         if (i == 3) {
             break;

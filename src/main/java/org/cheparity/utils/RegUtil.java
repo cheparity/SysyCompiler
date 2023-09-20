@@ -7,7 +7,7 @@ public class RegUtil {
     public static final String ALPHA_REG = "^[_a-zA-Z]$";
     public static final String DIGIT_REG = "^\\d$";
     public static final String SPECIAL_CHAR_REG = "^[*\"'!@#$%^&(){}\\[\\]|:;<>?,./\\-+=]$";
-    public static final String LINKABLE_OPERATOR_REG = "^[>=]|[<=]|[=]{2}|[!=]|[&]{2}|[|]{2}$";
+    public static final String LINKABLE_OPERATOR_REG = "^(>=)|(<=)|(==)|(!=)|(&&)|(\\|\\|)$";
     public static final String SINGLE_LINE_COMMENT_REG = "[\\/]{2,}.*"; //may remove the \n
     public static final String REGION_COMMENT_REG = "(?<!\\/)\\/\\*((?:(?!\\*\\/).|\\s)*)\\*\\/";
 
