@@ -1,6 +1,6 @@
-import lexLayer.Lexer;
-import lexLayer.impl.LexerImpl;
-import lexLayer.tokenData.Token;
+import lexLayer.LexicalParser;
+import lexLayer.dataStruct.Token;
+import lexLayer.impl.LexicalParserImpl;
 import utils.LoggerUtil;
 
 import java.io.File;
@@ -10,10 +10,10 @@ import java.util.ArrayList;
 import java.util.logging.Logger;
 
 public class Compiler {
-    private static Logger LOGGER = LoggerUtil.getLogger();
+    private static final Logger LOGGER = LoggerUtil.getLogger();
 
     public static void main(String[] args) {
-        final Lexer lexer = LexerImpl.getInstance();
+        final LexicalParser lexer = LexicalParserImpl.getInstance();
         ArrayList<Token> allTokens = lexer.getAllTokens();
         File f = new File("output.txt");
         if (f.exists()) f.delete();

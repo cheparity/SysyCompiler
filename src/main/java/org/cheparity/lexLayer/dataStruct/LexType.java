@@ -1,4 +1,4 @@
-package lexLayer;
+package lexLayer.dataStruct;
 
 import exception.LexError;
 import utils.LoggerUtil;
@@ -8,41 +8,43 @@ import java.util.Arrays;
 import java.util.regex.Pattern;
 
 public enum LexType {
+    // Operators
     NOT("!"),
     MULT("*"),
     ASSIGN("="),
     AND("&&"),
     DIV("/"),
-    SEMICN(";"),
-    OR("||"),
-    MOD("%"),
-    COMMA(","),
-    MAINTK("main"),
-    FORTK("for"),
-    LSS("<"),
-    LPARENT("("),
-    CONSTTK("const"),
-    GETINTTK("getint"),
-    LEQ("<="),
-    RPARENT(")"),
-    INTTK("int"),
-    PRINTFTK("printf"),
-    GRE(">"),
-    LBRACK("["),
-    BREAKTK("break"),
-    RETURNTK("return"),
-    GEQ(">="),
-    RBRACK("]"),
-    CONTINUETK("continue"),
     PLUS("+"),
+    MINU("-"),
+    LSS("<"),
+    GRE(">"),
     EQL("=="),
     NEQ("!="),
+
+    // Punctuation
+    SEMICN(";"),
+    COMMA(","),
+    LPARENT("("),
+    RPARENT(")"),
+    LBRACK("["),
+    RBRACK("]"),
     LBRACE("{"),
-    IFTK("if"),
-    MINU("-"),
     RBRACE("}"),
-    ELSETK("else"),
+
+    // Keywords
+    CONSTTK("const"),
+    INTTK("int"),
     VOIDTK("void"),
+    MAINTK("main"),
+    IFTK("if"),
+    ELSETK("else"),
+    FORTK("for"),
+    PRINTFTK("printf"),
+    RETURNTK("return"),
+    CONTINUETK("continue"),
+    BREAKTK("break"),
+
+    // Identifiers and Literals
     IDENFR(""),
     INTCON(""),
     STRCON("");
@@ -83,4 +85,30 @@ public enum LexType {
         return value;
     }
 
+    /**
+     * Check if the LexType is a keyword.
+     *
+     * @return True if the LexType is a keyword, false otherwise.
+     */
+    public boolean keyword() {
+        return this.compareTo(CONSTTK) >= 0 && this.compareTo(BREAKTK) <= 0;
+    }
+
+    /**
+     * Check if the LexType is an operator.
+     *
+     * @return True if the LexType is an operator, false otherwise.
+     */
+    public boolean operator() {
+        return this.compareTo(NEQ) <= 0;
+    }
+
+    /**
+     * Check if the LexType is punctuation.
+     *
+     * @return True if the LexType is punctuation, false otherwise.
+     */
+    public boolean punctuation() {
+        return this.compareTo(SEMICN) >= 0 && this.compareTo(RBRACE) <= 0;
+    }
 }

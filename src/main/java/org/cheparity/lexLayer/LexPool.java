@@ -1,6 +1,6 @@
 package lexLayer;
 
-import lexLayer.tokenData.Token;
+import lexLayer.dataStruct.Token;
 
 import java.util.ArrayList;
 

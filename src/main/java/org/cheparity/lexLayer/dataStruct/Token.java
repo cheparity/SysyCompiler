@@ -1,16 +1,10 @@
-package lexLayer.tokenData;
-
-import lexLayer.LexType;
-import utils.LoggerUtil;
-
-import java.util.logging.Logger;
+package lexLayer.dataStruct;
 
 public final class Token {
-    private final static Logger LOGGER = LoggerUtil.getLogger();
-    private int lineNum;
-    private int colNum;
-    private LexType lexType;
-    private String rawValue;
+    private final int lineNum;
+    private final int colNum;
+    private final LexType lexType;
+    private final String rawValue;
 
 
     public Token(int lineNum, int colNum, String rawValue) {

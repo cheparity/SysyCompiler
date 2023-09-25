@@ -1,11 +1,11 @@
 package lexLayer;
 
-import lexLayer.tokenData.Token;
+import lexLayer.dataStruct.Token;
 
 import java.util.ArrayList;
 import java.util.Optional;
 
-public interface Lexer {
+public interface LexicalParser {
 
     Optional<Token> next();
 

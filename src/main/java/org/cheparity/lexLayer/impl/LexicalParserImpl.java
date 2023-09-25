@@ -1,8 +1,8 @@
 package lexLayer.impl;
 
 import lexLayer.LexPool;
-import lexLayer.Lexer;
-import lexLayer.tokenData.Token;
+import lexLayer.LexicalParser;
+import lexLayer.dataStruct.Token;
 import utils.LoggerUtil;
 import utils.RegUtil;
 
@@ -13,16 +13,15 @@ import java.util.ArrayList;
 import java.util.Optional;
 import java.util.logging.Logger;
 
-public class LexerImpl implements Lexer {
+public class LexicalParserImpl implements LexicalParser {
     private final static Logger LOGGER = LoggerUtil.getLogger();
-    private final static Lexer LEXER_INSTANCE;
-    private final static String FILENAME;
+    private final static LexicalParser LEXER_INSTANCE = new LexicalParserImpl();
+    private final static String FILENAME = "./testfile.txt";
     private final static String SOURCE_RAW;
     private final static String SOURCE_UNCOMMENT;
     private final static int SOURCE_LEN;
 
     static {
-        FILENAME = "./testfile.txt";
         try {
             SOURCE_RAW = Files.readString(Paths.get(FILENAME));
             SOURCE_UNCOMMENT = removeComment();
@@ -30,28 +29,26 @@ public class LexerImpl implements Lexer {
             throw new RuntimeException(e);
         }
         SOURCE_LEN = SOURCE_UNCOMMENT.length();
-        LEXER_INSTANCE = new LexerImpl();
     }
 
-
+    private final LexPool lexPool = new LexPool();
     /**
      * The line number that may be used for error handler.
      */
     private int lineNum = 1;
     private int curPos = 0;
-    private LexPool lexPool = new LexPool();
 
-    private LexerImpl() {
+    private LexicalParserImpl() {
         LOGGER.config(SOURCE_UNCOMMENT);
     }
 
-    public static Lexer getInstance() {
+    public static LexicalParser getInstance() {
         return LEXER_INSTANCE;
     }
 
     private static String removeComment() {
         /*todo not consider line number*/
-        return LexerImpl.SOURCE_RAW
+        return LexicalParserImpl.SOURCE_RAW
                 .replaceAll(RegUtil.REGION_COMMENT_REG, "")
                 .replaceAll(RegUtil.SINGLE_LINE_COMMENT_REG, "");
     }
@@ -94,8 +91,7 @@ public class LexerImpl implements Lexer {
         this.curPos = 0;
         this.lineNum = 1;
         this.lexPool.clean();
-        Optional<Token> t;
-        while ((t = this.next()).isPresent()) ;
+        while (this.next().isPresent()) ;
         return lexPool.getTokens();
     }
 

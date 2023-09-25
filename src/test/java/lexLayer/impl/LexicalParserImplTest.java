@@ -1,12 +1,12 @@
 package lexLayer.impl;
 
-import lexLayer.LexType;
-import lexLayer.Lexer;
+import lexLayer.LexicalParser;
+import lexLayer.dataStruct.LexType;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class LexerImplTest {
-    Lexer l = LexerImpl.getInstance();
+public class LexicalParserImplTest {
+    LexicalParser l = LexicalParserImpl.getInstance();
 
     @Test
     public void testEmpty() {
