@@ -8,76 +8,21 @@ import java.util.Optional;
 
 public enum GrammarType {
     // Terminals
-    IDENTIFIER("IDENTIFIER"),
-    NUMBER("NUMBER"),
+    IDENTIFIER("IDENTIFIER"), NUMBER("NUMBER"),
 
     // Keywords
-    INT("int"),
-    CONST("const"),
-    VOID("void"),
-    IF("if"),
-    ELSE("else"),
-    FOR("for"),
-    BREAK("break"),
-    CONTINUE("continue"),
-    RETURN("return"),
-    GETINT("getint"),
-    PRINTF("printf"),
+    INT("int"), CONST("const"), VOID("void"), IF("if"), ELSE("else"), FOR("for"), BREAK("break"), CONTINUE("continue"), RETURN("return"), GETINT("getint"), PRINTF("printf"),
 
     // Operators
-    PLUS("+"),
-    MINUS("-"),
-    MULTIPLY("*"),
-    DIVIDE("/"),
-    MOD("%"),
-    ASSIGN("="),
-    EQUAL("=="),
-    NOT_EQUAL("!="),
-    LESS_THAN("<"),
-    GREATER_THAN(">"),
-    LESS_THAN_EQUAL("<="),
-    GREATER_THAN_EQUAL(">="),
-    LOGICAL_AND("&&"),
-    LOGICAL_OR("||"),
-    NOT("!"),
+    PLUS("+"), MINUS("-"), MULTIPLY("*"), DIVIDE("/"), MOD("%"), ASSIGN("="), EQUAL("=="), NOT_EQUAL("!="), LESS_THAN("<"), GREATER_THAN(">"), LESS_THAN_EQUAL("<="), GREATER_THAN_EQUAL(">="), LOGICAL_AND("&&"), LOGICAL_OR("||"), NOT("!"),
 
     // Punctuation
-    SEMICOLON(";"),
-    COMMA(","),
-    LEFT_PAREN("("),
-    RIGHT_PAREN(")"),
-    LEFT_BRACE("{"),
-    RIGHT_BRACE("}"),
-    LEFT_BRACKET("["),
-    RIGHT_BRACKET("]"),
+    SEMICOLON(";"), COMMA(","), LEFT_PAREN("("), RIGHT_PAREN(")"), LEFT_BRACE("{"), RIGHT_BRACE("}"), LEFT_BRACKET("["), RIGHT_BRACKET("]"),
 
     // Non-terminals
-    COMP_UNIT("CompUnit"),
-    DECL("Decl"),
-    CONST_DECL("ConstDecl"),
-    VAR_DECL("VarDecl"),
-    FUNC_DEF("FuncDef"),
-    MAIN_FUNC_DEF("MainFuncDef"),
-    FUNC_TYPE("FuncType"),
-    FUNC_FPARAMS("FuncFParams"),
-    FUNC_FPARAM("FuncFParam"),
-    BLOCK("Block"),
-    BLOCK_ITEM("BlockItem"),
-    STMT("Stmt"),
-    FOR_STMT("ForStmt"),
-    EXP("Exp"),
-    ADD_EXP("AddExp"),
-    MUL_EXP("MulExp"),
-    PRIMARY_EXP("PrimaryExp"),
-    LVAL("LVal"),
-    UNARY_EXP("UnaryExp"),
-    UNARY_OP("UnaryOp"),
-    CONST_EXP("ConstExp"),
-    COND("Cond"),
-    CONST_INIT_VAL("ConstInitVal"),
-    INIT_VAL("InitVal"),
-    FUNC_RPARAMS("FuncRParams"),
-    FORMAT_STRING("FormatString");
+    COMP_UNIT("CompUnit"), DECL("Decl"), CONST_DECL("ConstDecl"), VAR_DEF("VarDef"), VAR_DECL("VarDecl"), FUNC_DEF(
+            "FuncDef"), B_TYPE("BType"),
+    MAIN_FUNC_DEF("MainFuncDef"), FUNC_TYPE("FuncType"), FUNC_FPARAMS("FuncFParams"), FUNC_FPARAM("FuncFParam"), BLOCK("Block"), BLOCK_ITEM("BlockItem"), STMT("Stmt"), FOR_STMT("ForStmt"), EXP("Exp"), ADD_EXP("AddExp"), MUL_EXP("MulExp"), PRIMARY_EXP("PrimaryExp"), LVAL("LVal"), UNARY_EXP("UnaryExp"), UNARY_OP("UnaryOp"), CONST_EXP("ConstExp"), COND("Cond"), CONST_INIT_VAL("ConstInitVal"), INIT_VAL("InitVal"), FUNC_RPARAMS("FuncRParams"), FORMAT_STRING("FormatString");
 
     private final String value;
 
@@ -85,12 +30,15 @@ public enum GrammarType {
         this.value = value;
     }
 
-    public static Optional<LexType> ofLexType(LexType lexType) {
-        if (lexType.keyword() || lexType.operator() || lexType.punctuation()) {
-            return Arrays.stream(LexType.values())
-                    .filter(grammar -> grammar.getValue().equals(lexType.getValue())).findFirst();
+    static Optional<GrammarType> ofTerminal(LexType lexType) {
+        if (lexType.preserved()) {
+            return Arrays.stream(GrammarType.values()).filter(grammar -> grammar.getValue().equals(lexType.getValue())).findFirst();
+        } else if (lexType.ident()) {
+            return Optional.of(GrammarType.IDENTIFIER);
+        } else if (lexType.number()) {
+            return Optional.of(GrammarType.FORMAT_STRING);
         }
-        LoggerUtil.getLogger().severe("Not a lexType that can be transformed!");
+        LoggerUtil.getLogger().severe(lexType + " is not a terminal!");
         return Optional.empty();
     }
 

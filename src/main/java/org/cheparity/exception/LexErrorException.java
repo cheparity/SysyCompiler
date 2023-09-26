@@ -1,6 +1,6 @@
 package exception;
 
-public class LexError extends RuntimeException {
+public class LexErrorException extends RuntimeException {
 
     /**
      * Constructs a new runtime exception with the specified detail message.
@@ -10,7 +10,7 @@ public class LexError extends RuntimeException {
      * @param message the detail message. The detail message is saved for
      *                later retrieval by the {@link #getMessage()} method.
      */
-    public LexError(String message) {
+    public LexErrorException(String message) {
         super(message);
     }
 }

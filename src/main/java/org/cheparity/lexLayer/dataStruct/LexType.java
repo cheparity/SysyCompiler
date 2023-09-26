@@ -1,6 +1,6 @@
 package lexLayer.dataStruct;
 
-import exception.LexError;
+import exception.LexErrorException;
 import utils.LoggerUtil;
 import utils.RegUtil;
 
@@ -9,50 +9,16 @@ import java.util.regex.Pattern;
 
 public enum LexType {
     // Operators
-    NOT("!"),
-    MULT("*"),
-    ASSIGN("="),
-    AND("&&"),
-    OR("||"),
-    MOD("%"),
-    DIV("/"),
-    PLUS("+"),
-    MINU("-"),
-    LSS("<"),
-    LEQ("<="),
-    GRE(">"),
-    GEQ(">="),
-    EQL("=="),
-    NEQ("!="),
+    NOT("!"), MULT("*"), ASSIGN("="), AND("&&"), OR("||"), MOD("%"), DIV("/"), PLUS("+"), MINU("-"), LSS("<"), LEQ("<="), GRE(">"), GEQ(">="), EQL("=="), NEQ("!="),
 
     // Punctuation
-    SEMICN(";"),
-    COMMA(","),
-    LPARENT("("),
-    RPARENT(")"),
-    LBRACK("["),
-    RBRACK("]"),
-    LBRACE("{"),
-    RBRACE("}"),
+    SEMICN(";"), COMMA(","), LPARENT("("), RPARENT(")"), LBRACK("["), RBRACK("]"), LBRACE("{"), RBRACE("}"),
 
     // Keywords
-    CONSTTK("const"),
-    INTTK("int"),
-    VOIDTK("void"),
-    MAINTK("main"),
-    IFTK("if"),
-    ELSETK("else"),
-    FORTK("for"),
-    GETINTTK("getint"),
-    PRINTFTK("printf"),
-    RETURNTK("return"),
-    CONTINUETK("continue"),
-    BREAKTK("break"),
+    CONSTTK("const"), INTTK("int"), VOIDTK("void"), MAINTK("main"), IFTK("if"), ELSETK("else"), FORTK("for"), GETINTTK("getint"), PRINTFTK("printf"), RETURNTK("return"), CONTINUETK("continue"), BREAKTK("break"),
 
     // Identifiers and Literals
-    IDENFR(""),
-    INTCON(""),
-    STRCON("");
+    IDENFR(""), INTCON(""), STRCON("");
 
     private final String value;
 
@@ -68,8 +34,7 @@ public enum LexType {
      */
     public static LexType ofValue(String value) {
         assert (value != null);
-        var res = Arrays.stream(LexType.values())
-                .filter(lexType -> lexType.getValue().equals(value)).findFirst();
+        var res = Arrays.stream(LexType.values()).filter(lexType -> lexType.getValue().equals(value)).findFirst();
         if (res.isPresent()) {
             return res.get();
         }
@@ -83,7 +48,7 @@ public enum LexType {
             return IDENFR;
         }
         LoggerUtil.getLogger().severe("LexType [" + value + "] not found.");
-        throw new LexError("LexType [" + value + "] not found.");
+        throw new LexErrorException("LexType [" + value + "] not found.");
     }
 
     public String getValue() {
@@ -115,5 +80,21 @@ public enum LexType {
      */
     public boolean punctuation() {
         return this.compareTo(SEMICN) >= 0 && this.compareTo(RBRACE) <= 0;
+    }
+
+    public boolean str() {
+        return this.equals(STRCON);
+    }
+
+    public boolean number() {
+        return this.equals(INTCON);
+    }
+
+    public boolean ident() {
+        return this.equals(IDENFR);
+    }
+
+    public boolean preserved() {
+        return this.keyword() || this.operator() || this.punctuation();
     }
 }

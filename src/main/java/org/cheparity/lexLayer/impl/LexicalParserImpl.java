@@ -53,7 +53,6 @@ public class LexicalParserImpl implements LexicalParser {
                 .replaceAll(RegUtil.SINGLE_LINE_COMMENT_REG, "");
     }
 
-
     /**
      * Handle the next word.
      *
