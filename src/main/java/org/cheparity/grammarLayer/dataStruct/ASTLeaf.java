@@ -1,12 +1,13 @@
 package grammarLayer.dataStruct;
 
-import exception.NotATerminalException;
 import lexLayer.dataStruct.Token;
+
+import java.util.NoSuchElementException;
 
 public final class ASTLeaf extends ASTNode {
     private final Token token;
 
-    public ASTLeaf(Token token) throws NotATerminalException {
+    public ASTLeaf(Token token) throws NoSuchElementException {
         super(GrammarType.ofTerminal(token.getLexType()).orElseThrow());
         this.token = token;
     }

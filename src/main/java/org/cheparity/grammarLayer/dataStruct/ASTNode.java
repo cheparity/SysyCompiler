@@ -6,7 +6,7 @@ import java.util.List;
 public class ASTNode {
     private final List<ASTNode> children = new ArrayList<>();
     private final GrammarType grammarType;
-    private ASTNode father;
+    private ASTNode father = null;
 
     public ASTNode(GrammarType grammarType) {
         this.grammarType = grammarType;
@@ -32,5 +32,26 @@ public class ASTNode {
 
     public GrammarType getGrammarType() {
         return grammarType;
+    }
+
+    public String peekTree() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(this.getGrammarType().toString());
+        if (!this.getChildren().isEmpty()) {
+            sb.append("(");
+            for (ASTNode child : this.getChildren()) {
+                sb.append(child.peekTree());
+            }
+            sb.append(")");
+        }
+        return sb.toString();
+    }
+
+    @Override
+    public String toString() {
+        return "ASTNode{" +
+                "children=" + children +
+                ", grammarType=" + grammarType +
+                '}';
     }
 }

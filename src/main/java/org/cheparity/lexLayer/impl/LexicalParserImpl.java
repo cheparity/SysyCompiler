@@ -39,7 +39,7 @@ public class LexicalParserImpl implements LexicalParser {
     private int curPos = 0;
 
     private LexicalParserImpl() {
-        LOGGER.config(SOURCE_UNCOMMENT);
+//        LOGGER.config(SOURCE_UNCOMMENT);
     }
 
     public static LexicalParser getInstance() {
@@ -77,7 +77,6 @@ public class LexicalParserImpl implements LexicalParser {
             }
         }
         if (rawSym != null) {
-            LOGGER.fine("get rawSys: " + rawSym);
             var token = new Token(lineNum, getCol(rawSym), rawSym);
             lexPool.addToken(token);
             return Optional.of(token);
@@ -126,9 +125,7 @@ public class LexicalParserImpl implements LexicalParser {
     private String readSpecial() {
         int start = curPos;
         curPos++;
-        if (SOURCE_UNCOMMENT.charAt(start) == '<') {
-            LOGGER.finest("& entered");
-        }
+
         //handle "
         if (SOURCE_UNCOMMENT.charAt(start) == '"') {
             //todo add support for \

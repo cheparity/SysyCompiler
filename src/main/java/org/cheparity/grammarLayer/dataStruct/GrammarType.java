@@ -14,6 +14,7 @@ public enum GrammarType {
 
     // Keywords
     INT("int"),
+    MAIN("main"),
     CONST("const"),
     VOID("void"),
     IF("if"),
@@ -58,6 +59,7 @@ public enum GrammarType {
     VAR_DEF("VarDef"),
     VAR_DECL("VarDecl"),
     FUNC_DEF("FuncDef"),
+    TYPE_SPEC("TypeSpec"),
     B_TYPE("BType"),
     MAIN_FUNC_DEF("MainFuncDef"),
     CONST_DEF("ConstDef"),
@@ -71,7 +73,10 @@ public enum GrammarType {
     EXP("Exp"),
     REL_EXP("RelExp"),
     ADD_EXP("AddExp"),
+    EQ_EXP("EqExp"),
     MUL_EXP("MulExp"),
+    LAND_EXP("LAndExp"),
+    LOR_EXP("LOrExp"),
     PRIMARY_EXP("PrimaryExp"),
     LVAL("LVal"),
     UNARY_EXP("UnaryExp"),
