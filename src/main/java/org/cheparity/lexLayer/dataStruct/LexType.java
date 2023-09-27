@@ -86,7 +86,7 @@ public enum LexType {
         return this.equals(STRCON);
     }
 
-    public boolean number() {
+    public boolean intConst() {
         return this.equals(INTCON);
     }
 

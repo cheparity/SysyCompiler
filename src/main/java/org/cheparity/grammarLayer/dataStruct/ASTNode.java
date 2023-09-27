@@ -4,27 +4,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ASTNode {
-    private final ASTNode father;
     private final List<ASTNode> children = new ArrayList<>();
     private final GrammarType grammarType;
+    private ASTNode father;
 
-    public ASTNode(GrammarType grammarType, ASTNode father) {
+    public ASTNode(GrammarType grammarType) {
         this.grammarType = grammarType;
-        this.father = father;
     }
-
-    protected ASTNode(ASTNode father, GrammarType type) {
-        this.father = father;
-        this.grammarType = type;
-    }
-
 
     public void addChild(ASTNode node) {
+        node.setFather(this);
         this.children.add(node);
     }
 
     public ASTNode getFather() {
         return this.father;
+    }
+
+    private void setFather(ASTNode father) {
+        assert !(father instanceof ASTLeaf);
+        this.father = father;
     }
 
     public List<ASTNode> getChildren() {

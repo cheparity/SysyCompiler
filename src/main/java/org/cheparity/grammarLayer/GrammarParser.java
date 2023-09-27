@@ -1,6 +1,8 @@
 package grammarLayer;
 
+import grammarLayer.dataStruct.ASTLeaf;
 import grammarLayer.dataStruct.ASTNode;
+import grammarLayer.dataStruct.GrammarType;
 
 import java.util.Optional;
 
@@ -10,105 +12,113 @@ public interface GrammarParser {
      *
      * @return Optional<ASTNode> representing the parsed CompUnit
      */
-    Optional<ASTNode> parseCompUnit(ASTNode father);
+    Optional<ASTNode> parseCompUnit();
 
     /**
      * Decl → ConstDecl | VarDecl
      *
      * @return Optional<ASTNode> representing the parsed Decl
      */
-    Optional<ASTNode> parseDecl(ASTNode father);
+    Optional<ASTNode> parseDecl();
 
     /**
      * ConstDecl → 'const' BType ConstDef { ',' ConstDef } ';'
      *
      * @return Optional<ASTNode> representing the parsed ConstDecl
      */
-    Optional<ASTNode> parseConstDecl(ASTNode father);
+    Optional<ASTNode> parseConstDecl();
 
     /**
-     * VarDecl → BType VarDef { ',' VarDef } ';'
+     * BType → 'int'
      *
-     * @return Optional<ASTNode> representing the parsed VarDecl
+     * @return Optional<ASTNode> representing the parsed BType
      */
-    Optional<ASTNode> parseVarDecl(ASTNode father);
+    Optional<ASTNode> parseBType();
 
     /**
      * ConstDef → Ident { '[' ConstExp ']' } '=' ConstInitVal
      *
      * @return Optional<ASTNode> representing the parsed ConstDef
      */
-    Optional<ASTNode> parseConstDef(ASTNode father);
+    Optional<ASTNode> parseConstDef();
 
     /**
      * ConstInitVal → ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
      *
      * @return Optional<ASTNode> representing the parsed ConstInitVal
      */
-    Optional<ASTNode> parseConstInitVal(ASTNode father);
+    Optional<ASTNode> parseConstInitVal();
+
+    /**
+     * VarDecl → BType VarDef { ',' VarDef } ';'
+     *
+     * @return Optional<ASTNode> representing the parsed VarDecl
+     */
+    Optional<ASTNode> parseVarDecl();
+
 
     /**
      * VarDef → Ident { '[' ConstExp ']' } | Ident { '[' ConstExp ']' } '=' InitVal
      *
      * @return Optional<ASTNode> representing the parsed VarDef
      */
-    Optional<ASTNode> parseVarDef(ASTNode father);
+    Optional<ASTNode> parseVarDef();
 
     /**
      * InitVal → Exp | '{' [ InitVal { ',' InitVal } ] '}'
      *
      * @return Optional<ASTNode> representing the parsed InitVal
      */
-    Optional<ASTNode> parseInitVal(ASTNode father);
+    Optional<ASTNode> parseInitVal();
 
     /**
      * FuncDef → FuncType Ident '(' [FuncFParams] ')' Block
      *
      * @return Optional<ASTNode> representing the parsed FuncDef
      */
-    Optional<ASTNode> parseFuncDef(ASTNode father);
+    Optional<ASTNode> parseFuncDef();
 
     /**
      * MainFuncDef → 'int' 'main' '(' ')' Block
      *
      * @return Optional<ASTNode> representing the parsed MainFuncDef
      */
-    Optional<ASTNode> parseMainFuncDef(ASTNode father);
+    Optional<ASTNode> parseMainFuncDef();
 
     /**
      * FuncType → 'void' | 'int'
      *
      * @return Optional<ASTNode> representing the parsed FuncType
      */
-    Optional<ASTNode> parseFuncType(ASTNode father);
+    Optional<ASTNode> parseFuncType();
 
     /**
      * FuncFParams → FuncFParam { ',' FuncFParam }
      *
      * @return Optional<ASTNode> representing the parsed FuncFParams
      */
-    Optional<ASTNode> parseFuncFParams(ASTNode father);
+    Optional<ASTNode> parseFuncFParams();
 
     /**
      * FuncFParam → BType Ident ['[' ']' { '[' ConstExp ']' }]
      *
      * @return Optional<ASTNode> representing the parsed FuncFParam
      */
-    Optional<ASTNode> parseFuncFParam(ASTNode father);
+    Optional<ASTNode> parseFuncFParam();
 
     /**
      * Block → '{' { BlockItem } '}'
      *
      * @return Optional<ASTNode> representing the parsed Block
      */
-    Optional<ASTNode> parseBlock(ASTNode father);
+    Optional<ASTNode> parseBlock();
 
     /**
      * BlockItem → Decl | Stmt
      *
      * @return Optional<ASTNode> representing the parsed BlockItem
      */
-    Optional<ASTNode> parseBlockItem(ASTNode father);
+    Optional<ASTNode> parseBlockItem();
 
     /**
      * Stmt → LVal '=' Exp ';'
@@ -124,118 +134,140 @@ public interface GrammarParser {
      *
      * @return Optional<ASTNode> representing the parsed Stmt
      */
-    Optional<ASTNode> parseStmt(ASTNode father);
+    Optional<ASTNode> parseStmt();
 
     /**
      * ForStmt → LVal '=' Exp
      *
      * @return Optional<ASTNode> representing the parsed ForStmt
      */
-    Optional<ASTNode> parseForStmt(ASTNode father);
+    Optional<ASTNode> parseForStmt();
 
     /**
      * Exp → AddExp
      *
      * @return Optional<ASTNode> representing the parsed Exp
      */
-    Optional<ASTNode> parseExp(ASTNode father);
+    Optional<ASTNode> parseExp();
 
     /**
      * Cond → LOrExp
      *
      * @return Optional<ASTNode> representing the parsed Cond
      */
-    Optional<ASTNode> parseCond(ASTNode father);
+    Optional<ASTNode> parseCond();
 
     /**
      * LVal → Ident {'[' Exp ']'}
      *
      * @return Optional<ASTNode> representing the parsedLVal
      */
-    Optional<ASTNode> parseLVal(ASTNode father);
+    Optional<ASTNode> parseLVal();
 
     /**
-     * AddExp → MulExp { ('+' | '-') MulExp }
-     *
-     * @return Optional<ASTNode> representing the parsed AddExp
-     */
-    Optional<ASTNode> parseAddExp(ASTNode father);
-
-    /**
-     * MulExp → UnaryExp { ('*' | '/' | '%') UnaryExp }
-     *
-     * @return Optional<ASTNode> representing the parsed MulExp
-     */
-    Optional<ASTNode> parseMulExp(ASTNode father);
-
-    /**
-     * UnaryExp → PostfixExp | ('+' | '-' | '!') UnaryExp
-     *
-     * @return Optional<ASTNode> representing the parsed UnaryExp
-     */
-    Optional<ASTNode> parseUnaryExp(ASTNode father);
-
-    /**
-     * PostfixExp → PrimaryExp { '[' Exp ']' } { '.' Ident } { '(' [Args] ')' }
-     *
-     * @return Optional<ASTNode> representing the parsed PostfixExp
-     */
-    Optional<ASTNode> parsePostfixExp(ASTNode father);
-
-    /**
-     * PrimaryExp → '(' Exp ')' | LVal | Number | String | 'sizeof' '(' TypeSpec ')'
-     * | 'getint''('')' | 'getch''('')' | Ident '(' [Args] ')'
+     * PrimaryExp → '(' Exp ')' | LVal | Number
      *
      * @return Optional<ASTNode> representing the parsed PrimaryExp
      */
-    Optional<ASTNode> parsePrimaryExp(ASTNode father);
+    Optional<ASTNode> parsePrimaryExp();
 
     /**
-     * Args → Exp { ',' Exp }
+     * Number → IntConst
      *
-     * @return Optional<ASTNode> representing the parsed Args
+     * @return Optional<ASTNode> representing the parsed Number
      */
-    Optional<ASTNode> parseArgs(ASTNode father);
+    Optional<ASTNode> parseNumber();
+
+    /**
+     * UnaryExp → PrimaryExp | Ident '(' [FuncRParams] ')' | UnaryOp UnaryExp
+     *
+     * @return Optional<ASTNode> representing the parsed UnaryExp
+     */
+    Optional<ASTNode> parseUnaryExp();
+
+    /**
+     * UnaryOp → '+' | '−' | '!'
+     *
+     * @return Optional<ASTNode> representing the parsed parseUnaryOp
+     */
+    Optional<ASTNode> parseUnaryOp();
+
+    /**
+     * FuncRParams → Exp { ',' Exp }
+     *
+     * @return Optional representing the parsed FuncRParams
+     */
+    Optional<ASTNode> parseFuncRParams();
+
+    /**
+     * MulExp → UnaryExp | MulExp ('*' | '/' | '%') UnaryExp
+     *
+     * @return Optional<ASTNode> representing the parsed MulExp
+     */
+    Optional<ASTNode> parseMulExp();
+
+    /**
+     * AddExp → MulExp | AddExp ('+' | '−') MulExp
+     *
+     * @return Optional<ASTNode> representing the parsed AddExp
+     */
+    Optional<ASTNode> parseAddExp();
+
+    /**
+     * RelExp → AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
+     *
+     * @return Optional representing the parsed RelExp
+     */
+    Optional<ASTNode> parseRelExp();
+
+    /**
+     * EqExp → RelExp | EqExp ('==' | '!=') RelExp
+     *
+     * @return Optional representing the parsed EqExp
+     */
+    Optional<ASTNode> parseEqExp();
 
     /**
      * TypeSpec → BType | 'void'
      *
      * @return Optional<ASTNode> representing the parsed TypeSpec
      */
-    Optional<ASTNode> parseTypeSpec(ASTNode father);
+    Optional<ASTNode> parseTypeSpec();
+
 
     /**
-     * BType → 'int' | 'char'
+     * LAndExp → EqExp | LAndExp '&&' EqExp
      *
-     * @return Optional<ASTNode> representing the parsed BType
+     * @return Optional<ASTNode> representing the parsed LAndExp
      */
-    Optional<ASTNode> parseBType(ASTNode father);
+    Optional<ASTNode> parseLAndExp();
 
     /**
-     * Number → Digit { Digit }
+     * LOrExp → LAndExp | LOrExp '||' LAndExp
      *
-     * @return Optional<ASTNode> representing the parsed Number
+     * @return Optional<ASTNode> representing the parsed LOrExp
      */
-    Optional<ASTNode> parseNumber(ASTNode father);
+    Optional<ASTNode> parseLOrExp();
 
     /**
-     * String → '"' { Char } '"'
+     * ConstExp → AddExp
      *
-     * @return Optional<ASTNode> representing the parsed String
+     * @return Optional<ASTNode> representing the parsed ConstExp
      */
-    Optional<ASTNode> parseString(ASTNode father);
+    Optional<ASTNode> parseConstExp();
+
 
     /**
-     * Char → [^"\n]
+     * Parse the terminals. Include `keyword, punctuation, operator, string, number`.
      *
-     * @return Optional<ASTNode> representing the parsed Char
+     * @return Optional ASTLeaf that been parsed.
      */
-    Optional<ASTNode> parseChar(ASTNode father);
+    Optional<ASTLeaf> parseTerminal();
 
     /**
-     * Digit → [0-9]
+     * Parse the terminals. Include `keyword, punctuation, operator, string, number`.
      *
-     * @return Optional<ASTNode> representing the parsed Digit
+     * @return Optional ASTLeaf that been parsed.
      */
-    Optional<ASTNode> parseDigit(ASTNode father);
+    Optional<ASTLeaf> parseTerminal(GrammarType... type);
 }
