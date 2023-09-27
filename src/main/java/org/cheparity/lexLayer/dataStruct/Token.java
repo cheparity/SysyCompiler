@@ -30,8 +30,14 @@ public final class Token {
         return rawValue;
     }
 
+
     @Override
     public String toString() {
-        return String.format("%-20s\t%-20s\t%-20s", lexType, rawValue, "(" + lineNum + "," + colNum + ")");
+        return "Token{" +
+                "lexType=" + lexType +
+                ", rawValue='" + rawValue + '\'' +
+                '}';
+
+//            return String.format("%-20s\t%-20s\t%-20s", lexType, rawValue, "(" + lineNum + "," + colNum + ")");
     }
 }

@@ -115,7 +115,6 @@ public class RecursiveDescentParser implements GrammarParser {
         Optional<ASTLeaf> constTk = parseTerminal(GrammarType.CONST);
         if (constTk.isPresent()) {
             constDecl.addChild(constTk.get());
-            next();
         } else {
             return failed(initIndex);
         }
@@ -137,7 +136,7 @@ public class RecursiveDescentParser implements GrammarParser {
 
         for (var comma = parseTerminal(GrammarType.COMMA); comma.isPresent(); ) {
             constDecl.addChild(comma.get());
-            next();
+
             constDef = parseConstDef();
             if (constDef.isPresent()) {
                 constDecl.addChild(constDef.get());
@@ -167,7 +166,7 @@ public class RecursiveDescentParser implements GrammarParser {
         Optional<ASTLeaf> intTk = parseTerminal(GrammarType.INT);
         if (intTk.isPresent()) {
             bType.addChild(intTk.get());
-            return done(bType);
+            return Optional.of(bType); //important! cannot return done(bType)
         }
 
         return failed(initIndex);
@@ -187,7 +186,7 @@ public class RecursiveDescentParser implements GrammarParser {
         Optional<ASTLeaf> ident = parseTerminal(GrammarType.IDENTIFIER);
         if (ident.isPresent()) {
             constDef.addChild(ident.get());
-            next();
+
         } else {
             return failed(initIndex);
         }
@@ -195,7 +194,7 @@ public class RecursiveDescentParser implements GrammarParser {
         // '[' ConstExp ']'
         for (var leftBracket = parseTerminal(GrammarType.LEFT_BRACKET); leftBracket.isPresent(); ) {
             constDef.addChild(leftBracket.get());
-            next();
+
             Optional<ASTNode> constExp = parseConstExp();
             if (constExp.isPresent()) {
                 constDef.addChild(constExp.get());
@@ -205,7 +204,7 @@ public class RecursiveDescentParser implements GrammarParser {
             Optional<ASTLeaf> rightBracket = parseTerminal(GrammarType.RIGHT_BRACKET);
             if (rightBracket.isPresent()) {
                 constDef.addChild(rightBracket.get());
-                next();
+
             } else {
                 return failed(initIndex);
             }
@@ -236,7 +235,7 @@ public class RecursiveDescentParser implements GrammarParser {
         Optional<ASTLeaf> leftBrace = parseTerminal(GrammarType.LEFT_BRACE);
         if (leftBrace.isPresent()) {
             constInitVal.addChild(leftBrace.get());
-            next();
+
             Optional<ASTNode> constInitVal1 = parseConstInitVal();
             if (constInitVal1.isPresent()) {
                 constInitVal.addChild(constInitVal1.get());
@@ -246,7 +245,7 @@ public class RecursiveDescentParser implements GrammarParser {
 
             for (var comma = parseTerminal(GrammarType.COMMA); comma.isPresent(); ) {
                 constInitVal.addChild(comma.get());
-                next();
+
                 constInitVal1 = parseConstInitVal();
                 if (constInitVal1.isPresent()) {
                     constInitVal.addChild(constInitVal1.get());
@@ -274,7 +273,7 @@ public class RecursiveDescentParser implements GrammarParser {
     public Optional<ASTNode> parseVarDecl() {
         int initIndex = nowIndex;
         var varDecl = begin(GrammarType.B_TYPE);
-        Optional<ASTNode> bType = parseBType(); //todo may has bugs
+        Optional<ASTNode> bType = parseBType();
         if (bType.isPresent()) {
             varDecl.addChild(bType.get());
         } else {
@@ -290,7 +289,7 @@ public class RecursiveDescentParser implements GrammarParser {
 
         for (var comma = parseTerminal(GrammarType.COMMA); comma.isPresent(); ) {
             varDecl.addChild(comma.get());
-            next();
+
             varDef = parseVarDef();
             if (varDef.isPresent()) {
                 varDecl.addChild(varDef.get());
@@ -299,11 +298,18 @@ public class RecursiveDescentParser implements GrammarParser {
             }
         }
 
-        return done(varDecl);
+        // ; todo 为什么没有解析分号？
+        Optional<ASTLeaf> semicolon = parseTerminal(GrammarType.SEMICOLON);
+        if (semicolon.isPresent()) {
+            varDecl.addChild(semicolon.get());
+            return done(varDecl);
+        }
+
+        return failed(initIndex);
     }
 
     /**
-     * VarDef → Ident { '[' ConstExp ']' } | Ident { '[' ConstExp ']' } '=' InitVal
+     * VarDef → Ident { '[' ConstExp ']' } ['=' InitVal]
      *
      * @return Optional<ASTNode> representing the parsed VarDef
      */
@@ -316,14 +322,14 @@ public class RecursiveDescentParser implements GrammarParser {
         Optional<ASTLeaf> ident;
         if ((ident = parseTerminal(GrammarType.IDENTIFIER)).isPresent()) {
             varDef.addChild(ident.get());
-            next();
+            //todo has next bug
         } else {
             return failed(initIndex);
         }
         // { '[' ConstExp ']' } optional
         for (var leftBracket = parseTerminal(GrammarType.LEFT_BRACKET); leftBracket.isPresent(); ) {
             varDef.addChild(leftBracket.get());
-            next();
+
             constExp = parseConstExp();
             if (constExp.isPresent()) {
                 varDef.addChild(constExp.get());
@@ -333,7 +339,7 @@ public class RecursiveDescentParser implements GrammarParser {
             Optional<ASTLeaf> rightBracket = parseTerminal(GrammarType.RIGHT_BRACKET);
             if (rightBracket.isPresent()) {
                 varDef.addChild(rightBracket.get());
-                next();
+
             } else {
                 return failed(initIndex);
             }
@@ -343,7 +349,7 @@ public class RecursiveDescentParser implements GrammarParser {
         Optional<ASTLeaf> assign;
         if ((assign = parseTerminal(GrammarType.ASSIGN)).isPresent()) {
             varDef.addChild(assign.get());
-            next();
+
             initVal = parseInitVal();
             if (initVal.isPresent()) {
                 varDef.addChild(initVal.get());
@@ -378,7 +384,7 @@ public class RecursiveDescentParser implements GrammarParser {
         // '{' [ InitVal { ',' InitVal } ] '}'
         if ((leftBrace = parseTerminal(GrammarType.LEFT_BRACE)).isPresent()) {
             initVal.addChild(leftBrace.get());
-            next();
+
             initVal1 = parseInitVal();
             if (initVal1.isPresent()) {
                 initVal.addChild(initVal1.get());
@@ -388,7 +394,7 @@ public class RecursiveDescentParser implements GrammarParser {
 
             for (comma = parseTerminal(GrammarType.COMMA); comma.isPresent(); ) {
                 initVal.addChild(comma.get());
-                next();
+
                 initVal1 = parseInitVal();
                 if (initVal1.isPresent()) {
                     initVal.addChild(initVal1.get());
@@ -425,7 +431,7 @@ public class RecursiveDescentParser implements GrammarParser {
         Optional<ASTLeaf> ident = parseTerminal(GrammarType.IDENTIFIER);
         if (ident.isPresent()) {
             funcDef.addChild(ident.get());
-            next();
+
         } else {
             return failed(initIndex);
         }
@@ -433,7 +439,7 @@ public class RecursiveDescentParser implements GrammarParser {
         Optional<ASTLeaf> leftParen = parseTerminal(GrammarType.LEFT_PAREN);
         if (leftParen.isPresent()) {
             funcDef.addChild(leftParen.get());
-            next();
+
         } else {
             return failed(initIndex);
         }
@@ -443,7 +449,7 @@ public class RecursiveDescentParser implements GrammarParser {
         Optional<ASTLeaf> rightParen = parseTerminal(GrammarType.RIGHT_PAREN);
         if (rightParen.isPresent()) {
             funcDef.addChild(rightParen.get());
-            next();
+
         } else {
             return failed(initIndex);
         }
@@ -470,7 +476,6 @@ public class RecursiveDescentParser implements GrammarParser {
         Optional<ASTLeaf> intTk = parseTerminal(GrammarType.INT);
         if (intTk.isPresent()) {
             mainFuncDef.addChild(intTk.get());
-            next();//IMPORTANT!! When reading a terminal, we should call next() to read the next token.
         } else {
             return failed(initIndex);
         }
@@ -478,7 +483,7 @@ public class RecursiveDescentParser implements GrammarParser {
         Optional<ASTLeaf> mainTk = parseTerminal(GrammarType.MAIN);
         if (mainTk.isPresent()) {
             mainFuncDef.addChild(mainTk.get());
-            next();
+
         } else {
             return failed(initIndex);
         }
@@ -486,7 +491,7 @@ public class RecursiveDescentParser implements GrammarParser {
         Optional<ASTLeaf> leftParen = parseTerminal(GrammarType.LEFT_PAREN);
         if (leftParen.isPresent()) {
             mainFuncDef.addChild(leftParen.get());
-            next();
+
         } else {
             return failed(initIndex);
         }
@@ -494,7 +499,7 @@ public class RecursiveDescentParser implements GrammarParser {
         Optional<ASTLeaf> rightParen = parseTerminal(GrammarType.RIGHT_PAREN);
         if (rightParen.isPresent()) {
             mainFuncDef.addChild(rightParen.get());
-            next();
+
         } else {
             return failed(initIndex);
         }
@@ -552,7 +557,7 @@ public class RecursiveDescentParser implements GrammarParser {
 
         for (var comma = parseTerminal(GrammarType.COMMA); comma.isPresent(); ) {
             funcFParams.addChild(comma.get());
-            next();
+
             funcFParam = parseFuncFParam();
             if (funcFParam.isPresent()) {
                 funcFParams.addChild(funcFParam.get());
@@ -583,7 +588,7 @@ public class RecursiveDescentParser implements GrammarParser {
         Optional<ASTLeaf> ident = parseTerminal(GrammarType.IDENTIFIER);
         if (ident.isPresent()) {
             funcFParam.addChild(ident.get());
-            next();
+
         } else {
             return failed(initIndex);
         }
@@ -593,13 +598,13 @@ public class RecursiveDescentParser implements GrammarParser {
             Optional<ASTLeaf> rightBracket = parseTerminal(GrammarType.RIGHT_BRACKET);
             if (rightBracket.isPresent()) {
                 funcFParam.addChild(rightBracket.get());
-                next();
+
             } else {
                 return failed(initIndex);
             }
             for (leftBracket = parseTerminal(GrammarType.LEFT_BRACKET); leftBracket.isPresent(); ) {
                 funcFParam.addChild(leftBracket.get());
-                next();
+
                 Optional<ASTNode> constExp = parseConstExp();
                 if (constExp.isPresent()) {
                     funcFParam.addChild(constExp.get());
@@ -609,7 +614,7 @@ public class RecursiveDescentParser implements GrammarParser {
                 rightBracket = parseTerminal(GrammarType.RIGHT_BRACKET);
                 if (rightBracket.isPresent()) {
                     funcFParam.addChild(rightBracket.get());
-                    next();
+
                 } else {
                     return failed(initIndex);
                 }
@@ -636,6 +641,7 @@ public class RecursiveDescentParser implements GrammarParser {
         }
 
         Optional<ASTNode> blockItem;
+        //todo huge bug! always parse the first blockItem
         for (blockItem = parseBlockItem(); blockItem.isPresent(); ) {
             Block.addChild(blockItem.get());
         }
@@ -766,7 +772,8 @@ public class RecursiveDescentParser implements GrammarParser {
             return done(Stmt);
         }
 
-        keyword = parseTerminal();
+        keyword = parseTerminal(GrammarType.IF, GrammarType.FOR, GrammarType.BREAK, GrammarType.CONTINUE,
+                GrammarType.RETURN, GrammarType.PRINTF);
         if (keyword.isEmpty()) {
             return failed(initIndex);
         }
@@ -1388,29 +1395,18 @@ public class RecursiveDescentParser implements GrammarParser {
      * @return Optional ASTLeaf that been parsed.
      */
     @Override
-    public Optional<ASTLeaf> parseTerminal() {
+    public Optional<ASTLeaf> parseTerminal(GrammarType... type) {
         ASTLeaf astLeaf;
         try {
             astLeaf = new ASTLeaf(nowToken);
         } catch (NoSuchElementException e) {
             return Optional.empty();
         }
-        return Optional.of(astLeaf);
-    }
 
-    /**
-     * Parse the terminals. Include `keyword, punctuation, operator, string, number`.
-     *
-     * @return Optional ASTLeaf that been parsed.
-     */
-    @Override
-    public Optional<ASTLeaf> parseTerminal(GrammarType... type) {
-        Optional<ASTLeaf> terminal = parseTerminal();
-        if (terminal.isPresent()) {
-            for (var t : type) {
-                if (terminal.get().getGrammarType().equals(t)) return terminal;
-            }
+        for (var t : type) {
+            if (astLeaf.getGrammarType().equals(t)) return done(astLeaf);
         }
+
         return Optional.empty();
     }
 }

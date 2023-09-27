@@ -262,12 +262,5 @@ public interface GrammarParser {
      *
      * @return Optional ASTLeaf that been parsed.
      */
-    Optional<ASTLeaf> parseTerminal();
-
-    /**
-     * Parse the terminals. Include `keyword, punctuation, operator, string, number`.
-     *
-     * @return Optional ASTLeaf that been parsed.
-     */
     Optional<ASTLeaf> parseTerminal(GrammarType... type);
 }
