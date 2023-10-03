@@ -2,12 +2,13 @@ import grammarLayer.dataStruct.ASTLeaf;
 import grammarLayer.dataStruct.ASTNode;
 import grammarLayer.dataStruct.GrammarType;
 import grammarLayer.impl.RecursiveDescentParser;
+import lexLayer.LexicalParser;
+import lexLayer.dataStruct.Token;
+import lexLayer.impl.LexicalParserImpl;
 import utils.LoggerUtil;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.PrintStream;
+import java.io.*;
+import java.util.ArrayList;
 import java.util.logging.Logger;
 
 public class Compiler {
@@ -25,17 +26,33 @@ public class Compiler {
     }
 
     public static void main(String[] args) {
-        RecursiveDescentParser grammarParser = new RecursiveDescentParser();
-        grammarParser.parse();
-        printAnswer(grammarParser.getAST());
+        printGrammarAnswer();
     }
 
-    private static void printAnswer(ASTNode tree) {
+    private static void printLexAnswer() {
+        LexicalParser l = LexicalParserImpl.getInstance();
+        ArrayList<Token> allTokens = l.getAllTokens();
+        allTokens.forEach(token -> {
+            try {
+                fos.write((token.getLexType() + " " + token.getRawValue() + "\n").getBytes());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    private static void printGrammarAnswer() {
+        RecursiveDescentParser grammarParser = new RecursiveDescentParser();
+        grammarParser.parse();
+        printGrammarAnswer(grammarParser.getAST());
+    }
+
+    private static void printGrammarAnswer(ASTNode tree) {
         PrintStream ps = new PrintStream(fos);
 //        if (tree.getChildren().isEmpty()) return;
 
         for (var child : tree.getChildren()) {
-            printAnswer(child);
+            printGrammarAnswer(child);
         }
         GrammarType g = tree.getGrammarType();
         if (g == GrammarType.BLOCK_ITEM || g == GrammarType.DECL || g == GrammarType.B_TYPE) {

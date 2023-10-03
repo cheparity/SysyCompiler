@@ -30,8 +30,6 @@ public class RecursiveDescentParser implements GrammarParser {
         if (nowIndex < tokens.size() - 1) {
             nowIndex++;
             nowToken = tokens.get(nowIndex);
-        } else {
-            LOGGER.info("End of tokens");
         }
     }
 
@@ -39,7 +37,6 @@ public class RecursiveDescentParser implements GrammarParser {
         if (nowIndex + number < tokens.size()) {
             return Optional.of(tokens.get(nowIndex + number));
         } else {
-            LOGGER.info("End of tokens");
             return Optional.empty();
         }
     }
@@ -681,7 +678,6 @@ public class RecursiveDescentParser implements GrammarParser {
 
         Optional<ASTNode> blockItem;
 
-        //todo error
         while ((blockItem = parseBlockItem()).isPresent()) {
             Block.addChild(blockItem.get());
         }
@@ -779,6 +775,7 @@ public class RecursiveDescentParser implements GrammarParser {
         // ;
         semicolon = parseTerminal(GrammarType.SEMICOLON);
         if (semicolon.isPresent()) {
+            stmt.addChild(semicolon.get());
             return done(stmt);
         }
 
@@ -1015,22 +1012,24 @@ public class RecursiveDescentParser implements GrammarParser {
     @Override
     public Optional<ASTNode> parseForStmt() {
         int initIndex = nowIndex;
+        ASTNode forStmt = begin(GrammarType.FOR_STMT);
+
         Optional<ASTNode> lVal = parseLVal();
         if (lVal.isEmpty()) {
             return failed(initIndex);
         }
-
+        forStmt.addChild(lVal.get());
         Optional<ASTLeaf> assign = parseTerminal(GrammarType.ASSIGN);
         if (assign.isPresent()) {
-            lVal.get().addChild(assign.get());
+            forStmt.addChild(assign.get());
         } else {
             return failed(initIndex);
         }
 
         Optional<ASTNode> exp = parseExp();
         if (exp.isPresent()) {
-            lVal.get().addChild(exp.get());
-            return done(lVal.get());
+            forStmt.addChild(exp.get());
+            return done(forStmt);
         }
         return failed(initIndex);
     }
@@ -1089,10 +1088,16 @@ public class RecursiveDescentParser implements GrammarParser {
         while ((leftParen = parseTerminal(GrammarType.LEFT_BRACKET)).isPresent()) {
             LVal.addChild(leftParen.get());
             Optional<ASTNode> exp = parseExp();
-            if (exp.isEmpty()) return failed(initIndex);
+            if (exp.isEmpty()) {
+                return failed(initIndex);
+            }
+            LVal.addChild(exp.get());
             rightParen = parseTerminal(GrammarType.RIGHT_BRACKET);
-            if (rightParen.isPresent()) LVal.addChild(rightParen.get());
-            else return failed(initIndex);
+            if (rightParen.isPresent()) {
+                LVal.addChild(rightParen.get());
+            } else {
+                return failed(initIndex);
+            }
         }
         return done(LVal);
     }

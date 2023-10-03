@@ -18,19 +18,16 @@ public class LexicalParserImpl implements LexicalParser {
     private final static Logger LOGGER = LoggerUtil.getLogger();
     private final static LexicalParser LEXER_INSTANCE = new LexicalParserImpl();
     private final static String FILENAME = "./testfile.txt";
-    private final static String SOURCE_RAW;
-    private final static String SOURCE_UNCOMMENT;
+    private final static String SOURCE;
     private final static int SOURCE_LEN;
 
     static {
         try {
-            SOURCE_RAW = Files.readString(Paths.get(FILENAME));
-            SOURCE_UNCOMMENT = SOURCE_RAW;
-//            SOURCE_UNCOMMENT = removeComment();
+            SOURCE = Files.readString(Paths.get(FILENAME));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        SOURCE_LEN = SOURCE_UNCOMMENT.length();
+        SOURCE_LEN = SOURCE.length();
     }
 
     private final LexPool lexPool = new LexPool();
@@ -48,9 +45,9 @@ public class LexicalParserImpl implements LexicalParser {
         return LEXER_INSTANCE;
     }
 
-    private static String removeComment() {
+    private static String removeComment(String s) {
         /*todo not consider line number*/
-        return SOURCE_RAW
+        return s
                 .replaceAll(RegUtil.REGION_COMMENT_REG, "")
                 .replaceAll(RegUtil.SINGLE_LINE_COMMENT_REG, "");
     }
@@ -64,7 +61,7 @@ public class LexicalParserImpl implements LexicalParser {
     public Optional<Token> next() {
         String rawSym = null;
         for (; curPos < SOURCE_LEN; curPos++) {
-            char c = SOURCE_UNCOMMENT.charAt(curPos);
+            char c = SOURCE.charAt(curPos);
             CharaType charaType = judgeChar(c);
             if (charaType == CharaType.BLANK) {
             } else if (charaType == CharaType.ALPHA) {
@@ -97,31 +94,31 @@ public class LexicalParserImpl implements LexicalParser {
 
     // look back for the first '\n'
     private int getCol(String rawStr) {
-        int i = (curPos >= SOURCE_UNCOMMENT.length()) ? curPos - 1 : curPos;
-        for (; i > 0 && SOURCE_UNCOMMENT.charAt(i) != '\n'; i--) ;
+        int i = (curPos >= SOURCE.length()) ? curPos - 1 : curPos;
+        for (; i > 0 && SOURCE.charAt(i) != '\n'; i--) ;
         return curPos - i + 1 - rawStr.length();
     }
 
     private String readNumber() {
         int start = curPos;
         for (curPos++; curPos < SOURCE_LEN; curPos++) {
-            char c = SOURCE_UNCOMMENT.charAt(curPos);
+            char c = SOURCE.charAt(curPos);
             if (judgeChar(c) != CharaType.DIGIT) {
                 break;
             }
         }
-        return SOURCE_UNCOMMENT.substring(start, curPos);
+        return SOURCE.substring(start, curPos);
     }
 
     private String readAlpha() {
         int start = curPos;
         for (curPos++; curPos < SOURCE_LEN; curPos++) {
-            char c = SOURCE_UNCOMMENT.charAt(curPos);
+            char c = SOURCE.charAt(curPos);
             if (judgeChar(c) != CharaType.ALPHA && judgeChar(c) != CharaType.DIGIT) {
                 break;
             }
         }
-        return SOURCE_UNCOMMENT.substring(start, curPos);
+        return SOURCE.substring(start, curPos);
     }
 
     private String readSpecial() {
@@ -129,44 +126,44 @@ public class LexicalParserImpl implements LexicalParser {
         curPos++;
 
         //handle "
-        if (SOURCE_UNCOMMENT.charAt(start) == '"') {
+        if (SOURCE.charAt(start) == '"') {
             //todo add support for \
             for (; curPos < SOURCE_LEN; curPos++) {
-                char c = SOURCE_UNCOMMENT.charAt(curPos);
+                char c = SOURCE.charAt(curPos);
                 if (c == '"') {
                     curPos++;
-                    return SOURCE_UNCOMMENT.substring(start, curPos);
+                    return SOURCE.substring(start, curPos);
                 }
             }
-        } else if (start + 1 < SOURCE_LEN && SOURCE_UNCOMMENT.charAt(start) == '/' && SOURCE_UNCOMMENT.charAt(start + 1) == '/') {
+        } else if (start + 1 < SOURCE_LEN && SOURCE.charAt(start) == '/' && SOURCE.charAt(start + 1) == '/') {
             //there we just remove the comment, not save
             curPos++;
             for (; curPos + 1 < SOURCE_LEN; curPos++) {
-                char c = SOURCE_UNCOMMENT.charAt(curPos);
+                char c = SOURCE.charAt(curPos);
                 if (c == '\n') {
                     curPos++;
-                    return SOURCE_UNCOMMENT.substring(start, curPos);
+                    return SOURCE.substring(start, curPos);
                 }
             }
-        } else if (start + 1 < SOURCE_LEN && SOURCE_UNCOMMENT.charAt(start) == '/' && SOURCE_UNCOMMENT.charAt(start + 1) == '*') {
+        } else if (start + 1 < SOURCE_LEN && SOURCE.charAt(start) == '/' && SOURCE.charAt(start + 1) == '*') {
             curPos += 2;
             for (; curPos + 1 < SOURCE_LEN; curPos++) {
-                char c1 = SOURCE_UNCOMMENT.charAt(curPos);
-                char c2 = SOURCE_UNCOMMENT.charAt(curPos + 1);
+                char c1 = SOURCE.charAt(curPos);
+                char c2 = SOURCE.charAt(curPos + 1);
                 if (c1 == '*' && c2 == '/') {
                     curPos += 2;
-                    return SOURCE_UNCOMMENT.substring(start, curPos);
+                    return SOURCE.substring(start, curPos);
                 }
             }
         }
         //to see whether c1 can LIGATURE or not
         if (curPos + 1 < SOURCE_LEN) {
-            var substr = SOURCE_UNCOMMENT.substring(start, curPos + 1);
+            var substr = SOURCE.substring(start, curPos + 1);
             if (judgeChar(substr) == CharaType.LIGATURE) {
                 curPos++;
             }
         }
-        return SOURCE_UNCOMMENT.substring(start, curPos);
+        return SOURCE.substring(start, curPos);
     }
 
     private CharaType judgeChar(char c) {
