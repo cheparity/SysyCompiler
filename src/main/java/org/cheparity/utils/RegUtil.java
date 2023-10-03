@@ -8,9 +8,10 @@ public class RegUtil {
     public static final String DIGIT_REG = "^\\d$";
     public static final String SPECIAL_CHAR_REG = "^[*\"'!@#$%^&(){}\\[\\]|:;<>?,./\\-+=]$";
     public static final String LINKABLE_OPERATOR_REG = "^(>=)|(<=)|(==)|(!=)|(&&)|(\\|\\|)$";
-    public static final String SINGLE_LINE_COMMENT_REG = "[\\/]{2,}.*"; //may remove the \n
+    public static final String SINGLE_LINE_COMMENT_REG = "(\\/{2,}.*)"; //may remove the \n
+    //    public static final String SINGLE_LINE_COMMENT_REG = "^(?!.*\\\".*)(\\/\\/.*|.*[^\\\\]\\/\\/.*)";
     public static final String REGION_COMMENT_REG = "(?<!\\/)\\/\\*((?:(?!\\*\\/).|\\s)*)\\*\\/";
-
+//    public static final String REGION_COMMENT_REG = "^(?!.*\\\".*)(?<!\\/)\\/\\*((?:(?!\\*\\/).|\\s)*)\\*\\/";
 
     public static boolean digit(String str) {
         return str.matches(DIGIT_REG);

@@ -1,7 +1,6 @@
 package grammarLayer.dataStruct;
 
 import lexLayer.dataStruct.LexType;
-import utils.LoggerUtil;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -97,7 +96,7 @@ public enum GrammarType {
         this.value = value;
     }
 
-    static Optional<GrammarType> ofTerminal(LexType lexType) {
+    public static Optional<GrammarType> ofTerminal(LexType lexType) {
         if (lexType.preserved()) {
             return Arrays.stream(GrammarType.values()).filter(grammar -> grammar.getValue().equals(lexType.getValue())).findFirst();
         }
@@ -107,7 +106,10 @@ public enum GrammarType {
         if (lexType.intConst()) {
             return Optional.of(GrammarType.INT_CONST);
         }
-        LoggerUtil.getLogger().severe(lexType + " is not a terminal!");
+        if (lexType.str()) {
+            return Optional.of(GrammarType.FORMAT_STRING);
+        }
+//        LoggerUtil.getLogger().severe(lexType + " is not a terminal!");
         return Optional.empty();
     }
 

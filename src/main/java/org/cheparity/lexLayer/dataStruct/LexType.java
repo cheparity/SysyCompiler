@@ -18,7 +18,10 @@ public enum LexType {
     CONSTTK("const"), INTTK("int"), VOIDTK("void"), MAINTK("main"), IFTK("if"), ELSETK("else"), FORTK("for"), GETINTTK("getint"), PRINTFTK("printf"), RETURNTK("return"), CONTINUETK("continue"), BREAKTK("break"),
 
     // Identifiers and Literals
-    IDENFR(""), INTCON(""), STRCON("");
+    IDENFR(""), INTCON(""), STRCON(""),
+
+    //comment
+    COMMENT("");
 
     private final String value;
 
@@ -46,6 +49,9 @@ public enum LexType {
         }
         if (Pattern.matches(RegUtil.IDENT_REG, value)) {
             return IDENFR;
+        }
+        if (value.startsWith("//") || (value.startsWith("/*") && value.endsWith("*/"))) {
+            return COMMENT;
         }
         LoggerUtil.getLogger().severe("LexType [" + value + "] not found.");
         throw new LexErrorException("LexType [" + value + "] not found.");

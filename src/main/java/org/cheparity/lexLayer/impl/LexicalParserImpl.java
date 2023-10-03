@@ -2,6 +2,7 @@ package lexLayer.impl;
 
 import lexLayer.LexPool;
 import lexLayer.LexicalParser;
+import lexLayer.dataStruct.LexType;
 import lexLayer.dataStruct.Token;
 import utils.LoggerUtil;
 import utils.RegUtil;
@@ -24,7 +25,8 @@ public class LexicalParserImpl implements LexicalParser {
     static {
         try {
             SOURCE_RAW = Files.readString(Paths.get(FILENAME));
-            SOURCE_UNCOMMENT = removeComment();
+            SOURCE_UNCOMMENT = SOURCE_RAW;
+//            SOURCE_UNCOMMENT = removeComment();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -48,7 +50,7 @@ public class LexicalParserImpl implements LexicalParser {
 
     private static String removeComment() {
         /*todo not consider line number*/
-        return LexicalParserImpl.SOURCE_RAW
+        return SOURCE_RAW
                 .replaceAll(RegUtil.REGION_COMMENT_REG, "")
                 .replaceAll(RegUtil.SINGLE_LINE_COMMENT_REG, "");
     }
@@ -78,7 +80,7 @@ public class LexicalParserImpl implements LexicalParser {
         }
         if (rawSym != null) {
             var token = new Token(lineNum, getCol(rawSym), rawSym);
-            lexPool.addToken(token);
+            if (token.getLexType() != LexType.COMMENT) lexPool.addToken(token);
             return Optional.of(token);
         }
         return Optional.empty();
@@ -133,6 +135,26 @@ public class LexicalParserImpl implements LexicalParser {
                 char c = SOURCE_UNCOMMENT.charAt(curPos);
                 if (c == '"') {
                     curPos++;
+                    return SOURCE_UNCOMMENT.substring(start, curPos);
+                }
+            }
+        } else if (start + 1 < SOURCE_LEN && SOURCE_UNCOMMENT.charAt(start) == '/' && SOURCE_UNCOMMENT.charAt(start + 1) == '/') {
+            //there we just remove the comment, not save
+            curPos++;
+            for (; curPos + 1 < SOURCE_LEN; curPos++) {
+                char c = SOURCE_UNCOMMENT.charAt(curPos);
+                if (c == '\n') {
+                    curPos++;
+                    return SOURCE_UNCOMMENT.substring(start, curPos);
+                }
+            }
+        } else if (start + 1 < SOURCE_LEN && SOURCE_UNCOMMENT.charAt(start) == '/' && SOURCE_UNCOMMENT.charAt(start + 1) == '*') {
+            curPos += 2;
+            for (; curPos + 1 < SOURCE_LEN; curPos++) {
+                char c1 = SOURCE_UNCOMMENT.charAt(curPos);
+                char c2 = SOURCE_UNCOMMENT.charAt(curPos + 1);
+                if (c1 == '*' && c2 == '/') {
+                    curPos += 2;
                     return SOURCE_UNCOMMENT.substring(start, curPos);
                 }
             }
