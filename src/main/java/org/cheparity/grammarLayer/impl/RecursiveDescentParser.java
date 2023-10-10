@@ -41,6 +41,7 @@ public class RecursiveDescentParser implements GrammarParser {
         }
     }
 
+
     /**
      * Note that this function can ONLY JUDGE TERMINAL tokens!
      *
@@ -716,6 +717,20 @@ public class RecursiveDescentParser implements GrammarParser {
         return failed(initIndex);
     }
 
+    private boolean preRead4ParseStmt2JudgeLVal() {
+        int initIndex = nowIndex;
+        if (parseLVal().isEmpty()) {
+            failed(initIndex);
+            return false;
+        }
+        if (parseTerminal(GrammarType.ASSIGN).isEmpty()) {
+            failed(initIndex);
+            return false;
+        }
+        failed(initIndex);
+        return true;
+    }
+
     /**
      * Stmt →
      * <p>
@@ -748,86 +763,88 @@ public class RecursiveDescentParser implements GrammarParser {
         Optional<ASTNode> lVal, exp, block;
         Optional<ASTLeaf> semicolon, leftParen, rightParen, getintTk, assign, keyword;
 
-        //need to pre read(Lval and [Exp])
-        //the first token is Ident && the second token is LEFT_PAREN
-        if (judgePreReadTerminal(0, GrammarType.IDENTIFIER) && judgePreReadTerminal(1, GrammarType.LEFT_PAREN)) {
-            // [Exp] ';'
-            exp = parseExp();
-            if (exp.isPresent()) {
-                stmt.addChild(exp.get());
-
-                semicolon = parseTerminal(GrammarType.SEMICOLON);
-                if (semicolon.isPresent()) {
-                    stmt.addChild(semicolon.get());
-                    return done(stmt);
+        if (preRead4ParseStmt2JudgeLVal()) {
+            //LVal '=' Exp ';' | LVal '=' 'getint''('')'';'
+            lVal = parseLVal();
+            if (lVal.isPresent()) {
+                stmt.addChild(lVal.get());
+                assign = parseTerminal(GrammarType.ASSIGN);
+                if (assign.isPresent()) {
+                    stmt.addChild(assign.get());
                 } else {
                     return failed(initIndex);
                 }
-            } else {
-                semicolon = parseTerminal(GrammarType.SEMICOLON);
-                if (semicolon.isPresent()) {
-                    stmt.addChild(semicolon.get());
-                    return done(stmt);
+                //case 1: exp
+                exp = parseExp();
+                if (exp.isPresent()) {
+                    stmt.addChild(exp.get());
+                    semicolon = parseTerminal(GrammarType.SEMICOLON);
+                    if (semicolon.isPresent()) {
+                        stmt.addChild(semicolon.get());
+                        return done(stmt);
+                    } else {
+                        return failed(initIndex);
+                    }
                 }
+
+                //case 2: getint()
+                getintTk = parseTerminal(GrammarType.GETINT);
+                if (getintTk.isPresent()) {
+                    stmt.addChild(getintTk.get());
+                    leftParen = parseTerminal(GrammarType.LEFT_PAREN);
+                    if (leftParen.isPresent()) {
+                        stmt.addChild(leftParen.get());
+                    } else {
+                        return failed(initIndex);
+                    }
+                    rightParen = parseTerminal(GrammarType.RIGHT_PAREN);
+                    if (rightParen.isPresent()) {
+                        stmt.addChild(rightParen.get());
+                    } else {
+                        return failed(initIndex);
+                    }
+                    semicolon = parseTerminal(GrammarType.SEMICOLON);
+                    if (semicolon.isPresent()) {
+                        stmt.addChild(semicolon.get());
+                        return done(stmt);
+                    } else {
+                        return failed(initIndex);
+                    }
+                }
+
             }
         }
 
-        // ;
-        semicolon = parseTerminal(GrammarType.SEMICOLON);
-        if (semicolon.isPresent()) {
-            stmt.addChild(semicolon.get());
-            return done(stmt);
-        }
+        //need to pre read(Lval and [Exp])
+        //the first token is Ident && the second token is LEFT_PAREN
+//        if (judgePreReadTerminal(0, GrammarType.IDENTIFIER) && judgePreReadTerminal(1, GrammarType.LEFT_PAREN)) {
+        // [Exp] ';'
+        exp = parseExp();
+        if (exp.isPresent()) {
+            stmt.addChild(exp.get());
 
-        //LVal '=' Exp ';' | LVal '=' 'getint''('')'';'
-        lVal = parseLVal();
-        if (lVal.isPresent()) {
-            stmt.addChild(lVal.get());
-            assign = parseTerminal(GrammarType.ASSIGN);
-            if (assign.isPresent()) {
-                stmt.addChild(assign.get());
+            semicolon = parseTerminal(GrammarType.SEMICOLON);
+            if (semicolon.isPresent()) {
+                stmt.addChild(semicolon.get());
+                return done(stmt);
             } else {
                 return failed(initIndex);
             }
-            //case 1: exp
-            exp = parseExp();
-            if (exp.isPresent()) {
-                stmt.addChild(exp.get());
-                semicolon = parseTerminal(GrammarType.SEMICOLON);
-                if (semicolon.isPresent()) {
-                    stmt.addChild(semicolon.get());
-                    return done(stmt);
-                } else {
-                    return failed(initIndex);
-                }
+        } else {
+            semicolon = parseTerminal(GrammarType.SEMICOLON);
+            if (semicolon.isPresent()) {
+                stmt.addChild(semicolon.get());
+                return done(stmt);
             }
-
-            //case 2: getint()
-            getintTk = parseTerminal(GrammarType.GETINT);
-            if (getintTk.isPresent()) {
-                stmt.addChild(getintTk.get());
-                leftParen = parseTerminal(GrammarType.LEFT_PAREN);
-                if (leftParen.isPresent()) {
-                    stmt.addChild(leftParen.get());
-                } else {
-                    return failed(initIndex);
-                }
-                rightParen = parseTerminal(GrammarType.RIGHT_PAREN);
-                if (rightParen.isPresent()) {
-                    stmt.addChild(rightParen.get());
-                } else {
-                    return failed(initIndex);
-                }
-                semicolon = parseTerminal(GrammarType.SEMICOLON);
-                if (semicolon.isPresent()) {
-                    stmt.addChild(semicolon.get());
-                    return done(stmt);
-                } else {
-                    return failed(initIndex);
-                }
-            }
-
         }
+//        }
+
+        // ;
+//        semicolon = parseTerminal(GrammarType.SEMICOLON);
+//        if (semicolon.isPresent()) {
+//            stmt.addChild(semicolon.get());
+//            return done(stmt);
+//        }
 
 
         //Block
@@ -1182,6 +1199,7 @@ public class RecursiveDescentParser implements GrammarParser {
                         UnaryExp.addChild(rightParen.get());
                         return done(UnaryExp);
                     }
+                    return failed(initIndex);
                 }
             }
         }
@@ -1266,6 +1284,8 @@ public class RecursiveDescentParser implements GrammarParser {
     }
 
     /**
+     * MulExp -> UnaryExp | MulExp ('*' | '/' | '%') UnaryExp
+     * <p>
      * MulExp -> UnaryExp { ('*' | '/' | '%') UnaryExp }
      *
      * @return Optional<ASTNode> representing the parsed MulExp
@@ -1284,6 +1304,10 @@ public class RecursiveDescentParser implements GrammarParser {
 
         Optional<ASTLeaf> operator;
         while ((operator = parseTerminal(GrammarType.MULTIPLY, GrammarType.DIVIDE, GrammarType.MOD)).isPresent()) {
+            ASTNode mul = new ASTNode(GrammarType.MUL_EXP);
+            mul.addChild(unaryExp.get());
+            mulExp.replaceLastChild(mul);
+
             mulExp.addChild(operator.get());
             unaryExp = parseUnaryExp();
             if (unaryExp.isPresent()) {
@@ -1296,6 +1320,8 @@ public class RecursiveDescentParser implements GrammarParser {
     }
 
     /**
+     * AddExp → MulExp | AddExp ('+' | '−') MulExp
+     * <p>
      * AddExp → MulExp {('+'|'-') MulExp}
      *
      * @return Optional<ASTNode> representing the parsed AddExp
@@ -1314,6 +1340,10 @@ public class RecursiveDescentParser implements GrammarParser {
 
         Optional<ASTLeaf> operator;
         while ((operator = parseTerminal(GrammarType.PLUS, GrammarType.MINUS)).isPresent()) {
+            ASTNode add = new ASTNode(GrammarType.ADD_EXP);
+            add.addChild(mulExp.get());
+            addExp.replaceLastChild(add);
+
             addExp.addChild(operator.get());
             mulExp = parseMulExp();
             if (mulExp.isPresent()) {
@@ -1327,6 +1357,8 @@ public class RecursiveDescentParser implements GrammarParser {
     }
 
     /**
+     * RelExp → AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
+     * <p>
      * RelExp -> AddExp { ('<' | '>' | '<=' | '>=') AddExp }
      *
      * @return Optional representing the parsed RelExp
@@ -1335,6 +1367,7 @@ public class RecursiveDescentParser implements GrammarParser {
     public Optional<ASTNode> parseRelExp() {
         int initIndex = nowIndex;
         var relExp = begin(GrammarType.REL_EXP);
+
         var addExp = parseAddExp();
         if (addExp.isPresent()) {
             relExp.addChild(addExp.get());
@@ -1345,6 +1378,10 @@ public class RecursiveDescentParser implements GrammarParser {
         Optional<ASTLeaf> operator;
         while ((operator = parseTerminal(GrammarType.LESS_THAN, GrammarType.LESS_THAN_EQUAL, GrammarType.GREATER_THAN,
                 GrammarType.GREATER_THAN_EQUAL)).isPresent()) {
+            ASTNode rel = new ASTNode(GrammarType.REL_EXP);
+            rel.addChild(addExp.get());
+
+            relExp.replaceLastChild(rel);
             relExp.addChild(operator.get());
             addExp = parseAddExp();
             if (addExp.isPresent()) {
@@ -1357,6 +1394,8 @@ public class RecursiveDescentParser implements GrammarParser {
     }
 
     /**
+     * EqExp → RelExp | EqExp ('==' | '!=') RelExp
+     * <p>
      * EqExp -> RelExp { ('==' | '!=') RelExp }
      *
      * @return Optional representing the parsed EqExp
@@ -1374,6 +1413,10 @@ public class RecursiveDescentParser implements GrammarParser {
 
         Optional<ASTLeaf> operator;
         while ((operator = parseTerminal(GrammarType.EQUAL, GrammarType.NOT_EQUAL)).isPresent()) {
+            ASTNode eq = new ASTNode(GrammarType.EQ_EXP);
+            eq.addChild(relExp.get());
+            eqExp.replaceLastChild(eq);
+
             eqExp.addChild(operator.get());
             relExp = parseRelExp();
             if (relExp.isPresent()) {
@@ -1410,6 +1453,8 @@ public class RecursiveDescentParser implements GrammarParser {
     }
 
     /**
+     * LAndExp -> EqExp | LAndExp '&&' EqExp
+     * <p>
      * LAndExp -> EqExp { '&&' EqExp}
      *
      * @return Optional<ASTNode> representing the parsed LAndExp
@@ -1426,6 +1471,10 @@ public class RecursiveDescentParser implements GrammarParser {
 
         Optional<ASTLeaf> logicalAnd;
         while ((logicalAnd = parseTerminal(GrammarType.LOGICAL_AND)).isPresent()) {
+            ASTNode lAnd = new ASTNode(GrammarType.LAND_EXP);
+            lAnd.addChild(EqExp.get());
+            lAndExp.replaceLastChild(lAnd);
+
             lAndExp.addChild(logicalAnd.get());
             EqExp = parseEqExp();
             if (EqExp.isEmpty()) return failed(initIndex);
@@ -1435,6 +1484,8 @@ public class RecursiveDescentParser implements GrammarParser {
     }
 
     /**
+     * LOrExp -> LAndExp | LOrExp '||' LAndExp
+     * <p>
      * LOrExp -> LAndExp { '||' LAndExp }
      *
      * @return Optional<ASTNode> representing the parsed LOrExp
@@ -1454,6 +1505,10 @@ public class RecursiveDescentParser implements GrammarParser {
 
         Optional<ASTLeaf> logicalOr;
         while ((logicalOr = parseTerminal(GrammarType.LOGICAL_OR)).isPresent()) {
+            ASTNode lOr = new ASTNode(GrammarType.LOR_EXP);
+            lOr.addChild(lAndExp.get());
+            LOrExp.replaceLastChild(lOr);
+
             LOrExp.addChild(logicalOr.get());
             lAndExp = parseLAndExp();
             if (lAndExp.isEmpty()) return failed(initIndex);

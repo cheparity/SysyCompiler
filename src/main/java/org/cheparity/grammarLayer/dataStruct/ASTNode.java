@@ -17,6 +17,17 @@ public class ASTNode {
         this.children.add(node);
     }
 
+    public void removeLastChild() {
+        this.children.get(this.children.size() - 1).setFather(null);
+        this.children.remove(this.children.size() - 1);
+    }
+
+    public void replaceLastChild(ASTNode node) {
+        this.removeLastChild();
+        this.addChild(node);
+    }
+
+
     public ASTNode getFather() {
         return this.father;
     }

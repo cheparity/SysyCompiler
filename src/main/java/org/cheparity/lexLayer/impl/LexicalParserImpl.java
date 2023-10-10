@@ -127,7 +127,6 @@ public class LexicalParserImpl implements LexicalParser {
 
         //handle "
         if (SOURCE.charAt(start) == '"') {
-            //todo add support for \
             for (; curPos < SOURCE_LEN; curPos++) {
                 char c = SOURCE.charAt(curPos);
                 if (c == '"') {
@@ -138,7 +137,7 @@ public class LexicalParserImpl implements LexicalParser {
         } else if (start + 1 < SOURCE_LEN && SOURCE.charAt(start) == '/' && SOURCE.charAt(start + 1) == '/') {
             //there we just remove the comment, not save
             curPos++;
-            for (; curPos + 1 < SOURCE_LEN; curPos++) {
+            for (; curPos < SOURCE_LEN; curPos++) {
                 char c = SOURCE.charAt(curPos);
                 if (c == '\n') {
                     curPos++;
@@ -146,8 +145,8 @@ public class LexicalParserImpl implements LexicalParser {
                 }
             }
         } else if (start + 1 < SOURCE_LEN && SOURCE.charAt(start) == '/' && SOURCE.charAt(start + 1) == '*') {
-            curPos += 2;
-            for (; curPos + 1 < SOURCE_LEN; curPos++) {
+            curPos++;
+            for (; curPos < SOURCE_LEN; curPos++) {
                 char c1 = SOURCE.charAt(curPos);
                 char c2 = SOURCE.charAt(curPos + 1);
                 if (c1 == '*' && c2 == '/') {
