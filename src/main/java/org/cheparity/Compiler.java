@@ -1,10 +1,10 @@
-import grammarLayer.dataStruct.ASTLeaf;
-import grammarLayer.dataStruct.ASTNode;
-import grammarLayer.dataStruct.GrammarType;
-import grammarLayer.impl.RecursiveDescentParser;
-import lexLayer.LexicalParser;
-import lexLayer.dataStruct.Token;
-import lexLayer.impl.LexicalParserImpl;
+import lexer.LexicalParser;
+import lexer.dataStruct.Token;
+import lexer.impl.LexicalParserImpl;
+import parser.dataStruct.ASTLeaf;
+import parser.dataStruct.ASTNode;
+import parser.dataStruct.GrammarType;
+import parser.impl.RecursiveDescentParser;
 import utils.LoggerUtil;
 
 import java.io.*;
@@ -43,7 +43,7 @@ public class Compiler {
     }
 
     private static void printGrammarAnswer() {
-        RecursiveDescentParser grammarParser = new RecursiveDescentParser();
+        RecursiveDescentParser grammarParser = RecursiveDescentParser.getInstance();
         grammarParser.parse();
         printGrammarAnswer(grammarParser.getAST());
     }
