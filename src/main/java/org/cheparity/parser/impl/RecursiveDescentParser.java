@@ -16,6 +16,7 @@ import java.util.logging.Logger;
 
 public class RecursiveDescentParser {
     private final static Logger LOGGER = LoggerUtil.getLogger();
+    private final static RecursiveDescentParser PARSER_INSTANCE = new RecursiveDescentParser();
     private final LexicalParser lexicalParser = LexicalParserImpl.getInstance();
     private final ArrayList<Token> tokens = lexicalParser.getAllTokens();
     private Token nowToken = tokens.get(0);
@@ -23,6 +24,10 @@ public class RecursiveDescentParser {
     private ASTNode AST;
     private int nowIndex = 0;
     private SymbolTable nowSymbolTable;
+
+    public static RecursiveDescentParser getInstance() {
+        return PARSER_INSTANCE;
+    }
 
     private void error(GrammarErrorException e) {
         errorHandler.addError(e);
