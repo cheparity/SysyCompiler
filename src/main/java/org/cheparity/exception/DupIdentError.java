@@ -2,10 +2,10 @@ package exception;
 
 import lexer.dataStruct.Token;
 
-public class DupIdentException extends GrammarErrorException {
+public class DupIdentError extends GrammarError {
     private final Token preToken;
 
-    public DupIdentException(Token token, Token prevToken) {
+    public DupIdentError(Token token, Token prevToken) {
         super("Duplicate identifier in (" + token.getLineNum() + "," + token.getColNum() + "), " +
                         "previous definition in (" + prevToken.getLineNum() + "," + prevToken.getColNum() + ")",
                 ErrorCode.IDENT_DUP_DEFINED, token);

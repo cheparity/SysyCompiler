@@ -1,8 +1,8 @@
-package parser.dataStruct;
+package parser.dataStruct.symbol;
 
 import lexer.dataStruct.Token;
 
-public class Symbol {
+public abstract class Symbol {
     private final SymbolType type;
     private final SymbolTable symbolTable;
     private final Token token;

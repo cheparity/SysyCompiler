@@ -1,3 +1,4 @@
+import exception.GrammarError;
 import lexer.LexicalParser;
 import lexer.dataStruct.Token;
 import lexer.impl.LexicalParserImpl;
@@ -9,6 +10,7 @@ import utils.LoggerUtil;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.TreeSet;
 import java.util.logging.Logger;
 
 public class Compiler {
@@ -26,8 +28,7 @@ public class Compiler {
     }
 
     public static void main(String[] args) {
-//        printLexAnswer();
-        printGrammarAnswer();
+        printErrorAnswer();
     }
 
     private static void printLexAnswer() {
@@ -45,15 +46,15 @@ public class Compiler {
     private static void printGrammarAnswer() {
         RecursiveDescentParser grammarParser = RecursiveDescentParser.getInstance();
         grammarParser.parse();
-        printGrammarAnswer(grammarParser.getAST());
+        ast2String(grammarParser.getAST());
     }
 
-    private static void printGrammarAnswer(ASTNode tree) {
+    private static void ast2String(ASTNode tree) {
         PrintStream ps = new PrintStream(fos);
 //        if (tree.getChildren().isEmpty()) return;
 
         for (var child : tree.getChildren()) {
-            printGrammarAnswer(child);
+            ast2String(child);
         }
         GrammarType g = tree.getGrammarType();
         if (g == GrammarType.BLOCK_ITEM || g == GrammarType.DECL || g == GrammarType.B_TYPE) {
@@ -65,4 +66,15 @@ public class Compiler {
             ps.println("<" + tree.getGrammarType().getValue() + ">");
         }
     }
+
+    private static void printErrorAnswer() {
+        RecursiveDescentParser parser = RecursiveDescentParser.getInstance();
+        parser.parse();
+        TreeSet<GrammarError> errors = parser.getAST().getErrors();
+        PrintStream ps = new PrintStream(fos);
+        errors.forEach(e -> {
+            ps.println(e.getToken().getLineNum() + " " + e.getCode().getValue());
+        });
+    }
+
 }

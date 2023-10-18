@@ -33,11 +33,11 @@ public final class Token {
 
     @Override
     public String toString() {
-//        return "Token{" +
-//                "lexType=" + lexType +
-//                ", rawValue='" + rawValue + '\'' +
-//                '}';
+        return "Token{" +
+                "rawValue=" + rawValue +
+                ", lexType='" + lexType + '\'' +
+                '}';
 
-        return String.format("%-20s\t%-20s\t%-20s", lexType, rawValue, "(" + lineNum + "," + colNum + ")");
+//        return String.format("%-20s\t%-20s\t%-20s", lexType, rawValue, "(" + lineNum + "," + colNum + ")");
     }
 }

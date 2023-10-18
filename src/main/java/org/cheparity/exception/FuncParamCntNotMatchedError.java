@@ -2,11 +2,11 @@ package exception;
 
 import lexer.dataStruct.Token;
 
-public class MismatchParamCountException extends GrammarErrorException {
+public class FuncParamCntNotMatchedError extends GrammarError {
     private final int expect;
     private final int actual;
 
-    public MismatchParamCountException(int expect, int actual, Token token) {
+    public FuncParamCntNotMatchedError(int expect, int actual, Token token) {
         super("Mismatch parameter count, expect " + expect + ", actual " + actual,
                 ErrorCode.PARAM_NUM_UNMATCHED,
                 token);

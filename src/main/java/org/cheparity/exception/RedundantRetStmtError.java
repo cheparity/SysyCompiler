@@ -2,9 +2,9 @@ package exception;
 
 import lexer.dataStruct.Token;
 
-public class RedundantRetStmtException extends GrammarErrorException {
+public class RedundantRetStmtError extends GrammarError {
 
-    public RedundantRetStmtException(Token token) {
+    public RedundantRetStmtError(Token token) {
         super("Redundant return statement in (" + token.getLineNum() + "," + token.getColNum() + ")",
                 ErrorCode.RETURN_STMT_REDUNDANT,
                 token);

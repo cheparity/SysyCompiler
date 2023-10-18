@@ -1,8 +1,11 @@
 package parser.impl;
 
+import exception.GrammarError;
 import junit.framework.TestCase;
 import parser.dataStruct.ASTLeaf;
 import parser.dataStruct.ASTNode;
+
+import java.util.TreeSet;
 
 public class RecursiveDescentParserTest extends TestCase {
 
@@ -35,5 +38,14 @@ public class RecursiveDescentParserTest extends TestCase {
 
     }
 
-
+    public void testErrorHandler() {
+        parser.parse();
+        var ast = parser.getAST();
+        System.out.println("=========error handler result:=========");
+        TreeSet<GrammarError> errors = ast.getErrors();
+        for (var error : errors) {
+            System.out.println(error);
+        }
+        System.out.println("=========error handler end=========");
+    }
 }

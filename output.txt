@@ -1,9 +1,2 @@
-INTTK int
-MAINTK main
-LPARENT (
-RPARENT )
-LBRACE {
-RBRACE }
-<Block>
-<MainFuncDef>
-<CompUnit>
+2 l
+2 a

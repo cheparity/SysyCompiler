@@ -1,13 +1,12 @@
-package parser.dataStruct;
+package parser.dataStruct.symbol;
 
-import exception.DupIdentException;
+import exception.DupIdentError;
 import visitor.ErrorHandler;
 
 import java.util.HashMap;
 import java.util.Optional;
 
 public class SymbolTable {
-    private final ErrorHandler errHandler = ErrorHandler.getInstance();
     private final SymbolTable outer;
     private final int level;
     private final HashMap<String, Symbol> directory = new HashMap<>();
@@ -25,7 +24,7 @@ public class SymbolTable {
         return outer;
     }
 
-    public void addSymbol(Symbol symbol) {
+    public void addSymbol(Symbol symbol, ErrorHandler errorHandler) {
         String name = symbol.getToken().getRawValue();
         if (!directory.containsKey(name)) {
             this.directory.put(name, symbol);
@@ -33,7 +32,7 @@ public class SymbolTable {
         }
         var token = symbol.getToken();
         var preToken = directory.get(name).getToken();
-        errHandler.addError(new DupIdentException(token, preToken));
+        errorHandler.addError(new DupIdentError(token, preToken));
     }
 
     public Optional<Symbol> lookup(String name) {
@@ -46,9 +45,9 @@ public class SymbolTable {
         return Optional.empty();
     }
 
-    public Optional<Symbol> lookup4func(String name) {
+    public Optional<FuncSymbol> lookup4func(String name) {
         Optional<Symbol> res = lookup(name);
-        if (res.isPresent() && res.get().getType() == SymbolType.FUNC) return res;
+        if (res.isPresent() && res.get().getType() == SymbolType.FUNC) return Optional.of((FuncSymbol) res.get());
         return Optional.empty();
     }
 }

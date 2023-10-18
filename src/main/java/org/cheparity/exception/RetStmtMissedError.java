@@ -2,9 +2,9 @@ package exception;
 
 import lexer.dataStruct.Token;
 
-public class RetStmtMissedException extends GrammarErrorException {
+public class RetStmtMissedError extends GrammarError {
 
-    public RetStmtMissedException(Token token) {
+    public RetStmtMissedError(Token token) {
         super("Lack of return statement in (" + token.getLineNum() + "," + token.getColNum() + ")",
                 ErrorCode.RETURN_STMT_LACKED,
                 token);
