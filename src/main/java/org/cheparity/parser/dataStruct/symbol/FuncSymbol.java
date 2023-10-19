@@ -5,8 +5,8 @@ import lexer.dataStruct.Token;
 import java.util.List;
 
 public final class FuncSymbol extends Symbol {
+    private final FuncType funcType; //void int
     private List<VarSymbol> params;
-    private FuncType funcType; //void int
     private int dim;
 
     public FuncSymbol(SymbolTable table, Token token, FuncType funcType) {
@@ -19,9 +19,6 @@ public final class FuncSymbol extends Symbol {
         return funcType;
     }
 
-    public void setFuncType(FuncType funcType) {
-        this.funcType = funcType;
-    }
 
     public int getDim() {
         return dim;
@@ -29,9 +26,9 @@ public final class FuncSymbol extends Symbol {
 
     public void setDim(FuncType type) {
         if (type == FuncType.VOID) {
+            this.dim = -1;
+        } else if (type == FuncType.INT) {
             this.dim = 0;
-        } else {
-            this.dim = 1;
         }
     }
 
