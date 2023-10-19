@@ -132,16 +132,25 @@ public class ASTNode {
         return this.getFather().deepUpFind(type);
     }
 
-    public List<Token> getTokens() {
+    public List<Token> getLeaves() {
         List<Token> tokens = new ArrayList<>();
         for (ASTNode child : this.getChildren()) {
             if (child instanceof ASTLeaf) {
                 tokens.add(((ASTLeaf) child).getToken());
             } else {
-                tokens.addAll(child.getTokens());
+                tokens.addAll(child.getLeaves());
             }
         }
         return tokens;
+    }
+
+    public String getRawValue() {
+        List<Token> leaves = getLeaves();
+        StringBuilder sb = new StringBuilder();
+        for (Token leaf : leaves) {
+            sb.append(leaf.getRawValue());
+        }
+        return sb.toString();
     }
 
     public TreeSet<GrammarError> getErrors() {
@@ -161,6 +170,9 @@ public class ASTNode {
 
     @Override
     public String toString() {
-        return "ASTNode{" + "children=" + children + ", grammarType=" + grammarType + '}';
+        return "ASTNode{" + "rawValue=" + getRawValue() +
+                ", grammarType=" + grammarType +
+                ", children=" + children +
+                '}';
     }
 }

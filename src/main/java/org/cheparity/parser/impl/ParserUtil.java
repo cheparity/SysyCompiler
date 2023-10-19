@@ -50,7 +50,9 @@ public class ParserUtil {
         if (child.getGrammarType().equals(GrammarType.IDENTIFIER)) {
             Optional<Symbol> symbol = table.lookup(((ASTLeaf) child).getToken().getRawValue());
             if (symbol.isPresent() && symbol.get().getType().equals(SymbolType.FUNC)) {
-                return ((FuncSymbol) symbol.get()).getDim();
+                var s = (FuncSymbol) symbol.get();
+                if (s.getFuncType() == FuncType.VOID) return -1;
+                else return s.getDim();
             }
         } else if (child.getGrammarType().equals(GrammarType.PRIMARY_EXP)) {
             return getPrimaryExpDim(child, table);
@@ -81,10 +83,28 @@ public class ParserUtil {
         boolean isArr = lval.getChildren().size() > 1;
         assert ident.getGrammarType().equals(GrammarType.IDENTIFIER);
         Optional<Symbol> symbol = table.lookup(ident.getToken().getRawValue());
-        if (symbol.isPresent()) {
+        if (symbol.isPresent() && symbol.get().getType().equals(SymbolType.VAR)) {
             if (isArr) return ((VarSymbol) symbol.get()).getDim() - 1;
             else return ((VarSymbol) symbol.get()).getDim();
+        } else if (symbol.isPresent() && symbol.get().getType().equals(SymbolType.CONST)) {
+            if (isArr) return ((ConstSymbol) symbol.get()).getDim() - 1;
+            else return ((ConstSymbol) symbol.get()).getDim();
         }
         return -1;
     }
+
+    // VarDef → Ident { '[' ConstExp ']' } ['=' InitVal]
+    // ConstDef → Ident { '[' ConstExp ']' } '=' ConstInitVal
+    public static int getDim4Def(ASTNode def) {
+        assert def.getGrammarType().equals(GrammarType.VAR_DEF) || def.getGrammarType().equals(GrammarType.CONST_DEF) || def.getGrammarType().equals(GrammarType.FUNC_FPARAM);
+        //judge the number of '['
+        int dim = 0;
+        for (ASTNode child : def.getChildren()) {
+            if (child.getGrammarType().equals(GrammarType.LEFT_BRACKET)) {
+                dim++;
+            }
+        }
+        return dim;
+    }
+
 }

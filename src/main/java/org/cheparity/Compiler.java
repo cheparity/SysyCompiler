@@ -18,16 +18,18 @@ public class Compiler {
     private static final FileOutputStream fos;
 
     static {
-        File f = new File("output.txt");
+        File f = new File("error.txt");
         if (f.exists()) f.delete();
         try {
-            fos = new FileOutputStream("output.txt");
+            fos = new FileOutputStream("error.txt");
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         }
     }
 
     public static void main(String[] args) {
+//        printLexAnswer();
+//        printGrammarAnswer();
         printErrorAnswer();
     }
 

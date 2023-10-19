@@ -1,6 +1,8 @@
 package parser.impl;
 
-import exception.*;
+import exception.GrammarError;
+import exception.SemicolonMissedError;
+import exception.UndefinedIdentError;
 import lexer.LexicalParser;
 import lexer.dataStruct.Token;
 import lexer.impl.LexicalParserImpl;
@@ -11,7 +13,6 @@ import parser.dataStruct.symbol.*;
 import utils.LoggerUtil;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.logging.Logger;
@@ -30,11 +31,7 @@ public class RecursiveDescentParser {
         return PARSER_INSTANCE;
     }
 
-    private void error(ASTNode node, GrammarError e) {
-        StackTraceElement ste = new Exception().getStackTrace()[1];
-        String methodName = ste.getMethodName();
-        int lineNumber = ste.getLineNumber();
-        LOGGER.severe(methodName + " throws " + e.getMessage() + " at line " + lineNumber);
+    private void error(ASTNode node, GrammarErrorException e) {
         node.addGrammarError(e);
     }
 
@@ -148,7 +145,6 @@ public class RecursiveDescentParser {
         int initIndex = nowIndex;
         ASTNode constDecl = begin(GrammarType.CONST_DECL);
         Optional<ASTLeaf> constTk = parseTerminal(GrammarType.CONST);
-        var constDefList = new ArrayList<ASTNode>();
         if (constTk.isPresent()) {
             constDecl.addChild(constTk.get());
         } else {
@@ -166,7 +162,6 @@ public class RecursiveDescentParser {
         Optional<ASTNode> constDef = parseConstDef();
         if (constDef.isPresent()) {
             constDecl.addChild(constDef.get());
-            constDefList.add(constDef.get());
         } else {
             return failed(initIndex);
         }
@@ -174,25 +169,18 @@ public class RecursiveDescentParser {
         Optional<ASTLeaf> comma;
         while ((comma = parseTerminal(GrammarType.COMMA)).isPresent()) {
             constDecl.addChild(comma.get());
+
             constDef = parseConstDef();
             if (constDef.isPresent()) {
                 constDecl.addChild(constDef.get());
-                constDefList.add(constDef.get());
             } else {
                 return failed(initIndex);
             }
         }
 
         Optional<ASTLeaf> semicolon = parseTerminal(GrammarType.SEMICOLON);
-        semicolon.ifPresentOrElse(constDecl::addChild, () -> error(constDecl, new SemicolonMissedError(constDecl.lastToken())));
-        for (ASTNode node : constDefList) {
-            // ConstDef → Ident { '[' ConstExp ']' } '=' ConstInitVal
-            ASTLeaf ident = (ASTLeaf) node.getChildren().get(0);
-            int dim = ParserUtil.getDim4Def(node);
-            var symbol = new ConstSymbol(this.nowSymbolTable, ident.getToken(), dim);
-            this.nowSymbolTable.addSymbol(symbol, constDecl.getErrorHandler());
-        }
-
+        var e = new SemicolonMissedException(constDecl.lastToken());
+        semicolon.ifPresentOrElse(constDecl::addChild, () -> error(constDecl, e));
         return done(constDecl);
     }
 
@@ -226,6 +214,8 @@ public class RecursiveDescentParser {
         Optional<ASTLeaf> ident = parseTerminal(GrammarType.IDENTIFIER);
         if (ident.isPresent()) {
             constDef.addChild(ident.get());
+            Symbol symbol = new ConstSymbol(this.nowSymbolTable, ident.get().getToken());
+            this.nowSymbolTable.addSymbol(symbol);
         } else {
             return failed(initIndex);
         }
@@ -241,7 +231,12 @@ public class RecursiveDescentParser {
             } else {
                 return failed(initIndex);
             }
-            parseTerminal(GrammarType.RIGHT_BRACKET).ifPresentOrElse(constDef::addChild, () -> error(constDef, new RBracketMissedError(constDef.lastToken())));
+            Optional<ASTLeaf> rightBracket = parseTerminal(GrammarType.RIGHT_BRACKET);
+            if (rightBracket.isPresent()) {
+                constDef.addChild(rightBracket.get());
+            } else {
+                return failed(initIndex);
+            }
         }
 
         //'=' ConstInitVal
@@ -316,7 +311,6 @@ public class RecursiveDescentParser {
         int initIndex = nowIndex;
         var varDecl = begin(GrammarType.VAR_DECL);
         Optional<ASTNode> bType = parseBType();
-        var varDefList = new ArrayList<ASTNode>();
         if (bType.isPresent()) {
             varDecl.addChild(bType.get());
         } else {
@@ -326,7 +320,6 @@ public class RecursiveDescentParser {
         Optional<ASTNode> varDef = parseVarDef();
         if (varDef.isPresent()) {
             varDecl.addChild(varDef.get());
-            varDefList.add(varDef.get());
         } else {
             return failed(initIndex);
         }
@@ -337,26 +330,18 @@ public class RecursiveDescentParser {
             varDef = parseVarDef();
             if (varDef.isPresent()) {
                 varDecl.addChild(varDef.get());
-                varDefList.add(varDef.get());
             } else {
                 return failed(initIndex);
             }
         }
 
         Optional<ASTLeaf> semicolon = parseTerminal(GrammarType.SEMICOLON);
-        if (semicolon.isEmpty()) {
-            error(varDecl, new SemicolonMissedError(varDecl.lastToken()));
-            return failed(initIndex);
+        if (semicolon.isPresent()) {
+            varDecl.addChild(semicolon.get());
+            return done(varDecl);
         }
-        varDecl.addChild(semicolon.get());
-        for (ASTNode node : varDefList) {
-            // VarDef → Ident { '[' ConstExp ']' } ['=' InitVal]
-            ASTLeaf ident = (ASTLeaf) node.getChildren().get(0);
-            int dim = ParserUtil.getDim4Def(node);
-            var symbol = new VarSymbol(this.nowSymbolTable, ident.getToken(), dim);
-            this.nowSymbolTable.addSymbol(symbol, varDecl.getErrorHandler());
-        }
-        return done(varDecl);
+
+        return failed(initIndex);
     }
 
     /**
@@ -372,6 +357,8 @@ public class RecursiveDescentParser {
         Optional<ASTLeaf> ident;
         if ((ident = parseTerminal(GrammarType.IDENTIFIER)).isPresent()) {
             varDef.addChild(ident.get());
+            Symbol symbol = new VarSymbol(this.nowSymbolTable, ident.get().getToken());
+            this.nowSymbolTable.addSymbol(symbol);
         } else {
             return failed(initIndex);
         }
@@ -386,7 +373,8 @@ public class RecursiveDescentParser {
             } else {
                 return failed(initIndex);
             }
-            parseTerminal(GrammarType.RIGHT_BRACKET).ifPresentOrElse(varDef::addChild, () -> error(varDef, new RBracketMissedError(varDef.lastToken())));
+            Optional<ASTLeaf> rightBracket = parseTerminal(GrammarType.RIGHT_BRACKET);
+            rightBracket.ifPresent(varDef::addChild);
         }
 
         // '=' InitVal optional
@@ -462,23 +450,16 @@ public class RecursiveDescentParser {
     private Optional<ASTNode> parseFuncDef() {
         int initIndex = nowIndex;
         ASTNode funcDef = begin(GrammarType.FUNC_DEF);
-        FuncSymbol symbol = null;
-        List<VarSymbol> params = new ArrayList<>();
-
         Optional<ASTNode> funcType = parseFuncType();
         if (funcType.isPresent()) {
             funcDef.addChild(funcType.get());
         } else {
             return failed(initIndex);
         }
-        GrammarType t = funcType.get().getChildren().get(0).getGrammarType();
-        FuncType type = (t.equals(GrammarType.VOID) ? FuncType.VOID : FuncType.INT);
 
         Optional<ASTLeaf> ident = parseTerminal(GrammarType.IDENTIFIER);
         if (ident.isPresent()) {
             funcDef.addChild(ident.get());
-            symbol = new FuncSymbol(this.nowSymbolTable, ident.get().getToken(), type);
-            nowSymbolTable.addSymbol(symbol, funcDef.getErrorHandler());
         } else {
             return failed(initIndex);
         }
@@ -486,17 +467,15 @@ public class RecursiveDescentParser {
         Optional<ASTLeaf> leftParen = parseTerminal(GrammarType.LEFT_PAREN);
         if (leftParen.isPresent()) {
             funcDef.addChild(leftParen.get());
+
         } else {
             return failed(initIndex);
         }
 
-        Optional<ASTNode> funcFParams = parseFuncFParams(params);
-        funcFParams.ifPresent(funcDef::addChild);
-        symbol.setFParams(params);
+        parseFuncFParams().ifPresent(funcDef::addChild);
 
         Optional<ASTLeaf> rightParen = parseTerminal(GrammarType.RIGHT_PAREN);
-        rightParen.ifPresentOrElse(funcDef::addChild, () -> error(funcDef, new RParenMissedError(funcDef.lastToken())));
-        //check return
+        rightParen.ifPresent(funcDef::addChild);
         Optional<ASTNode> block = parseBlock();
         if (block.isPresent()) {
             funcDef.addChild(block.get());
@@ -504,13 +483,8 @@ public class RecursiveDescentParser {
         } else {
             return failed(initIndex);
         }
-        Optional<ASTNode> ret = block.get().deepFind(GrammarType.RETURN, 3);
-        if (type == FuncType.INT && ret.isEmpty()) {
-            error(funcDef, new RetStmtMissedError(block.get().lastToken()));
-        } else if (type == FuncType.VOID && ret.isPresent() && ret.get().getFather().getChildren().size() > 2) {
-            error(funcDef, new RedundantRetStmtError(((ASTLeaf) ret.get()).getToken()));
-        }
-        symbol.setDim(type);
+        var symbol = new FuncSymbol(this.nowSymbolTable, ident.get().getToken());
+        this.nowSymbolTable.addSymbol(symbol);
         return done(funcDef);
     }
 
@@ -545,8 +519,13 @@ public class RecursiveDescentParser {
             return failed(initIndex);
         }
 
-        parseTerminal(GrammarType.RIGHT_PAREN).ifPresentOrElse(mainFuncDef::addChild, () -> error(mainFuncDef,
-                new RParenMissedError(mainFuncDef.lastToken())));
+        Optional<ASTLeaf> rightParen = parseTerminal(GrammarType.RIGHT_PAREN);
+        if (rightParen.isPresent()) {
+            mainFuncDef.addChild(rightParen.get());
+
+        } else {
+            return failed(initIndex);
+        }
         Optional<ASTNode> block = parseBlock();
         if (block.isPresent()) {
             mainFuncDef.addChild(block.get());
@@ -554,11 +533,8 @@ public class RecursiveDescentParser {
             return failed(initIndex);
         }
 
-        Optional<ASTNode> retNode = block.get().deepFind(GrammarType.RETURN, 3);
-        if (retNode.isEmpty()) {
-            error(mainFuncDef, new RetStmtMissedError(block.get().lastToken()));
-        }
         return done(mainFuncDef);
+
     }
 
     /**
@@ -589,11 +565,10 @@ public class RecursiveDescentParser {
      *
      * @return Optional<ASTNode> representing the parsed FuncFParams
      */
-    private Optional<ASTNode> parseFuncFParams(List<VarSymbol> params) {
+    private Optional<ASTNode> parseFuncFParams() {
         int initIndex = nowIndex;
         ASTNode funcFParams = begin(GrammarType.FUNC_FPARAMS);
-
-        Optional<ASTNode> funcFParam = parseFuncFParam(params);
+        Optional<ASTNode> funcFParam = parseFuncFParam();
         if (funcFParam.isPresent()) {
             funcFParams.addChild(funcFParam.get());
         } else {
@@ -603,7 +578,7 @@ public class RecursiveDescentParser {
         while ((comma = parseTerminal(GrammarType.COMMA)).isPresent()) {
             funcFParams.addChild(comma.get());
 
-            funcFParam = parseFuncFParam(params);
+            funcFParam = parseFuncFParam();
             if (funcFParam.isPresent()) {
                 funcFParams.addChild(funcFParam.get());
             } else {
@@ -619,7 +594,7 @@ public class RecursiveDescentParser {
      *
      * @return Optional<ASTNode> representing the parsed FuncFParam
      */
-    private Optional<ASTNode> parseFuncFParam(List<VarSymbol> funcParams) {
+    private Optional<ASTNode> parseFuncFParam() {
         int initIndex = nowIndex;
         var funcFParam = begin(GrammarType.FUNC_FPARAM);
         Optional<ASTNode> bType = parseBType();
@@ -632,15 +607,21 @@ public class RecursiveDescentParser {
         Optional<ASTLeaf> ident = parseTerminal(GrammarType.IDENTIFIER);
         if (ident.isPresent()) {
             funcFParam.addChild(ident.get());
-
+            Symbol symbol = new VarSymbol(this.nowSymbolTable, ident.get().getToken());
+            this.nowSymbolTable.addSymbol(symbol);
         } else {
             return failed(initIndex);
         }
         Optional<ASTLeaf> leftBracket;
         while ((leftBracket = parseTerminal(GrammarType.LEFT_BRACKET)).isPresent()) {
             funcFParam.addChild(leftBracket.get());
-            parseTerminal(GrammarType.RIGHT_BRACKET).ifPresentOrElse(funcFParam::addChild, () -> error(funcFParam,
-                    new RBracketMissedError(funcFParam.lastToken())));
+            Optional<ASTLeaf> rightBracket = parseTerminal(GrammarType.RIGHT_BRACKET);
+            if (rightBracket.isPresent()) {
+                funcFParam.addChild(rightBracket.get());
+
+            } else {
+                return failed(initIndex);
+            }
             while ((leftBracket = parseTerminal(GrammarType.LEFT_BRACKET)).isPresent()) {
                 funcFParam.addChild(leftBracket.get());
 
@@ -650,14 +631,10 @@ public class RecursiveDescentParser {
                 } else {
                     return failed(initIndex);
                 }
-                parseTerminal(GrammarType.RIGHT_BRACKET).ifPresentOrElse(funcFParam::addChild, () -> error(funcFParam,
-                        new RBracketMissedError(funcFParam.lastToken())));
+                rightBracket = parseTerminal(GrammarType.RIGHT_BRACKET);
+                rightBracket.ifPresent(funcFParam::addChild);
             }
         }
-        var dim = ParserUtil.getDim4Def(funcFParam);
-        VarSymbol symbol = new VarSymbol(this.nowSymbolTable, ident.get().getToken(), dim);
-        funcParams.add(symbol);
-        this.nowSymbolTable.addSymbol(symbol, funcFParam.getErrorHandler());
 
         return done(funcFParam);
     }
@@ -767,27 +744,18 @@ public class RecursiveDescentParser {
             lVal = parseLVal();
             if (lVal.isPresent()) {
                 stmt.addChild(lVal.get());
-
                 assign = parseTerminal(GrammarType.ASSIGN);
                 if (assign.isPresent()) {
                     stmt.addChild(assign.get());
                 } else {
                     return failed(initIndex);
                 }
-                //check if const
-                Optional<ASTNode> ident = lVal.get().deepFind(GrammarType.IDENTIFIER, 1);
-                assert ident.isPresent();
-                Token token = ((ASTLeaf) ident.get()).getToken();
-                Optional<Symbol> s = nowSymbolTable.lookup(token.getRawValue());
-                if (s.isPresent() && s.get().getType().equals(SymbolType.CONST)) {
-                    error(stmt, new ConstChangedError(token));
-                }
-
                 //case 1: exp
                 exp = parseExp();
                 if (exp.isPresent()) {
                     stmt.addChild(exp.get());
-                    parseTerminal(GrammarType.SEMICOLON).ifPresentOrElse(stmt::addChild, () -> error(stmt, new SemicolonMissedError(stmt.lastToken())));
+                    semicolon = parseTerminal(GrammarType.SEMICOLON);
+                    semicolon.ifPresent(stmt::addChild);
                     return done(stmt);
                 }
 
@@ -796,9 +764,8 @@ public class RecursiveDescentParser {
                 if (getintTk.isPresent()) {
                     stmt.addChild(getintTk.get());
                     parseTerminal(GrammarType.LEFT_PAREN).ifPresent(stmt::addChild);
-                    parseTerminal(GrammarType.RIGHT_PAREN).ifPresentOrElse(stmt::addChild, () -> error(stmt,
-                            new RParenMissedError(stmt.lastToken())));
-                    parseTerminal(GrammarType.SEMICOLON).ifPresentOrElse(stmt::addChild, () -> error(stmt, new SemicolonMissedError(stmt.lastToken())));
+                    parseTerminal(GrammarType.RIGHT_PAREN).ifPresent(stmt::addChild);
+                    parseTerminal(GrammarType.SEMICOLON).ifPresent(stmt::addChild);
                     return done(stmt);
                 }
             }
@@ -811,8 +778,15 @@ public class RecursiveDescentParser {
         exp = parseExp();
         if (exp.isPresent()) {
             stmt.addChild(exp.get());
-            parseTerminal(GrammarType.SEMICOLON).ifPresentOrElse(stmt::addChild, () -> error(stmt, new SemicolonMissedError(stmt.lastToken())));
+            semicolon = parseTerminal(GrammarType.SEMICOLON);
+            semicolon.ifPresent(stmt::addChild);
             return done(stmt);
+        } else {
+            semicolon = parseTerminal(GrammarType.SEMICOLON);
+            if (semicolon.isPresent()) {
+                stmt.addChild(semicolon.get());
+                return done(stmt);
+            }
         }
 
         //Block
@@ -822,127 +796,118 @@ public class RecursiveDescentParser {
             return done(stmt);
         }
 
-        //keyword stmt
-        keyword = parseTerminal(GrammarType.IF, GrammarType.FOR, GrammarType.BREAK, GrammarType.CONTINUE, GrammarType.RETURN, GrammarType.PRINTF);
-        if (keyword.isPresent()) {
-            var grammarType = keyword.get().getGrammarType();
-            // 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
-            if (grammarType.equals(GrammarType.IF)) {
-                stmt.addChild(keyword.get());
-                parseTerminal(GrammarType.LEFT_PAREN).ifPresent(stmt::addChild);
-                parseCond().ifPresent(stmt::addChild);
-                parseTerminal(GrammarType.RIGHT_PAREN).ifPresentOrElse(stmt::addChild, () -> error(stmt,
-                        new RParenMissedError(stmt.lastToken())));
-                parseStmt().ifPresent(stmt::addChild);
-                var elseTk = parseTerminal(GrammarType.ELSE);
-                if (elseTk.isPresent()) {
-                    stmt.addChild(elseTk.get());
-                    var stmt2 = parseStmt();
-                    if (stmt2.isPresent()) {
-                        stmt.addChild(stmt2.get());
-                    } else {
-                        return failed(initIndex);
-                    }
-                }
-                return done(stmt);
-            }
-            //'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
-            else if (grammarType.equals(GrammarType.FOR)) {
-                stmt.addChild(keyword.get());
-                parseTerminal(GrammarType.LEFT_PAREN).ifPresent(stmt::addChild);
-                parseForStmt().ifPresent(stmt::addChild);
-                parseTerminal(GrammarType.SEMICOLON).ifPresentOrElse(stmt::addChild, () -> error(stmt, new SemicolonMissedError(stmt.lastToken())));
-                parseCond().ifPresent(stmt::addChild);
-                parseTerminal(GrammarType.SEMICOLON).ifPresentOrElse(stmt::addChild, () -> error(stmt, new SemicolonMissedError(stmt.lastToken())));
-                parseForStmt().ifPresent(stmt::addChild);
-                parseTerminal(GrammarType.RIGHT_PAREN).ifPresentOrElse(stmt::addChild, () -> error(stmt,
-                        new RParenMissedError(stmt.lastToken())));
-                parseStmt().ifPresent(stmt::addChild);
-                return done(stmt);
-            }
-            //'break' ';' | 'continue' ';'
-            else if (grammarType.equals(GrammarType.BREAK) || grammarType.equals(GrammarType.CONTINUE)) {
-                stmt.addChild(keyword.get());
-                semicolon = parseTerminal(GrammarType.SEMICOLON);
-                Optional<ASTNode> forStmt = keyword.get().deepUpFind(GrammarType.FOR_STMT);
-                if (forStmt.isEmpty()) error(stmt, new NotLoopStmtError(keyword.get().getToken()));
-                if (semicolon.isPresent()) {
-                    stmt.addChild(semicolon.get());
-                    return done(stmt);
-                } else {
-                    error(stmt, new SemicolonMissedError(stmt.lastToken()));
-                }
-            }
-            //'return' [Exp] ';'
-            else if (grammarType.equals(GrammarType.RETURN)) {
-                stmt.addChild(keyword.get());
-                parseExp().ifPresent(stmt::addChild);
-                semicolon = parseTerminal(GrammarType.SEMICOLON);
-                semicolon.ifPresentOrElse(stmt::addChild, () -> error(stmt, new SemicolonMissedError(stmt.lastToken())));
-                return done(stmt);
-            }
-            //'printf''('FormatString{','Exp}')'';'
-            else if (grammarType.equals(GrammarType.PRINTF)) {
-                stmt.addChild(keyword.get());
-                leftParen = parseTerminal(GrammarType.LEFT_PAREN);
-                if (leftParen.isPresent()) {
-                    stmt.addChild(leftParen.get());
+        keyword = parseTerminal(GrammarType.IF, GrammarType.FOR, GrammarType.BREAK, GrammarType.CONTINUE,
+                GrammarType.RETURN, GrammarType.PRINTF);
+        if (keyword.isEmpty()) {
+            return failed(initIndex);
+        }
+
+        var grammarType = keyword.get().getGrammarType();
+        if (grammarType.equals(GrammarType.IF)) {
+            stmt.addChild(keyword.get());
+            parseTerminal(GrammarType.LEFT_PAREN).ifPresent(stmt::addChild);
+            parseCond().ifPresent(stmt::addChild);
+            parseTerminal(GrammarType.RIGHT_PAREN).ifPresent(stmt::addChild);
+            parseStmt().ifPresent(stmt::addChild);
+            var elseTk = parseTerminal(GrammarType.ELSE);
+            if (elseTk.isPresent()) {
+                stmt.addChild(elseTk.get());
+                var stmt2 = parseStmt();
+                if (stmt2.isPresent()) {
+                    stmt.addChild(stmt2.get());
                 } else {
                     return failed(initIndex);
                 }
-
-                var formatString = parseTerminal(GrammarType.FORMAT_STRING);
-                if (formatString.isPresent()) {
-                    stmt.addChild(formatString.get());
-                } else {
-                    return failed(initIndex);
-                }
-                //check if formatString only contains '%d'
-                var rawValue = formatString.get().getToken().getRawValue().toCharArray();
-                int fmtCNum = 0;
-                for (int i = 1; i < rawValue.length - 1; i++) {
-                    int ascii = rawValue[i];
-                    if (rawValue[i] == '%') {
-                        if (i + 1 < rawValue.length && rawValue[i + 1] == 'd')
-                            fmtCNum++;
-                        else error(stmt, new InvalidFormatStringError(formatString.get().getToken()));
-                    } else if (rawValue[i] == '\\' && (i + 1 >= rawValue.length || rawValue[i + 1] != 'n')) {
-                        error(stmt, new InvalidFormatStringError(formatString.get().getToken()));
-                    } else if (ascii < 32 || (ascii > 33 && ascii < 40) || ascii > 126) {
-                        //ascii must between 32, 33, 40-126
-                        error(stmt, new InvalidFormatStringError(formatString.get().getToken()));
-                    }
-
-                }
-
-                Optional<ASTLeaf> comma;
-                while ((comma = parseTerminal(GrammarType.COMMA)).isPresent()) {
-                    stmt.addChild(comma.get());
-                    var exp1 = parseExp();
-                    if (exp1.isPresent()) {
-                        stmt.addChild(exp1.get());
-                    } else {
-                        return failed(initIndex);
-                    }
-                    fmtCNum--;
-                }
-                if (fmtCNum != 0) {
-                    error(stmt, new PrintfUnmatchedError(keyword.get().getToken()));
-                }
-                parseTerminal(GrammarType.RIGHT_PAREN).ifPresentOrElse(stmt::addChild, () -> error(stmt,
-                        new RParenMissedError(stmt.lastToken())));
-                parseTerminal(GrammarType.SEMICOLON).ifPresentOrElse(stmt::addChild, () -> error(stmt, new SemicolonMissedError(stmt.lastToken())));
-                return done(stmt);
             }
-        } else failed(initIndex);
-
-        // ; (finally)
-        semicolon = parseTerminal(GrammarType.SEMICOLON);
-        if (semicolon.isPresent()) {
-            stmt.addChild(semicolon.get());
             return done(stmt);
         }
-//        error(stmt, new SemicolonMissedException(stmt.lastToken()));
+        //'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
+        else if (grammarType.equals(GrammarType.FOR)) {
+            stmt.addChild(keyword.get());
+            parseTerminal(GrammarType.LEFT_PAREN).ifPresent(stmt::addChild);
+            parseForStmt().ifPresent(stmt::addChild);
+            parseTerminal(GrammarType.SEMICOLON).ifPresent(stmt::addChild);
+            parseCond().ifPresent(stmt::addChild);
+            parseTerminal(GrammarType.SEMICOLON).ifPresent(stmt::addChild);
+            parseForStmt().ifPresent(stmt::addChild);
+            parseTerminal(GrammarType.RIGHT_PAREN).ifPresent(stmt::addChild);
+            parseStmt().ifPresent(stmt::addChild);
+            return done(stmt);
+        }
+        //'break' ';'
+        else if (grammarType.equals(GrammarType.BREAK)) {
+            stmt.addChild(keyword.get());
+            semicolon = parseTerminal(GrammarType.SEMICOLON);
+            if (semicolon.isPresent()) {
+                stmt.addChild(semicolon.get());
+                return done(stmt);
+            } else {
+                return failed(initIndex);
+            }
+        }
+        //'continue' ';'
+        else if (grammarType.equals(GrammarType.CONTINUE)) {
+            stmt.addChild(keyword.get());
+            semicolon = parseTerminal(GrammarType.SEMICOLON);
+            if (semicolon.isPresent()) {
+                stmt.addChild(semicolon.get());
+                return done(stmt);
+            } else {
+                return failed(initIndex);
+            }
+        }
+        //'return' [Exp] ';'
+        else if (grammarType.equals(GrammarType.RETURN)) {
+            stmt.addChild(keyword.get());
+            parseExp().ifPresent(stmt::addChild);
+            semicolon = parseTerminal(GrammarType.SEMICOLON);
+            if (semicolon.isPresent()) {
+                stmt.addChild(semicolon.get());
+                return done(stmt);
+            } else {
+                return failed(initIndex);
+            }
+        }
+        //'printf''('FormatString{','Exp}')'';'
+        else if (grammarType.equals(GrammarType.PRINTF)) {
+            stmt.addChild(keyword.get());
+            leftParen = parseTerminal(GrammarType.LEFT_PAREN);
+            if (leftParen.isPresent()) {
+                stmt.addChild(leftParen.get());
+            } else {
+                return failed(initIndex);
+            }
+
+            var formatString = parseTerminal(GrammarType.FORMAT_STRING);
+            if (formatString.isPresent()) {
+                stmt.addChild(formatString.get());
+            } else {
+                return failed(initIndex);
+            }
+            Optional<ASTLeaf> comma;
+            while ((comma = parseTerminal(GrammarType.COMMA)).isPresent()) {
+                stmt.addChild(comma.get());
+                var exp1 = parseExp();
+                if (exp1.isPresent()) {
+                    stmt.addChild(exp1.get());
+                } else {
+                    return failed(initIndex);
+                }
+            }
+            Optional<ASTLeaf> rightParen1 = parseTerminal(GrammarType.RIGHT_PAREN);
+            if (rightParen1.isPresent()) {
+                stmt.addChild(rightParen1.get());
+            } else {
+                return failed(initIndex);
+            }
+            Optional<ASTLeaf> semicn = parseTerminal(GrammarType.SEMICOLON);
+            if (semicn.isPresent()) {
+                stmt.addChild(semicn.get());
+            } else {
+                return failed(initIndex);
+            }
+            return done(stmt);
+        }
         return failed(initIndex);
     }
 
@@ -960,16 +925,6 @@ public class RecursiveDescentParser {
             return failed(initIndex);
         }
         forStmt.addChild(lVal.get());
-        //check const
-        Optional<ASTNode> ident = lVal.get().deepFind(GrammarType.IDENTIFIER, 1);
-        assert ident.isPresent();
-        Optional<Symbol> s = nowSymbolTable.lookup(((ASTLeaf) ident.get()).getToken().getRawValue());
-        if (s.isPresent() && s.get().getType().equals(SymbolType.CONST)) {
-            error(forStmt, new ConstChangedError(((ASTLeaf) ident.get()).getToken()));
-        } else if (s.isEmpty()) {
-            error(forStmt, new UndefinedIdentError(((ASTLeaf) ident.get()).getToken()));
-        }
-
         Optional<ASTLeaf> assign = parseTerminal(GrammarType.ASSIGN);
         if (assign.isPresent()) {
             forStmt.addChild(assign.get());
@@ -1028,9 +983,9 @@ public class RecursiveDescentParser {
         Optional<ASTLeaf> ident = parseTerminal(GrammarType.IDENTIFIER);
         if (ident.isPresent()) {
             LVal.addChild(ident.get());
-            Optional<Symbol> s = nowSymbolTable.lookup(ident.get().getToken().getRawValue());
-            if (s.isEmpty()) {
-                var e = new UndefinedIdentError(ident.get().getToken());
+            if (nowSymbolTable.lookup(ident.get().getToken().getRawValue()).isEmpty()) {
+                var e = new UndefinedIdentException(ident.get().getToken());
+                LOGGER.severe(e.getMessage());
                 error(LVal, e);
             }
         } else {
@@ -1122,22 +1077,17 @@ public class RecursiveDescentParser {
             var ident = parseTerminal(GrammarType.IDENTIFIER);
             if (ident.isPresent()) {
                 UnaryExp.addChild(ident.get());
-                FuncSymbol funcSym = null;
-                Optional<FuncSymbol> funcSymOpt = nowSymbolTable.lookup4func(ident.get().getToken().getRawValue());
-                //check ident symbol is present.
-                if (funcSymOpt.isEmpty()) {
-                    error(UnaryExp, new UndefinedIdentError(ident.get().getToken()));
-                } else {
-                    // if present, check if params count is matched
-                    funcSym = funcSymOpt.get();
-                }
 
                 var leftParen = parseTerminal(GrammarType.LEFT_PAREN);
                 if (leftParen.isPresent()) {
                     UnaryExp.addChild(leftParen.get());
-                    parseFuncRParams(funcSym, ident.get().getToken()).ifPresent(UnaryExp::addChild);
-                    parseTerminal(GrammarType.RIGHT_PAREN).ifPresentOrElse(UnaryExp::addChild, () -> error(UnaryExp, new RParenMissedError(UnaryExp.lastToken())));
-                    return done(UnaryExp);
+                    parseFuncRParams().ifPresent(UnaryExp::addChild);
+                    var rightParen = parseTerminal(GrammarType.RIGHT_PAREN);
+                    if (rightParen.isPresent()) {
+                        UnaryExp.addChild(rightParen.get());
+                        return done(UnaryExp);
+                    }
+                    return failed(initIndex);
                 }
             }
         }
@@ -1197,42 +1147,26 @@ public class RecursiveDescentParser {
      *
      * @return Optional representing the parsed FuncRParams
      */
-    private Optional<ASTNode> parseFuncRParams(FuncSymbol funcSymbolOpt, Token funcCallTk) {
+    private Optional<ASTNode> parseFuncRParams() {
         int initIndex = nowIndex;
         var funcRParams = begin(GrammarType.FUNC_RPARAMS);
-
-        List<ASTNode> nodeList = new ArrayList<>();
         var exp = parseExp();
-        if (exp.isEmpty()) return failed(initIndex);
-        nodeList.add(exp.get());
-        funcRParams.addChild(exp.get());
-        Optional<ASTLeaf> comma;
-        while ((comma = parseTerminal(GrammarType.COMMA)).isPresent()) {
-            funcRParams.addChild(comma.get());
-            exp = parseExp();
-            if (exp.isPresent()) {
-                funcRParams.addChild(exp.get());
-                nodeList.add(exp.get());
-            } else {
-                return failed(initIndex);
+        if (exp.isPresent()) {
+            funcRParams.addChild(exp.get());
+            Optional<ASTLeaf> comma;
+            while ((comma = parseTerminal(GrammarType.COMMA)).isPresent()) {
+                funcRParams.addChild(comma.get());
+                exp = parseExp();
+                if (exp.isPresent()) {
+                    funcRParams.addChild(exp.get());
+                } else {
+                    return failed(initIndex);
+                }
             }
+            return done(funcRParams);
         }
-        if (funcSymbolOpt == null) return done(funcRParams);
-        int expectParamsNum = funcSymbolOpt.getParamCount();
-        List<VarSymbol> expectParams = funcSymbolOpt.getParams();
-        int actualParamsNum = nodeList.size();
-        if (expectParamsNum != actualParamsNum) {
-            error(funcRParams, new FuncParamCntNotMatchedError(expectParamsNum, actualParamsNum, funcCallTk));
-        } else {
-            for (int i = 0; i < expectParamsNum; i++) {
-                var e = nodeList.get(i);
-                var actualDim = ParserUtil.getExpDim(e, nowSymbolTable);
-                var expectDim = expectParams.get(i).getDim();
-                if (actualDim == expectDim) break;
-                error(funcRParams, new FuncParamTypeNotMatchedError("dim " + expectDim, "dim " + actualDim, funcCallTk));
-            }
-        }
-        return done(funcRParams);
+
+        return failed(initIndex);
     }
 
     /**
@@ -1325,7 +1259,8 @@ public class RecursiveDescentParser {
         }
 
         Optional<ASTLeaf> operator;
-        while ((operator = parseTerminal(GrammarType.LESS_THAN, GrammarType.LESS_THAN_EQUAL, GrammarType.GREATER_THAN, GrammarType.GREATER_THAN_EQUAL)).isPresent()) {
+        while ((operator = parseTerminal(GrammarType.LESS_THAN, GrammarType.LESS_THAN_EQUAL, GrammarType.GREATER_THAN,
+                GrammarType.GREATER_THAN_EQUAL)).isPresent()) {
             ASTNode rel = new ASTNode(GrammarType.REL_EXP);
             rel.addChild(addExp.get());
 

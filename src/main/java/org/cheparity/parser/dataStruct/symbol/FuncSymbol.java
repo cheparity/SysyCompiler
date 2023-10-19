@@ -27,6 +27,14 @@ public final class FuncSymbol extends Symbol {
         return dim;
     }
 
+    public void setDim(FuncType type) {
+        if (type == FuncType.VOID) {
+            this.dim = 0;
+        } else {
+            this.dim = 1;
+        }
+    }
+
     public int getParamCount() {
         return params.size();
     }

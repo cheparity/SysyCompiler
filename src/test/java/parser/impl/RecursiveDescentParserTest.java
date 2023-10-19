@@ -46,6 +46,12 @@ public class RecursiveDescentParserTest extends TestCase {
         for (var error : errors) {
             System.out.println(error);
         }
-        System.out.println("=========error handler end=========");
+        System.out.println("=======================================");
+
+        errors.forEach(e -> {
+            System.out.println(e.getToken().getLineNum() + " " + e.getCode().getValue());
+        });
+        System.out.println("=========error handler end============");
     }
+
 }
