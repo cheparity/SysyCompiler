@@ -1,12 +1,12 @@
 package lexer.impl;
 
-import lexer.LexicalParser;
+import lexer.SysYLexer;
 import lexer.dataStruct.LexType;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class LexicalParserImplTest {
-    LexicalParser l = LexicalParserImpl.getInstance();
+public class LexerImplTest {
+    SysYLexer l = LexerImpl.getInstance();
 
     @Test
     public void testEmpty() {

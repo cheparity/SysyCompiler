@@ -1,9 +1,10 @@
 package parser.impl;
 
 import exception.*;
-import lexer.LexicalParser;
+import lexer.SysYLexer;
 import lexer.dataStruct.Token;
-import lexer.impl.LexicalParserImpl;
+import lexer.impl.LexerImpl;
+import parser.SysYParser;
 import parser.dataStruct.ASTLeaf;
 import parser.dataStruct.ASTNode;
 import parser.dataStruct.GrammarType;
@@ -16,15 +17,18 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.logging.Logger;
 
-public class RecursiveDescentParser {
+public class RecursiveDescentParser implements SysYParser {
     private final static Logger LOGGER = LoggerUtil.getLogger();
     private final static RecursiveDescentParser PARSER_INSTANCE = new RecursiveDescentParser();
-    private final LexicalParser lexicalParser = LexicalParserImpl.getInstance();
-    private final ArrayList<Token> tokens = lexicalParser.getAllTokens();
+    private final SysYLexer lexer = LexerImpl.getInstance();
+    private final ArrayList<Token> tokens = lexer.getAllTokens();
     private Token nowToken = tokens.get(0);
     private ASTNode AST;
     private int nowIndex = 0;
     private SymbolTable nowSymbolTable;
+
+    private RecursiveDescentParser() {
+    }
 
     public static RecursiveDescentParser getInstance() {
         return PARSER_INSTANCE;
@@ -68,7 +72,11 @@ public class RecursiveDescentParser {
         return grammarType.isPresent() && grammarType.get().equals(type);
     }
 
+    @Override
     public ASTNode getAST() {
+        if (this.AST == null) {
+            this.parse();
+        }
         return this.AST;
     }
 
@@ -462,7 +470,7 @@ public class RecursiveDescentParser {
     private Optional<ASTNode> parseFuncDef() {
         int initIndex = nowIndex;
         ASTNode funcDef = begin(GrammarType.FUNC_DEF);
-        FuncSymbol symbol = null;
+        FuncSymbol symbol;
         List<VarSymbol> params = new ArrayList<>();
 
         Optional<ASTNode> funcType = parseFuncType();
@@ -760,7 +768,7 @@ public class RecursiveDescentParser {
         int initIndex = nowIndex;
         var stmt = begin(GrammarType.STMT);
         Optional<ASTNode> lVal, exp, block;
-        Optional<ASTLeaf> semicolon, leftParen, rightParen, getintTk, assign, keyword;
+        Optional<ASTLeaf> semicolon, leftParen, getintTk, assign, keyword;
 
         if (preRead4ParseStmt2JudgeLVal()) {
             //LVal '=' Exp ';' | LVal '=' 'getint''('')'';'
@@ -1373,29 +1381,6 @@ public class RecursiveDescentParser {
             }
         }
         return done(eqExp);
-    }
-
-    /**
-     * TypeSpec → BType | 'void'
-     *
-     * @return Optional<ASTNode> representing the parsed TypeSpec
-     */
-    private Optional<ASTNode> parseTypeSpec() {
-        int initIndex = nowIndex;
-        var typeSpec = begin(GrammarType.TYPE_SPEC);
-        var bType = parseBType();
-        if (bType.isPresent()) {
-            typeSpec.addChild(bType.get());
-            return done(typeSpec);
-        }
-
-        var voidTk = parseTerminal(GrammarType.VOID);
-        if (voidTk.isPresent()) {
-            typeSpec.addChild(voidTk.get());
-            return done(typeSpec);
-        }
-
-        return failed(initIndex);
     }
 
     /**

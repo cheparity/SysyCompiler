@@ -1,4 +1,4 @@
-package visitor;
+package parser.dataStruct;
 
 import exception.GrammarError;
 

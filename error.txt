@@ -1,1 +1,116 @@
-4 a
+INTTK int
+IDENFR k
+LPARENT (
+INTTK int
+IDENFR i
+RPARENT )
+LBRACE {
+RETURNTK return
+INTCON 99
+SEMICN ;
+RBRACE }
+VOIDTK void
+IDENFR f
+LPARENT (
+INTTK int
+IDENFR i
+RPARENT )
+LBRACE {
+RBRACE }
+INTTK int
+MAINTK main
+LPARENT (
+RPARENT )
+LBRACE {
+IDENFR f
+LPARENT (
+IDENFR k
+LPARENT (
+INTCON 1
+RPARENT )
+RPARENT )
+SEMICN ;
+RETURNTK return
+INTCON 0
+SEMICN ;
+RBRACE }
+INTTK int
+<FuncType>
+IDENFR k
+LPARENT (
+INTTK int
+IDENFR i
+<FuncFParam>
+<FuncFParams>
+RPARENT )
+LBRACE {
+RETURNTK return
+INTCON 99
+<Number>
+<PrimaryExp>
+<UnaryExp>
+<MulExp>
+<AddExp>
+<Exp>
+SEMICN ;
+<Stmt>
+RBRACE }
+<Block>
+<FuncDef>
+VOIDTK void
+<FuncType>
+IDENFR f
+LPARENT (
+INTTK int
+IDENFR i
+<FuncFParam>
+<FuncFParams>
+RPARENT )
+LBRACE {
+RBRACE }
+<Block>
+<FuncDef>
+INTTK int
+MAINTK main
+LPARENT (
+RPARENT )
+LBRACE {
+IDENFR f
+LPARENT (
+IDENFR k
+LPARENT (
+INTCON 1
+<Number>
+<PrimaryExp>
+<UnaryExp>
+<MulExp>
+<AddExp>
+<Exp>
+<FuncRParams>
+RPARENT )
+<UnaryExp>
+<MulExp>
+<AddExp>
+<Exp>
+<FuncRParams>
+RPARENT )
+<UnaryExp>
+<MulExp>
+<AddExp>
+<Exp>
+SEMICN ;
+<Stmt>
+RETURNTK return
+INTCON 0
+<Number>
+<PrimaryExp>
+<UnaryExp>
+<MulExp>
+<AddExp>
+<Exp>
+SEMICN ;
+<Stmt>
+RBRACE }
+<Block>
+<MainFuncDef>
+<CompUnit>

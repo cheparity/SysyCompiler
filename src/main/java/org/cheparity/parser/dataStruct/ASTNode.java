@@ -3,7 +3,6 @@ package parser.dataStruct;
 import exception.GrammarError;
 import lexer.dataStruct.Token;
 import utils.LoggerUtil;
-import visitor.ErrorHandler;
 
 import java.util.ArrayList;
 import java.util.List;

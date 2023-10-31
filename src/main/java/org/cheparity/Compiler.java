@@ -1,7 +1,7 @@
 import exception.GrammarError;
-import lexer.LexicalParser;
+import lexer.SysYLexer;
 import lexer.dataStruct.Token;
-import lexer.impl.LexicalParserImpl;
+import lexer.impl.LexerImpl;
 import parser.dataStruct.ASTLeaf;
 import parser.dataStruct.ASTNode;
 import parser.dataStruct.GrammarType;
@@ -28,13 +28,13 @@ public class Compiler {
     }
 
     public static void main(String[] args) {
-//        printLexAnswer();
-//        printGrammarAnswer();
+        printLexAnswer();
+        printGrammarAnswer();
         printErrorAnswer();
     }
 
     private static void printLexAnswer() {
-        LexicalParser l = LexicalParserImpl.getInstance();
+        SysYLexer l = LexerImpl.getInstance();
         ArrayList<Token> allTokens = l.getAllTokens();
         allTokens.forEach(token -> {
             try {
@@ -71,12 +71,9 @@ public class Compiler {
 
     private static void printErrorAnswer() {
         RecursiveDescentParser parser = RecursiveDescentParser.getInstance();
-        parser.parse();
         TreeSet<GrammarError> errors = parser.getAST().getErrors();
         PrintStream ps = new PrintStream(fos);
-        errors.forEach(e -> {
-            ps.println(e.getToken().getLineNum() + " " + e.getCode().getValue());
-        });
+        errors.forEach(e -> ps.println(e.getToken().getLineNum() + " " + e.getCode().getValue()));
     }
 
 }

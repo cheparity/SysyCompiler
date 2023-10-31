@@ -1,7 +1,7 @@
 package lexer.impl;
 
 import lexer.LexPool;
-import lexer.LexicalParser;
+import lexer.SysYLexer;
 import lexer.dataStruct.LexType;
 import lexer.dataStruct.Token;
 import utils.LoggerUtil;
@@ -14,9 +14,9 @@ import java.util.ArrayList;
 import java.util.Optional;
 import java.util.logging.Logger;
 
-public class LexicalParserImpl implements LexicalParser {
+public class LexerImpl implements SysYLexer {
     private final static Logger LOGGER = LoggerUtil.getLogger();
-    private final static LexicalParser LEXER_INSTANCE = new LexicalParserImpl();
+    private final static SysYLexer LEXER_INSTANCE = new LexerImpl();
     private final static String FILENAME = "./testfile.txt";
     private final static String SOURCE;
     private final static int SOURCE_LEN;
@@ -37,11 +37,11 @@ public class LexicalParserImpl implements LexicalParser {
     private int lineNum = 1;
     private int curPos = 0;
 
-    private LexicalParserImpl() {
+    private LexerImpl() {
 //        LOGGER.config(SOURCE_UNCOMMENT);
     }
 
-    public static LexicalParser getInstance() {
+    public static SysYLexer getInstance() {
         return LEXER_INSTANCE;
     }
 

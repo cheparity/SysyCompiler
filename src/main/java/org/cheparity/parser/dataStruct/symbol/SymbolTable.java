@@ -1,7 +1,7 @@
 package parser.dataStruct.symbol;
 
 import exception.DupIdentError;
-import visitor.ErrorHandler;
+import parser.dataStruct.ErrorHandler;
 
 import java.util.HashMap;
 import java.util.Optional;
