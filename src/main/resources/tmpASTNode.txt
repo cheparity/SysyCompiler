@@ -9,7 +9,7 @@ import lexer.impl.LexerImpl;
 import parser.dataStruct.ASTLeaf;
 import parser.dataStruct.ASTNode;
 import parser.dataStruct.GrammarType;
-import parser.dataStruct.symbol.*;
+import parser.dataStruct.symbols.*;
 import utils.LoggerUtil;
 
 import java.util.ArrayList;

@@ -1,6 +1,6 @@
 package exception;
 
-import lexer.dataStruct.Token;
+import frontEnd.lexer.dataStruct.Token;
 
 public class PrintfUnmatchedError extends GrammarError {
     public PrintfUnmatchedError(Token token) {

@@ -1,20 +1,21 @@
 import exception.GrammarError;
-import lexer.SysYLexer;
-import lexer.dataStruct.Token;
-import lexer.impl.LexerImpl;
-import parser.dataStruct.ASTLeaf;
-import parser.dataStruct.ASTNode;
-import parser.dataStruct.GrammarType;
-import parser.impl.RecursiveDescentParser;
-import utils.LoggerUtil;
+import frontEnd.lexer.SysYLexer;
+import frontEnd.lexer.impl.LexerImpl;
+import frontEnd.parser.SysYParser;
+import frontEnd.parser.dataStruct.ASTLeaf;
+import frontEnd.parser.dataStruct.ASTNode;
+import frontEnd.parser.dataStruct.GrammarType;
+import frontEnd.parser.dataStruct.utils.LoggerUtil;
+import frontEnd.parser.impl.RecursiveDescentParser;
 
 import java.io.*;
-import java.util.ArrayList;
 import java.util.TreeSet;
 import java.util.logging.Logger;
 
 public class Compiler {
     private static final Logger LOGGER = LoggerUtil.getLogger();
+    private static final SysYLexer lexer = LexerImpl.getInstance();
+    private static final SysYParser parser = RecursiveDescentParser.getInstance();
     private static final FileOutputStream fos;
 
     static {
@@ -34,9 +35,7 @@ public class Compiler {
     }
 
     private static void printLexAnswer() {
-        SysYLexer l = LexerImpl.getInstance();
-        ArrayList<Token> allTokens = l.getAllTokens();
-        allTokens.forEach(token -> {
+        lexer.getAllTokens().forEach(token -> {
             try {
                 fos.write((token.getLexType() + " " + token.getRawValue() + "\n").getBytes());
             } catch (IOException e) {
@@ -46,9 +45,9 @@ public class Compiler {
     }
 
     private static void printGrammarAnswer() {
-        RecursiveDescentParser grammarParser = RecursiveDescentParser.getInstance();
-        grammarParser.parse();
-        ast2String(grammarParser.getAST());
+        parser.setTokens(lexer.getAllTokens());
+        parser.parse();
+        ast2String(parser.getAST());
     }
 
     private static void ast2String(ASTNode tree) {

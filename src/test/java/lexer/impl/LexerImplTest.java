@@ -1,7 +1,8 @@
 package lexer.impl;
 
-import lexer.SysYLexer;
-import lexer.dataStruct.LexType;
+import frontEnd.lexer.SysYLexer;
+import frontEnd.lexer.dataStruct.LexType;
+import frontEnd.lexer.impl.LexerImpl;
 import org.junit.Assert;
 import org.junit.Test;
 

@@ -1,6 +1,6 @@
 package exception;
 
-import lexer.dataStruct.Token;
+import frontEnd.lexer.dataStruct.Token;
 
 public class DupIdentError extends GrammarError {
     private final Token preToken;

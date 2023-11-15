@@ -1,9 +1,11 @@
 package parser.impl;
 
 import exception.GrammarError;
+import frontEnd.lexer.impl.LexerImpl;
+import frontEnd.parser.dataStruct.ASTLeaf;
+import frontEnd.parser.dataStruct.ASTNode;
+import frontEnd.parser.impl.RecursiveDescentParser;
 import junit.framework.TestCase;
-import parser.dataStruct.ASTLeaf;
-import parser.dataStruct.ASTNode;
 
 import java.util.TreeSet;
 
@@ -12,6 +14,7 @@ public class RecursiveDescentParserTest extends TestCase {
     private final RecursiveDescentParser parser = RecursiveDescentParser.getInstance();
 
     public void testAST() {
+        parser.setTokens(LexerImpl.getInstance().getAllTokens());
         System.out.println("=========parse result:=========");
         parser.parse();
         peekAST(parser.getAST(), 0);

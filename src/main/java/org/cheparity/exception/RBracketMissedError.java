@@ -1,6 +1,6 @@
 package exception;
 
-import lexer.dataStruct.Token;
+import frontEnd.lexer.dataStruct.Token;
 
 public class RBracketMissedError extends GrammarError {
     public RBracketMissedError(Token token) {

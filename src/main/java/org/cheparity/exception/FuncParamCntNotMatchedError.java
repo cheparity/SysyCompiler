@@ -1,6 +1,6 @@
 package exception;
 
-import lexer.dataStruct.Token;
+import frontEnd.lexer.dataStruct.Token;
 
 public class FuncParamCntNotMatchedError extends GrammarError {
     private final int expect;
