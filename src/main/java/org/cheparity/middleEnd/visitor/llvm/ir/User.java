@@ -12,24 +12,15 @@ public abstract class User extends Value {
      * <p>
      * It is called <strong>use-def-chain</strong>.
      */
-    protected final ArrayList<Value> operands = new ArrayList<>();
+    private final ArrayList<Value> operands = new ArrayList<>();
 
     User(IrType type, String name) {
         super(type, name);
         //set up use relationship
-
     }
 
     User(IrType type) {
         super(type);
-    }
-
-    void addOperand(Value operand) {
-        operands.add(operand);
-    }
-
-    ArrayList<Value> getOperands() {
-        return operands;
     }
 
 }

@@ -4,14 +4,21 @@ import exception.DupIdentError;
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.ErrorHandler;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
 
 public class SymbolTable {
+    private static SymbolTable global;
     /**
      * The outer symbol table of this symbol table. To search outer symbols.
      */
     private final SymbolTable outer;
+    /**
+     * The inner symbol tables of this symbol table. To store inner symbols.
+     */
+    private final List<SymbolTable> inners = new ArrayList<>();
     /**
      * The level of this symbol table.
      */
@@ -27,8 +34,21 @@ public class SymbolTable {
             this.level = 0; //global
         } else {
             this.level = outer.level + 1;
+            outer.addInnerTable(this);
         }
         belongTo.setSymbolTable(this);
+    }
+
+    public static SymbolTable getGlobal() {
+        return global;
+    }
+
+    public static void setGlobal(SymbolTable global) {
+        SymbolTable.global = global;
+    }
+
+    private void addInnerTable(SymbolTable inner) {
+        inners.add(inner);
     }
 
     public SymbolTable getOuter() {
@@ -75,4 +95,5 @@ public class SymbolTable {
         if (res.isPresent() && res.get().getType() == SymbolType.FUNC) return Optional.of((FuncSymbol) res.get());
         return Optional.empty();
     }
+
 }

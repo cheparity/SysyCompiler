@@ -483,7 +483,7 @@ public class RecursiveDescentParser implements SysYParser {
         int initIndex = nowIndex;
         ASTNode funcDef = begin(GrammarType.FUNC_DEF);
         FuncSymbol symbol;
-        List<VarSymbol> params = new ArrayList<>();
+        List<VarSymbol> params = new ArrayList<>(); //（important）存放函数参数的数组
 
         Optional<ASTNode> funcType = parseFuncType();
         if (funcType.isPresent()) {
@@ -517,7 +517,7 @@ public class RecursiveDescentParser implements SysYParser {
         Optional<ASTLeaf> rightParen = parseTerminal(GrammarType.RIGHT_PAREN);
         rightParen.ifPresentOrElse(funcDef::addChild, () -> error(funcDef, new RParenMissedError(funcDef.lastToken())));
         //check return
-        Optional<ASTNode> block = parseBlock();
+        Optional<ASTNode> block = parseBlock(params.toArray(new VarSymbol[0]));
         if (block.isPresent()) {
             funcDef.addChild(block.get());
 //            this.nowSymbolTable = new SymbolTable(this.nowSymbolTable, funcDef); //todo 在block里已经有了？为什么这里还要建一遍？
@@ -677,7 +677,7 @@ public class RecursiveDescentParser implements SysYParser {
         var dim = ParserUtil.getDim4Def(funcFParam);
         VarSymbol symbol = new VarSymbol(this.nowSymbolTable, ident.get().getToken(), dim);
         funcParams.add(symbol);
-        this.nowSymbolTable.addSymbol(symbol, funcFParam.getErrorHandler());
+//        this.nowSymbolTable.addSymbol(symbol, funcFParam.getErrorHandler()); 修改：把symbol传递出去，在block里添加
 
         return done(funcFParam);
     }
@@ -687,10 +687,14 @@ public class RecursiveDescentParser implements SysYParser {
      *
      * @return Optional<ASTNode> representing the parsed Block
      */
-    private Optional<ASTNode> parseBlock() {
+    private Optional<ASTNode> parseBlock(VarSymbol... funcParams) {
         int initIndex = nowIndex;
         var block = begin(GrammarType.BLOCK);
         this.nowSymbolTable = new SymbolTable(this.nowSymbolTable, block);
+        //修改：把函数参数添加到块级符号表中
+        for (Symbol symbol : funcParams) {
+            this.nowSymbolTable.addSymbol(symbol, block.getErrorHandler());
+        }
         Optional<ASTLeaf> leftBrace = parseTerminal(GrammarType.LEFT_BRACE);
         if (leftBrace.isPresent()) {
             block.addChild(leftBrace.get());

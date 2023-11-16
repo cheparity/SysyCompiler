@@ -1,6 +1,6 @@
 package middleEnd.visitor.llvm.ir;
 
-public abstract class Constant extends Value {
+public abstract class Constant extends DataValue {
     Constant(IrType type, String name) {
         super(type, name);
     }

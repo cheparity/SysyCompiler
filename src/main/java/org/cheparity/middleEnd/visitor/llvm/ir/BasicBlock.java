@@ -1,13 +1,24 @@
 package middleEnd.visitor.llvm.ir;
 
+import frontEnd.symbols.SymbolTable;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class BasicBlock extends Value {
     private List<Instruction> instructionList = new ArrayList<>();
+    private SymbolTable symbolTable;
 
     BasicBlock(String name) {
         super(IrType.LabelTyID, name);
+    }
+
+    public SymbolTable getSymbolTable() {
+        return symbolTable;
+    }
+
+    public void setSymbolTable(SymbolTable symbolTable) {
+        this.symbolTable = symbolTable;
     }
 
     void addInstruction(Instruction instruction) {

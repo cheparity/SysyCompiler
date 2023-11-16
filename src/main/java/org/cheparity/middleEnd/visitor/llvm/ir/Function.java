@@ -11,7 +11,6 @@ public class Function extends GlobalValue implements GlobalObjects {
 
     Function(IrType type, String name, Module module) {
         super(type, name);
-        this.module = module;
         this.returnType = type;
         this.module = module;
     }

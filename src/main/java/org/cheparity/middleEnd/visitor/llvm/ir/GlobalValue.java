@@ -1,11 +1,11 @@
 package middleEnd.visitor.llvm.ir;
 
-public abstract class GlobalValue extends Value implements GlobalObjects {
+/**
+ * GlobalValue下有Global Constant和Global Variable。与局部变量行为不同
+ */
+public abstract class GlobalValue extends DataValue implements GlobalObjects {
     GlobalValue(IrType type, String name) {
         super(type, name);
     }
 
-    GlobalValue(IrType type) {
-        super(type);
-    }
 }

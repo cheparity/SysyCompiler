@@ -1,9 +1,14 @@
 package middleEnd.visitor.llvm.ir;
 
-public class RetInstruction extends Instruction {
-    private final Value retValue;
+/**
+ * ret [type] [value] ,ret void
+ * <p>
+ * 确实用到了value，后面应该不用重构
+ */
+public final class RetInstruction extends Instruction {
+    private final DataValue retValue;
 
-    RetInstruction(Value result) {
+    RetInstruction(DataValue result) {
         super(OpCode.RET);
         this.retValue = result;
     }

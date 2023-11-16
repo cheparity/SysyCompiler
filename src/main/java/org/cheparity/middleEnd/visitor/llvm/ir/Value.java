@@ -8,7 +8,6 @@ import java.util.ArrayList;
  * A clazz extends Value means that it can be USED somewhere.
  */
 public abstract class Value implements IrPrintable {
-    static int register = 1;
     /**
      * The type of the value. All values have a type.
      */

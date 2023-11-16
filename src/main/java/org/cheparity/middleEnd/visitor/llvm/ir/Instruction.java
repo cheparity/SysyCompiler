@@ -12,14 +12,6 @@ public abstract class Instruction extends User {
         this.opCode = opCode;
     }
 
-    public void addOperand(Value operand) {
-        operands.add(operand);
-    }
-
-    public Value getOperand(int index) {
-        return operands.get(index);
-    }
-
     public OpCode getOpCode() {
         return opCode;
     }
@@ -28,17 +20,4 @@ public abstract class Instruction extends User {
         this.opCode = opCode;
     }
 
-    @Override
-    public String toIrCode() {
-        var sb = new StringBuilder();
-        sb.append(getName()).append(" = ").append(opCode).append(" ");
-        for (int i = 0; i < operands.size(); i++) {
-            var operand = operands.get(i);
-            sb.append(operand.getType()).append(" ").append(operand.getName());
-            if (i != operands.size() - 1) {
-                sb.append(", ");
-            }
-        }
-        return sb.toString();
-    }
 }
