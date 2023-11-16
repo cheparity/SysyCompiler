@@ -123,6 +123,7 @@ public class RecursiveDescentParser implements SysYParser {
         ASTNode compUnit = new ASTNode(GrammarType.COMP_UNIT);
         Optional<ASTNode> decl, funcDef;
         this.nowSymbolTable = new SymbolTable(null, compUnit); //Global symbol table
+        SymbolTable.setGlobal(this.nowSymbolTable);
         while ((decl = parseDecl()).isPresent()) {
             compUnit.addChild(decl.get());
         }
@@ -802,7 +803,7 @@ public class RecursiveDescentParser implements SysYParser {
                 Optional<ASTNode> ident = lVal.get().deepDownFind(GrammarType.IDENT, 1);
                 assert ident.isPresent();
                 Token token = ((ASTLeaf) ident.get()).getToken();
-                Optional<Symbol> s = nowSymbolTable.lookup(token.getRawValue());
+                Optional<Symbol> s = nowSymbolTable.getSymbol(token.getRawValue());
                 if (s.isPresent() && s.get().getType().equals(SymbolType.CONST)) {
                     error(stmt, new ConstChangedError(token));
                 }
@@ -987,7 +988,7 @@ public class RecursiveDescentParser implements SysYParser {
         //check const
         Optional<ASTNode> ident = lVal.get().deepDownFind(GrammarType.IDENT, 1);
         assert ident.isPresent();
-        Optional<Symbol> s = nowSymbolTable.lookup(((ASTLeaf) ident.get()).getToken().getRawValue());
+        Optional<Symbol> s = nowSymbolTable.getSymbol(((ASTLeaf) ident.get()).getToken().getRawValue());
         if (s.isPresent() && s.get().getType().equals(SymbolType.CONST)) {
             error(forStmt, new ConstChangedError(((ASTLeaf) ident.get()).getToken()));
         } else if (s.isEmpty()) {
@@ -1052,7 +1053,7 @@ public class RecursiveDescentParser implements SysYParser {
         Optional<ASTLeaf> ident = parseTerminal(GrammarType.IDENT);
         if (ident.isPresent()) {
             LVal.addChild(ident.get());
-            Optional<Symbol> s = nowSymbolTable.lookup(ident.get().getToken().getRawValue());
+            Optional<Symbol> s = nowSymbolTable.getSymbol(ident.get().getToken().getRawValue());
             if (s.isEmpty()) {
                 var e = new UndefinedIdentError(ident.get().getToken());
                 error(LVal, e);
@@ -1147,7 +1148,7 @@ public class RecursiveDescentParser implements SysYParser {
             if (ident.isPresent()) {
                 UnaryExp.addChild(ident.get());
                 FuncSymbol funcSym = null;
-                Optional<FuncSymbol> funcSymOpt = nowSymbolTable.lookup4func(ident.get().getToken().getRawValue());
+                Optional<FuncSymbol> funcSymOpt = nowSymbolTable.getFuncSymbol(ident.get().getToken().getRawValue());
                 //check ident symbol is present.
                 if (funcSymOpt.isEmpty()) {
                     error(UnaryExp, new UndefinedIdentError(ident.get().getToken()));

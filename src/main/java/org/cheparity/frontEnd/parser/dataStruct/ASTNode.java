@@ -5,7 +5,8 @@ import frontEnd.lexer.dataStruct.Token;
 import frontEnd.parser.ASTNodeElement;
 import frontEnd.parser.dataStruct.utils.LoggerUtil;
 import frontEnd.symbols.SymbolTable;
-import middleEnd.visitor.ASTNodeVisitor;
+import middleEnd.ASTNodeVisitor;
+import middleEnd.llvm.visitor.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -216,6 +217,42 @@ public class ASTNode implements ASTNodeElement {
 
     @Override
     public void accept(ASTNodeVisitor visitor) {
-        visitor.visit(this);
+        if (visitor instanceof GlobalVarVisitor) {
+            //过滤出全局变量定义
+            children.stream()
+                    .filter(node -> node.getGrammarType() == GrammarType.DECL)
+                    .forEach(visitor::visit);
+        } else if (visitor instanceof FuncDefVisitor) {
+            //过滤出函数定义
+            children.stream()
+                    .filter(node -> node.getGrammarType() == GrammarType.FUNC_DEF | node.getGrammarType() == GrammarType.MAIN_FUNC_DEF)
+                    .forEach(visitor::visit);
+        } else if (visitor instanceof BlockVisitor) {
+            //过滤出函数体
+            children.stream()
+                    .filter(node -> node.getGrammarType() == GrammarType.BLOCK)
+                    .forEach(visitor::visit);
+        } else if (visitor instanceof LocalVarVisitor) {
+            //过滤出局部变量定义（特殊，因为调用者node是blockItem，而我们没有blockItemVisitor）
+            assert this.getGrammarType() == GrammarType.BLOCK_ITEM;
+            // BlockItem -> Decl | Stmt
+            // Decl -> ConstDecl | VarDecl
+            // 所以我们直接过滤出ConstDecl && VarDecl
+            if (getChild(0).getGrammarType() == GrammarType.DECL) {
+                for (var stmt : getChild(0).getChildren()) {
+                    visitor.visit(stmt);
+                }
+            }
+        } else if (visitor instanceof StmtVisitor) {
+            assert this.getGrammarType() == GrammarType.BLOCK_ITEM;
+            // BlockItem -> Decl | Stmt
+            if (getChild(0).getGrammarType() == GrammarType.STMT) {
+                visitor.visit(getChild(0));
+            }
+        } else {
+            //默认行为，不应该到这里
+            LOGGER.severe("ASTNode accept error");
+//            visitor.visit(children, this);
+        }
     }
 }

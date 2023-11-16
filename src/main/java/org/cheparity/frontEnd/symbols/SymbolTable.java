@@ -74,12 +74,12 @@ public class SymbolTable {
      * @param name The name of the symbol.(key)
      * @return The symbol if found, otherwise null.(value)
      */
-    public Optional<Symbol> lookup(String name) {
+    public Optional<Symbol> getSymbol(String name) {
         if (directory.containsKey(name)) {
             return Optional.of(directory.get(name));
         }
         if (outer != null) {
-            return outer.lookup(name);
+            return outer.getSymbol(name);
         }
         return Optional.empty();
     }
@@ -90,8 +90,8 @@ public class SymbolTable {
      * @param name The name of the function.(key)
      * @return The function symbol if found, otherwise null.(value)
      */
-    public Optional<FuncSymbol> lookup4func(String name) {
-        Optional<Symbol> res = lookup(name);
+    public Optional<FuncSymbol> getFuncSymbol(String name) {
+        Optional<Symbol> res = getSymbol(name);
         if (res.isPresent() && res.get().getType() == SymbolType.FUNC) return Optional.of((FuncSymbol) res.get());
         return Optional.empty();
     }

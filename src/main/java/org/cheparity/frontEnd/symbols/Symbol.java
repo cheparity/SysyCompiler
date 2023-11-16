@@ -1,6 +1,9 @@
 package frontEnd.symbols;
 
 import frontEnd.lexer.dataStruct.Token;
+import middleEnd.llvm.ir.Variable;
+
+import java.util.Optional;
 
 public abstract class Symbol {
     /**
@@ -18,7 +21,7 @@ public abstract class Symbol {
     /**
      * The register that this symbol is assigned to.
      */
-    private String register;
+    private Variable irVariable;
 
     public Symbol(SymbolTable table, SymbolType type, Token token) {
         this.symbolTable = table;
@@ -26,12 +29,19 @@ public abstract class Symbol {
         this.token = token;
     }
 
-    public String getRegister() {
-        return this.register;
+    public Optional<Variable> getIrVariable() {
+        return Optional.ofNullable(irVariable);
     }
 
-    public void setRegister(String register) {
-        this.register = register;
+    public void setIrVariable(Variable irVariable) {
+        this.irVariable = irVariable;
+    }
+
+    public Optional<Integer> getNumber() {
+        if (irVariable != null) {
+            return irVariable.getNumber();
+        }
+        return Optional.empty();
     }
 
     public Token getToken() {

@@ -48,7 +48,7 @@ public class ParserUtil {
         assert unaryExp.getGrammarType().equals(GrammarType.UNARY_EXP);
         ASTNode child = unaryExp.getChildren().get(0);
         if (child.getGrammarType().equals(GrammarType.IDENT)) {
-            Optional<Symbol> symbol = table.lookup(((ASTLeaf) child).getToken().getRawValue());
+            Optional<Symbol> symbol = table.getSymbol(((ASTLeaf) child).getToken().getRawValue());
             if (symbol.isPresent() && symbol.get().getType().equals(SymbolType.FUNC)) {
                 var s = (FuncSymbol) symbol.get();
                 if (s.getFuncType() == FuncType.VOID) return -1;
@@ -82,7 +82,7 @@ public class ParserUtil {
         ASTLeaf ident = (ASTLeaf) lval.getChildren().get(0);
         boolean isArr = lval.getChildren().size() > 1;
         assert ident.getGrammarType().equals(GrammarType.IDENT);
-        Optional<Symbol> symbol = table.lookup(ident.getToken().getRawValue());
+        Optional<Symbol> symbol = table.getSymbol(ident.getToken().getRawValue());
         if (symbol.isPresent() && symbol.get().getType().equals(SymbolType.VAR)) {
             if (isArr) return ((VarSymbol) symbol.get()).getDim() - 1;
             else return ((VarSymbol) symbol.get()).getDim();
