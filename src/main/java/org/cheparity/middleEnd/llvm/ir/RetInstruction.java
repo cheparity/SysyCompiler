@@ -7,14 +7,24 @@ package middleEnd.llvm.ir;
  */
 public final class RetInstruction extends Instruction {
     private final Variable retValue;
+    private final boolean retVoid;
 
     RetInstruction(Variable result) {
         this.retValue = result;
+        retVoid = false;
+    }
+
+    RetInstruction() {
+        retValue = null;
+        retVoid = true;
     }
 
     @Override
     public String toIrCode() {
         //ret <return_type> <return_value>
-        return "ret " + retValue.toIrCode();
+        if (retVoid) {
+            return "ret void";
+        }
+        return "ret " + retValue.getType().toIrCode() + " " + retValue.toIrCode();
     }
 }

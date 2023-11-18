@@ -1,4 +1,4 @@
-package frontEnd.symbols;
+package middleEnd.symbols;
 
 import exception.DupIdentError;
 import frontEnd.parser.dataStruct.ASTNode;

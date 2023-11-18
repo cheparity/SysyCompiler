@@ -1,7 +1,7 @@
 package middleEnd.llvm;
 
 public final class SSARegisterAllocator implements RegisterAllocator {
-    int register = -1;
+    int register = 0;
 
     @Override
     public String allocate() {
@@ -17,7 +17,7 @@ public final class SSARegisterAllocator implements RegisterAllocator {
      */
     @Override
     public String allocate(String funcName) {
-        return "%" + funcName;
+        return "@" + funcName;
     }
 
 

@@ -4,9 +4,9 @@ import exception.GrammarError;
 import frontEnd.lexer.dataStruct.Token;
 import frontEnd.parser.ASTNodeElement;
 import frontEnd.parser.dataStruct.utils.LoggerUtil;
-import frontEnd.symbols.SymbolTable;
 import middleEnd.ASTNodeVisitor;
 import middleEnd.llvm.visitor.*;
+import middleEnd.symbols.SymbolTable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -222,7 +222,7 @@ public class ASTNode implements ASTNodeElement {
             children.stream()
                     .filter(node -> node.getGrammarType() == GrammarType.DECL)
                     .forEach(visitor::visit);
-        } else if (visitor instanceof FuncDefVisitor) {
+        } else if (visitor instanceof FuncVisitor) {
             //过滤出函数定义
             children.stream()
                     .filter(node -> node.getGrammarType() == GrammarType.FUNC_DEF | node.getGrammarType() == GrammarType.MAIN_FUNC_DEF)
@@ -237,10 +237,10 @@ public class ASTNode implements ASTNodeElement {
             assert this.getGrammarType() == GrammarType.BLOCK_ITEM;
             // BlockItem -> Decl | Stmt
             // Decl -> ConstDecl | VarDecl
-            // 所以我们直接过滤出ConstDecl && VarDecl
+            // 所以我们直接过滤出ConstDecl && VarDecl。
             if (getChild(0).getGrammarType() == GrammarType.DECL) {
-                for (var stmt : getChild(0).getChildren()) {
-                    visitor.visit(stmt);
+                for (var node : getChild(0).getChildren()) {
+                    visitor.visit(node); //传递过去的是constDecl && varDecl
                 }
             }
         } else if (visitor instanceof StmtVisitor) {

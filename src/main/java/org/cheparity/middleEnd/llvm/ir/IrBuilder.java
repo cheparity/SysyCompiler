@@ -1,8 +1,8 @@
 package middleEnd.llvm.ir;
 
-import frontEnd.symbols.SymbolTable;
 import middleEnd.llvm.IrContext;
 import middleEnd.llvm.RegisterAllocator;
+import middleEnd.symbols.SymbolTable;
 
 public class IrBuilder {
     private RegisterAllocator allocator;
@@ -15,11 +15,17 @@ public class IrBuilder {
         this.allocator = allocator;
     }
 
-    public Function buildFunction(IrType irType, String name, Module module) {
+    public Function buildFunction(IrType.IrTypeID type, String name, Module module) {
         String funcName = allocator.allocate(name);
-        var func = new Function(irType, funcName, module);
+        var func = new Function(IrType.create(type), funcName, module);
         module.insertFunc(func);
         return func;
+    }
+
+    public NestBlock buildNestBlock(BasicBlock fatherBlock, SymbolTable symbolTable) {
+        NestBlock nestBlock = new NestBlock(fatherBlock.getName() + "-nested", fatherBlock);
+        nestBlock.setSymbolTable(symbolTable);
+        return nestBlock;
     }
 
     public BasicBlock buildEntryBlock(Function function, SymbolTable symbolTable) {
@@ -29,17 +35,68 @@ public class IrBuilder {
         return bb;
     }
 
-    public BasicBlock buildBasicBlock(String name, Function function) {
-        var bb = new BasicBlock(name);
-        function.setEntryBlock(bb);
-        return bb;
+    /**
+     * 形如：%5 = sub nsw i32 0, %4，表示%5寄存器是%4寄存器的取反
+     *
+     * @param block    所属基本块
+     * @param register 要取反的寄存器。<font color='red'>不能是一个数值</font>
+     * @return 返回一个result的Variable，这个Variable是<font color='red'>寄存器</font>，里面存放了结果
+     */
+    public Variable buildNegInst(BasicBlock block, Variable register) {
+        var zeroConst = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), "0", true);
+        assert zeroConst.getNumber().isEmpty();
+        zeroConst.setNumber(0);
+        return buildBinInstruction(block, zeroConst, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.SUB),
+                register);
     }
 
-    //todo 思路：需要Util.Cal方法，返回一个ret的Variable值，传递给该函数。Variable包含了ret的寄存器或数值信息
-    public void buildRetInstOfConst(BasicBlock basicBlock, int number) {
-//        var intConst = new IntConstant(null, number); //todo constInt是value（不一定是new constant int，也有可能是个寄存器）
-//        var ret = new RetInstruction(intConst);
-//        basicBlock.addInstruction(ret);
+    /**
+     * 形如：%5 = sub nsw i32 0, %4，表示%5寄存器是%4寄存器的取反
+     * <p>
+     * 对%4取反就是：
+     * <p>
+     * %5 = icmp ne i32 %4, 0 ;如果%4不等于0，那么%5就是true
+     * <p>
+     * %6 = xor i1 %5, true
+     *
+     * @param block    所属基本块
+     * @param variable 要取反的寄存器。<font color='red'>不能是一个数值</font>
+     * @return 返回一个result的Variable，这个Variable是<font color='red'>寄存器</font>，里面存放了结果
+     */
+    public Variable buildNotInst(BasicBlock block, Variable variable) {
+        assert variable.getNumber().isEmpty();
+        var zeroConst = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), "0", true);
+        zeroConst.setNumber(0);
+        var zero = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), "0", true);
+        zero.setNumber(0);
+        var op1 = buildCmpInst(block, variable, new IcmpInstruction.Condition(IcmpInstruction.Condition.Cond.NE), zero);
+        var trueVariable = new Variable(IrType.create(IrType.IrTypeID.BitTyID), "true", true);
+        trueVariable.setNumber(1);
+        return buildBinInstruction(block, op1, Operator.create(IrType.create(IrType.IrTypeID.BitTyID), Operator.OpCode.XOR), trueVariable);
+    }
+
+    public Variable buildCmpInst(BasicBlock block, Variable a, IcmpInstruction.Condition condition, Variable b) {
+        assert a.getType() == b.getType();
+        Variable res = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
+        IcmpInstruction icmpInstruction = new IcmpInstruction(res, a, b, condition);
+        block.addInstruction(icmpInstruction);
+        return res;
+    }
+
+    public void buildRetInstOfConst(BasicBlock basicBlock, int resultNumber) {
+        Variable variable = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), String.valueOf(resultNumber), false);
+        variable.setNumber(resultNumber);
+        var ret = new RetInstruction(variable);
+        basicBlock.addInstruction(ret);
+    }
+
+    public Variable buildConstIntNum(int number) {
+        return new IntConstValue(number);
+    }
+
+    public void buildRetInstOfConst(BasicBlock basicBlock, Variable variable) {
+        var ret = new RetInstruction(variable);
+        basicBlock.addInstruction(ret);
     }
 
     /**
@@ -75,13 +132,11 @@ public class IrBuilder {
      *
      * @param basicBlock 所属基本块
      * @param varType    类型，如i32
-     * @param name       名，如%1。此名字一定是一个寄存器
+     * @return 一个指针（pointerValue）
      */
-    public Variable buildLocalVariable(BasicBlock basicBlock, IrType varType) {
-        var name = allocator.allocate();
-        Variable variable = new Variable(varType, name);
-        buildAllocaInstruction(basicBlock, variable.toPointer());
-        return variable;
+    public PointerValue buildLocalVariable(BasicBlock basicBlock, IrType.IrTypeID varType) {
+        //        buildStoreInst(basicBlock,,pointerValue); //无初值，则只分配一个指针
+        return buildAllocaInst(basicBlock, varType);
     }
 
     /**
@@ -101,26 +156,25 @@ public class IrBuilder {
      *
      * @param basicBlock 所属基本块
      * @param varType    类型，如i32
-     * @param name       名，如%1。此名字一定是一个寄存器
      * @param value      值。既有可能是一个数字（如3），又有可能是一个寄存器（如%5），需要通过前面是否有%来区分。
      */
-    public Variable buildLocalVariable(BasicBlock basicBlock, IrType varType, int value) {
-        var variable = buildLocalVariable(basicBlock, varType);
-        buildAllocaInstruction(basicBlock, variable.toPointer());
-        variable.setNumber(value); //给variable赋值
-        return variable;
+    public Variable buildLocalVariable(BasicBlock basicBlock, IrType.IrTypeID varType, int value) {
+        var pointer = buildLocalVariable(basicBlock, varType);
+        IntConstValue intConstValue = new IntConstValue(value);
+        buildStoreInst(basicBlock, intConstValue, pointer);
+        return pointer.pointAt;
     }
 
-
     /**
-     * 形如store i32 0, i32* %7
+     * 形如store i32 0, i32* %7。会给指针分配指向的值。
      *
      * @param basicBlock   所属块
      * @param value        第一个操作数（数值，或者寄存器）
      * @param pointerValue 第二个操作数（地址）
      */
-    private void buildStoreInstruction(BasicBlock basicBlock, Variable value, PointerValue pointerValue) {
+    private void buildStoreInst(BasicBlock basicBlock, Variable value, PointerValue pointerValue) {
         StoreInstruction storeInstruction = new StoreInstruction(value, pointerValue);
+        pointerValue.setPointAt(value);
         basicBlock.addInstruction(storeInstruction);
     }
 
@@ -129,9 +183,11 @@ public class IrBuilder {
      *
      * @param basicBlock 指令所属的块
      */
-    private void buildAllocaInstruction(BasicBlock basicBlock, PointerValue pointerValue) {
+    private PointerValue buildAllocaInst(BasicBlock basicBlock, IrType.IrTypeID varType) {
+        PointerValue pointerValue = new PointerValue(IrType.create(varType), allocator.allocate());
         AllocaInstruction allocaInstruction = new AllocaInstruction(pointerValue);
         basicBlock.addInstruction(allocaInstruction);
+        return pointerValue;
     }
 
     /**
@@ -145,8 +201,8 @@ public class IrBuilder {
      * @param number 常量值，如1
      * @return 返回的不是指令，而是<font color='red'>Build出的GlobalVariable</font>
      */
-    public GlobalVariable buildGlobalConstantValue(Module module, IrType type, String name, int number) {
-        var globalVariable = new GlobalVariable(type, name, true);
+    public GlobalVariable buildGlobalConstantValue(Module module, IrType.IrTypeID type, String name, int number) {
+        var globalVariable = new GlobalVariable(IrType.create(type), name, true);
         globalVariable.setNumber(number);
         module.insertGlobal(globalVariable);
         var inst = new GlobalDeclInstruction(globalVariable, true);
@@ -158,12 +214,12 @@ public class IrBuilder {
      * 形如：@a = dso_local global i32 0
      *
      * @param module 模块
-     * @param irType 类型，如i32
+     * @param type   类型，如i32
      * @param name   变量名，如@a。这里需要name，是因为此name不是由allocator分配的 number – 常量值，如1
      * @return 返回的不是指令，而是<font color='red'>Build出的GlobalVariable</font>
      */
-    public GlobalVariable buildGlobalVariable(Module module, IrType irType, String name) {
-        var globalVariable = new GlobalVariable(irType, name, false);
+    public GlobalVariable buildGlobalVariable(Module module, IrType.IrTypeID type, String name) {
+        var globalVariable = new GlobalVariable(IrType.create(type), "@" + name, false);
         var inst = new GlobalDeclInstruction(globalVariable, false);
         module.insertGlobalInst(inst);
         module.insertGlobal(globalVariable);
@@ -173,13 +229,13 @@ public class IrBuilder {
     /**
      * 形如：@a = dso_local global i32 0
      *
-     * @param module 模块
-     * @param irType 类型，如i32
-     * @param name   变量名，如@a。这里需要name，是因为此name不是由allocator分配的 number – 常量值，如1
+     * @param module   模块
+     * @param irTypeID 类型，如i32
+     * @param name     变量名，如@a。这里需要name，是因为此name不是由allocator分配的 number – 常量值，如1
      * @return 返回的不是指令，而是<font color='red'>Build出的GlobalVariable</font>
      */
-    public GlobalVariable buildGlobalVariable(Module module, IrType irType, String name, int number) {
-        var globalVariable = new GlobalVariable(irType, name, false);
+    public GlobalVariable buildGlobalVariable(Module module, IrType.IrTypeID irTypeID, String name, int number) {
+        var globalVariable = new GlobalVariable(IrType.create(irTypeID), "@" + name, false);
         globalVariable.setNumber(number); //设置number
         var inst = new GlobalDeclInstruction(globalVariable, false);
         module.insertGlobalInst(inst);
@@ -191,8 +247,30 @@ public class IrBuilder {
     public Module buildModule(IrContext context) {
         Module module = new Module();
         context.setIrModule(module);
+        module
+                .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.Int32TyID), "@getint").addArg(new Argument(IrType.create(IrType.IrTypeID.VoidTyID), "a")))
+                .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putint").addArg(new Argument(IrType.create(IrType.IrTypeID.Int32TyID), "a")))
+                .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putch").addArg(new Argument(IrType.create(IrType.IrTypeID.Int32TyID), "a")))
+                .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putst").addArg(new Argument(IrType.create(IrType.IrTypeID.ByteTyID), "a")));
+
         return module;
     }
 
+    /**
+     * 形如 %8 = load i32, i32* %3, align 4
+     *
+     * @param block   指令所属块。
+     * @param result  左操作数。让a = b，<font color='red'>而不分配新变量。</font>
+     * @param pointer 右操作数。指针。
+     * @return 只是为了重载的一致性，单纯返回a
+     */
+    public Variable buildLoadInst(BasicBlock block, Variable result, PointerValue pointer) {
+        LoadInstruction loadInstruction = new LoadInstruction(result, pointer);
+        block.addInstruction(loadInstruction);
+        return result;
+    }
 
+    public void buildVoidRetInst(BasicBlock block) {
+        block.addInstruction(new RetInstruction());
+    }
 }

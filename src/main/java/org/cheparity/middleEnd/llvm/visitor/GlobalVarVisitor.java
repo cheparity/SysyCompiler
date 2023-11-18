@@ -2,13 +2,12 @@ package middleEnd.llvm.visitor;
 
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
-import frontEnd.symbols.Symbol;
-import frontEnd.symbols.SymbolTable;
 import middleEnd.ASTNodeVisitor;
-import middleEnd.llvm.IrUtil;
 import middleEnd.llvm.ir.IrBuilder;
 import middleEnd.llvm.ir.IrType;
 import middleEnd.llvm.ir.Module;
+import middleEnd.symbols.Symbol;
+import middleEnd.symbols.SymbolTable;
 
 public final class GlobalVarVisitor implements ASTNodeVisitor {
     private final Module module;
@@ -33,16 +32,16 @@ public final class GlobalVarVisitor implements ASTNodeVisitor {
     private void visitVarDecl(ASTNode varDecl) {
         for (var varDef : varDecl.getChildren()) {
             if (varDef.getGrammarType() != GrammarType.VAR_DEF) continue;
-            String name = "@" + varDef.getChild(0).getRawValue();
+            String name = varDef.getChild(0).getRawValue();
             if (varDef.getChildren().size() == 1) {
                 //VarDef -> Ident
-                builder.buildGlobalVariable(module, IrType.Int32TyID, name);
+                builder.buildGlobalVariable(module, IrType.IrTypeID.Int32TyID, name);
                 continue;
             }
             //VarDef -> Ident '=' InitVal（一定有确切数字值）
-            var number = IrUtil.CalculateConst(varDef.getChild(2), SymbolTable.getGlobal());
+            var number = IrUtil.CalculateConst4Global(varDef.getChild(2).getChild(0));
             //将value加符号表
-            var variable = builder.buildGlobalVariable(module, IrType.Int32TyID, name, number);
+            var variable = builder.buildGlobalVariable(module, IrType.IrTypeID.Int32TyID, name, number);
             assert globalSymbolTable.getSymbol(name).isPresent();
             Symbol symbol = globalSymbolTable.getSymbol(name).get();
             symbol.setIrVariable(variable);
@@ -57,8 +56,8 @@ public final class GlobalVarVisitor implements ASTNodeVisitor {
             //直接以变量名命名
             String name = "@" + constDef.getChild(0).getRawValue();
             //常量计算一定有确定的值，在错误处理阶段检查过
-            var number = IrUtil.CalculateConst(constDef.getChild(2), globalSymbolTable);
-            var variable = builder.buildGlobalConstantValue(module, IrType.Int32TyID, name, number);
+            var number = IrUtil.CalculateConst4Global(constDef.getChild(2));
+            var variable = builder.buildGlobalConstantValue(module, IrType.IrTypeID.Int32TyID, name, number);
             assert globalSymbolTable.getSymbol(name).isPresent();
             Symbol symbol = globalSymbolTable.getSymbol(name).get();
             symbol.setIrVariable(variable);

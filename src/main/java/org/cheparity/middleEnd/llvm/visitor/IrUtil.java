@@ -1,115 +1,21 @@
-package middleEnd.llvm;
+package middleEnd.llvm.visitor;
 
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
-import frontEnd.symbols.Symbol;
-import frontEnd.symbols.SymbolTable;
+import middleEnd.llvm.NodeUnion;
 import middleEnd.llvm.ir.*;
+import middleEnd.symbols.Symbol;
+import middleEnd.symbols.SymbolTable;
 
-public class IrUtil {
-    public static int CalculateConst(ASTNode node, SymbolTable table) {
-        switch (node.getGrammarType()) {
-            case EXP, NUMBER -> {
-                // Exp -> AddExp
-                return CalculateConst(node.getChild(0), table);
-            }
-            case INT_CONST -> {
-                return Integer.parseInt(node.getRawValue());
-            }
-            case ADD_EXP -> {
-                // AddExp -> MulExp | AddExp '+' MulExp | AddExp '-' MulExp
-                // AddExp -> MulExp {('+'|'-') MulExp}
-                if (node.getChildren().size() == 1) {
-                    return CalculateConst(node.getChild(0), table);
-                }
-                var addRes = CalculateConst(node.getChild(0), table);
-                for (int i = 1; i < node.getChildren().size(); i += 2) {
-                    var plusOrMinus = node.getChild(i).getGrammarType();
-                    var mulRes = CalculateConst(node.getChild(i + 1), table);
-                    addRes = (plusOrMinus == GrammarType.PLUS) ? (addRes + mulRes) : (addRes - mulRes);
-                }
-                return addRes;
-            }
-            case MUL_EXP -> {
-                // MulExp -> UnaryExp | MulExp ('*' | '/' | '%') UnaryExp
-                // MulExp -> UnaryExp { ('*' | '/' | '%') UnaryExp }
-                if (node.getChildren().size() == 1) {
-                    return CalculateConst(node.getChild(0), table);
-                }
-                var mulRes = CalculateConst(node.getChild(0), table);
-                for (int i = 1; i < node.getChildren().size(); i += 2) {
-                    var mulOrDivOrMod = node.getChild(i).getGrammarType();
-                    var unaryRes = CalculateConst(node.getChild(i + 1), table);
-                    switch (mulOrDivOrMod) {
-                        case MULTIPLY -> {
-                            mulRes *= unaryRes;
-                        }
-                        case DIVIDE -> {
-                            mulRes /= unaryRes;
-                        }
-                        case MOD -> {
-                            mulRes %= unaryRes;
-                        }
-                        default -> throw new RuntimeException("Unexpected grammar type: " + mulOrDivOrMod);
-                    }
-                }
-                return mulRes;
-            }
-            case UNARY_EXP -> {
-                //UnaryExp -> PrimaryExp | UnaryOp UnaryExp | Ident '(' [FuncRParams] ')'
-                if (node.getChildren().size() == 1) {
-                    return CalculateConst(node.getChild(0), table);
-                }
-                if (node.getChildren().size() == 2) {
-//                    UnaryOp -> '+' | '−' | '!'
-                    var unaryOp = node.getChild(0).getChild(0).getGrammarType();
-                    var unaryExp = node.getChild(1);
-                    var unaryExpRes = CalculateConst(unaryExp, table);
-                    switch (unaryOp) {
-                        case PLUS -> {
-                            return unaryExpRes;
-                        }
-                        case MINUS -> {
-                            return -unaryExpRes;
-                        }
-                        case NOT -> {
-                            return unaryExpRes == 0 ? 1 : 0;
-                        }
-                        default -> throw new RuntimeException("Unexpected grammar type: " + unaryOp);
-                    }
-                }
-                if (node.getChildren().size() == 3) {
-                    //Ident '(' [FuncRParams] ')'
-                    var funcName = node.getChild(0).getRawValue();
-                    var funcRParams = node.getChild(2);
-                    //todo 查表找到函数，计算参数，返回结果
-                }
-            }
-            case PRIMARY_EXP -> {
-//                PrimaryExp ->  LVal | Number | '(' Exp ')'
-                if (node.getChildren().size() == 1) {
-                    return CalculateConst(node.getChild(0), table);
-                }
-                if (node.getChildren().size() == 3) {
-                    return CalculateConst(node.getChild(1), table);
-                }
-            }
-            case LVAL -> {
-                //Ident {'[' Exp ']'}
-                //查表找到变量，计算偏移量，返回结果。要考虑到Ident无值的情况，此时需要分配空间，返回寄存器
-                var name = node.getChild(0).getRawValue();
-                assert table.getSymbol(name).isPresent();
-                Symbol symbol = table.getSymbol(name).get();
-                //todo 没有考虑数组的情况
-                //如果可以获得值，那就返回
-                var num = symbol.getNumber();
-                if (num.isPresent()) return num.get();
-                //todo 如果没有赋初值，寄！要分配新的寄存器进行相加
-                throw new RuntimeException("Should alloca register");
-            }
-            default -> throw new RuntimeException("Unexpected grammar type: " + node.getGrammarType());
-        }
-        return 0;
+class IrUtil {
+    private final SymbolTable table;
+    private final IrBuilder builder;
+    private final BasicBlock block;
+
+    IrUtil(IrBuilder builder, BasicBlock block) {
+        this.block = block;
+        this.table = block.getSymbolTable();
+        this.builder = builder;
     }
 
     /**
@@ -134,11 +40,11 @@ public class IrUtil {
             Integer numb = b.getNumber().get();
             return switch (type) {
                 //这里不能调用buildBinInstruction，因为a，b都不是寄存器
-                case PLUS -> builder.buildLocalVariable(block, a.getType(), numa + numb);
-                case MINUS -> builder.buildLocalVariable(block, a.getType(), numa - numb);
-                case MULTIPLY -> builder.buildLocalVariable(block, a.getType(), numa * numb);
-                case DIVIDE -> builder.buildLocalVariable(block, a.getType(), numa / numb);
-                case MOD -> builder.buildLocalVariable(block, a.getType(), numa % numb);
+                case PLUS -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa + numb);
+                case MINUS -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa - numb);
+                case MULTIPLY -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa * numb);
+                case DIVIDE -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa / numb);
+                case MOD -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa % numb);
                 default -> throw new RuntimeException("Unexpected grammar type: " + type);
             };
         }
@@ -146,13 +52,13 @@ public class IrUtil {
         //a = 10, b = %2
         //a = %2, b = 10
         //a = %2, b = %3
-        Operator add = Operator.create(IrType.Int32TyID, Operator.OpCode.ADD);
-        Operator sub = Operator.create(IrType.Int32TyID, Operator.OpCode.SUB);
-        Operator mul = Operator.create(IrType.Int32TyID, Operator.OpCode.MUL);
-        Operator div = Operator.create(IrType.Int32TyID, Operator.OpCode.SDIV);
-        Operator mod = Operator.create(IrType.Int32TyID, Operator.OpCode.SREM);
-        var aVar = aIsRegister ? a : builder.buildLocalVariable(block, a.getType(), a.getNumber().get());
-        var bVar = bIsRegister ? b : builder.buildLocalVariable(block, b.getType(), b.getNumber().get());
+        Operator add = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.ADD);
+        Operator sub = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.SUB);
+        Operator mul = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.MUL);
+        Operator div = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.SDIV);
+        Operator mod = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.SREM);
+        var aVar = aIsRegister ? a : builder.buildLocalVariable(block, a.getType().getBasicType(), a.getNumber().get());
+        var bVar = bIsRegister ? b : builder.buildLocalVariable(block, b.getType().getBasicType(), b.getNumber().get());
         //现在aVar和bVar都是寄存器了
         return switch (type) {
             case PLUS -> builder.buildBinInstruction(block, aVar, add, bVar);
@@ -164,12 +70,124 @@ public class IrUtil {
         };
     }
 
-    public static NodeUnion calc(ASTNode node, SymbolTable table) {
-        NodeUnion union = new NodeUnion(node);
+    /**
+     * @param node 节点
+     * @return 整数数值
+     * @deprecated 由于只能计算const相加的情况，而不能计算寄存器相加的情况，所以弃用。
+     */
+    public static int CalculateConst4Global(ASTNode node) {
         switch (node.getGrammarType()) {
             case EXP, NUMBER -> {
                 // Exp -> AddExp
-                return calc(node.getChild(0), table);
+                return CalculateConst4Global(node.getChild(0));
+            }
+            case INT_CONST -> {
+                return Integer.parseInt(node.getRawValue());
+            }
+            case ADD_EXP -> {
+                // AddExp -> MulExp | AddExp '+' MulExp | AddExp '-' MulExp
+                // AddExp -> MulExp {('+'|'-') MulExp}
+                if (node.getChildren().size() == 1) {
+                    return CalculateConst4Global(node.getChild(0));
+                }
+                var addRes = CalculateConst4Global(node.getChild(0));
+                for (int i = 1; i < node.getChildren().size(); i += 2) {
+                    var plusOrMinus = node.getChild(i).getGrammarType();
+                    var mulRes = CalculateConst4Global(node.getChild(i + 1));
+                    addRes = (plusOrMinus == GrammarType.PLUS) ? (addRes + mulRes) : (addRes - mulRes);
+                }
+                return addRes;
+            }
+            case MUL_EXP -> {
+                // MulExp -> UnaryExp | MulExp ('*' | '/' | '%') UnaryExp
+                // MulExp -> UnaryExp { ('*' | '/' | '%') UnaryExp }
+                if (node.getChildren().size() == 1) {
+                    return CalculateConst4Global(node.getChild(0));
+                }
+                var mulRes = CalculateConst4Global(node.getChild(0));
+                for (int i = 1; i < node.getChildren().size(); i += 2) {
+                    var mulOrDivOrMod = node.getChild(i).getGrammarType();
+                    var unaryRes = CalculateConst4Global(node.getChild(i + 1));
+                    switch (mulOrDivOrMod) {
+                        case MULTIPLY -> {
+                            mulRes *= unaryRes;
+                        }
+                        case DIVIDE -> {
+                            mulRes /= unaryRes;
+                        }
+                        case MOD -> {
+                            mulRes %= unaryRes;
+                        }
+                        default -> throw new RuntimeException("Unexpected grammar type: " + mulOrDivOrMod);
+                    }
+                }
+                return mulRes;
+            }
+            case UNARY_EXP -> {
+                //UnaryExp -> PrimaryExp | UnaryOp UnaryExp | Ident '(' [FuncRParams] ')'
+                if (node.getChildren().size() == 1) {
+                    return CalculateConst4Global(node.getChild(0));
+                }
+                if (node.getChildren().size() == 2) {
+//                    UnaryOp -> '+' | '−' | '!'
+                    var unaryOp = node.getChild(0).getChild(0).getGrammarType();
+                    var unaryExp = node.getChild(1);
+                    var unaryExpRes = CalculateConst4Global(unaryExp);
+                    switch (unaryOp) {
+                        case PLUS -> {
+                            return unaryExpRes;
+                        }
+                        case MINUS -> {
+                            return -unaryExpRes;
+                        }
+                        case NOT -> {
+                            return unaryExpRes == 0 ? 1 : 0;
+                        }
+                        default -> throw new RuntimeException("Unexpected grammar type: " + unaryOp);
+                    }
+                }
+                if (node.getChildren().size() == 3) {
+                    //Ident '(' [FuncRParams] ')'
+                    var funcName = node.getChild(0).getRawValue();
+                    var funcRParams = node.getChild(2);
+                    //todo 查表找到函数，计算参数，返回结果
+                }
+            }
+            case PRIMARY_EXP -> {
+//                PrimaryExp ->  LVal | Number | '(' Exp ')'
+                if (node.getChildren().size() == 1) {
+                    return CalculateConst4Global(node.getChild(0));
+                }
+                if (node.getChildren().size() == 3) {
+                    return CalculateConst4Global(node.getChild(1));
+                }
+            }
+            case LVAL -> {
+                //Ident {'[' Exp ']'}
+                //查表找到变量，计算偏移量，返回结果。要考虑到Ident无值的情况，此时需要分配空间，返回寄存器
+                var name = node.getChild(0).getRawValue();
+//                assert table.getSymbol(name).isPresent();
+                var table = SymbolTable.getGlobal();
+                assert table.getSymbol(name).isPresent();
+                Symbol symbol = table.getSymbol(name).get();
+                //todo 没有考虑数组的情况
+                //如果可以获得值，那就返回
+                var num = symbol.getNumber();
+                if (num.isPresent()) return num.get();
+                //todo 如果没有赋初值，寄！要分配新的寄存器进行相加
+                throw new RuntimeException("Should alloca register");
+            }
+            default -> throw new RuntimeException("Unexpected grammar type: " + node.getGrammarType());
+        }
+        return 0;
+    }
+
+    public NodeUnion calc(ASTNode node) {
+        NodeUnion union = new NodeUnion(node, builder, block);
+        switch (node.getGrammarType()) {
+            case EXP, NUMBER -> {
+                // Exp -> AddExp
+                return calc(node.getChild(0));
             }
             case INT_CONST -> {
                 return union.setNumber(Integer.parseInt(node.getRawValue()));
@@ -178,12 +196,12 @@ public class IrUtil {
                 // AddExp -> MulExp | AddExp '+' MulExp | AddExp '-' MulExp
                 // AddExp -> MulExp {('+'|'-') MulExp}
                 if (node.getChildren().size() == 1) {
-                    return calc(node.getChild(0), table);
+                    return calc(node.getChild(0));
                 }
-                var addRes = calc(node.getChild(0), table);
+                var addRes = calc(node.getChild(0));
                 for (int i = 1; i < node.getChildren().size(); i += 2) {
                     var plusOrMinus = node.getChild(i).getGrammarType();
-                    var mulRes = calc(node.getChild(i + 1), table);
+                    var mulRes = calc(node.getChild(i + 1));
                     addRes = (plusOrMinus == GrammarType.PLUS) ? (addRes.add(mulRes)) : (addRes.sub(mulRes));
                 }
 
@@ -193,11 +211,11 @@ public class IrUtil {
                 // MulExp -> UnaryExp | MulExp ('*' | '/' | '%') UnaryExp
                 // MulExp -> UnaryExp { ('*' | '/' | '%') UnaryExp }
                 if (node.getChildren().size() == 1) {
-                    return calc(node.getChild(0), table);
+                    return calc(node.getChild(0));
                 }
-                var mulRes = calc(node.getChild(0), table);
+                var mulRes = calc(node.getChild(0));
                 for (int i = 1; i < node.getChildren().size(); i += 2) {
-                    var unaryRes = calc(node.getChild(i + 1), table);
+                    var unaryRes = calc(node.getChild(i + 1));
                     var mulOrDivOrMod = node.getChild(i).getGrammarType();
                     mulRes = switch (mulOrDivOrMod) {
                         case MULTIPLY -> mulRes.mul(unaryRes);
@@ -211,13 +229,13 @@ public class IrUtil {
             case UNARY_EXP -> {
                 //UnaryExp -> PrimaryExp | UnaryOp UnaryExp | Ident '(' [FuncRParams] ')'
                 if (node.getChildren().size() == 1) {
-                    return calc(node.getChild(0), table);
+                    return calc(node.getChild(0));
                 }
                 if (node.getChildren().size() == 2) {
 //                    UnaryOp -> '+' | '−' | '!'
                     var unaryOp = node.getChild(0).getChild(0).getGrammarType();
                     var unaryExp = node.getChild(1);
-                    var unaryExpRes = calc(unaryExp, table);
+                    var unaryExpRes = calc(unaryExp);
                     switch (unaryOp) {
                         case PLUS -> {
                             return unaryExpRes;
@@ -242,10 +260,10 @@ public class IrUtil {
             case PRIMARY_EXP -> {
 //                PrimaryExp ->  LVal | Number | '(' Exp ')'
                 if (node.getChildren().size() == 1) {
-                    return calc(node.getChild(0), table);
+                    return calc(node.getChild(0));
                 }
                 if (node.getChildren().size() == 3) {
-                    return calc(node.getChild(1), table);
+                    return calc(node.getChild(1));
                 }
             }
             case LVAL -> {
@@ -258,7 +276,7 @@ public class IrUtil {
                 //如果可以获得值，那就返回
                 var num = symbol.getNumber();
                 if (num.isPresent()) return union.setNumber(num.get());
-                //如果没有赋初值，寄！要分配新的寄存器进行相加。一定是有Variable的，语法检查已经检查过了
+                //如果没有赋初值，则要分配新的寄存器进行相加。一定是有Variable的，语法检查已经检查过了
                 assert symbol.getIrVariable().isPresent();
                 return union.setVariable(symbol.getIrVariable().get());
             }
@@ -266,6 +284,4 @@ public class IrUtil {
         }
         throw new RuntimeException("You shouldn't walk this");
     }
-
-
 }

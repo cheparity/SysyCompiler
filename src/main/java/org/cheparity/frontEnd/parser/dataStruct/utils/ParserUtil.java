@@ -3,7 +3,7 @@ package frontEnd.parser.dataStruct.utils;
 import frontEnd.parser.dataStruct.ASTLeaf;
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
-import frontEnd.symbols.*;
+import middleEnd.symbols.*;
 
 import java.util.Optional;
 

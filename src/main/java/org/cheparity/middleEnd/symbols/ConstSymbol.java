@@ -1,4 +1,4 @@
-package frontEnd.symbols;
+package middleEnd.symbols;
 
 import frontEnd.lexer.dataStruct.Token;
 

@@ -2,14 +2,10 @@ package middleEnd.llvm.visitor;
 
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
-import frontEnd.symbols.Symbol;
-import frontEnd.symbols.SymbolTable;
 import middleEnd.ASTNodeVisitor;
-import middleEnd.llvm.IrUtil;
-import middleEnd.llvm.ir.BasicBlock;
-import middleEnd.llvm.ir.IrBuilder;
-import middleEnd.llvm.ir.IrType;
-import middleEnd.llvm.ir.Variable;
+import middleEnd.llvm.ir.*;
+import middleEnd.symbols.Symbol;
+import middleEnd.symbols.SymbolTable;
 
 public final class LocalVarVisitor implements ASTNodeVisitor {
     private final BasicBlock basicBlock;
@@ -23,26 +19,44 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
     }
 
     @Override
-    public void visit(ASTNode varDef) {
-        assert varDef.getGrammarType() == GrammarType.VAR_DEF;
+    public void visit(ASTNode varDecl) {
+        assert varDecl.getGrammarType() == GrammarType.VAR_DECL;
+        //VarDecl -> BType VarDef { ',' VarDef } ';'
         //VarDef -> Ident { '[' ConstExp ']' } ['=' InitVal]
-        //查表获得符号 -> 添加到符号表
-        var varRawName = varDef.getChild(0).getRawValue();
-        assert symbolTable.getSymbol(varRawName).isPresent();
-        Symbol symbol = symbolTable.getSymbol(varRawName).get();
-        Variable variable;
-        if (varDef.getChildren().size() == 1) {
-            //没有初始值
-            //VarDef -> Ident
-            variable = builder.buildLocalVariable(basicBlock, IrType.Int32TyID);
-        } else {
-            //有初始值的情况，此时[value]很可能是一个寄存器的地址（CalculateConst无法得出具体的数字）。这个怎么处理呢？
-            //VarDef -> Ident '=' InitVal
-            var value = IrUtil.CalculateConst(varDef.getChild(2), symbolTable);
-            //注意，在local variables中，即使是const，也是开辟一段空间
-            //todo 如果后面有引用const的值，则直接替换为const的值。符号表已经存下来了，所以我们应该不用考虑const？
-        }
-        symbol.setIrVariable(variable);
+        for (var varDef : varDecl.getChildren()) {
+            if (varDef.getGrammarType() != GrammarType.VAR_DEF) continue;
+            //查表获得符号 -> 添加到符号表
+            var varRawName = varDef.getChild(0).getRawValue();
+            assert symbolTable.getSymbol(varRawName).isPresent();
+            Symbol symbol = symbolTable.getSymbol(varRawName).get();
+            if (varDef.deepDownFind(GrammarType.INIT_VAL, 1).isPresent()) {
+                //如果有初值
+                var nodeUnion = new IrUtil(builder, basicBlock).calc(varDef.getChild(2).getChild(0));
+                if (nodeUnion.isNum) {
+                    Variable variable = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID, nodeUnion.getNumber());
+                    symbol.setIrVariable(variable);
+                } else {
+                    PointerValue pointerValue = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID);
+                    throw new RuntimeException("Not implement!"); //todo
+                }
+            } else {
+                //没有初值
+                PointerValue pointerValue = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID);
+                throw new RuntimeException("Not implement!"); //todo
+            }
 
+//            Variable variable = builder.buildLocalVariable(basicBlock, IrTypeID.Int32TyID);
+//            if (varDef.getChildren().size() != 1) {
+//                //VarDef -> Ident '=' InitVal
+//                var nodeUnion = new IrUtil(builder, basicBlock).calc(varDef.getChild(2).getChild(0));
+//                if (nodeUnion.isNum) {
+//                    variable.setNumber(nodeUnion.getNumber());
+//                } else {
+//                    //todo 这里换成其他指令如add是不是会快一点？
+//                    builder.buildLoadInst(basicBlock, variable, nodeUnion.getVariable().toPointer());
+//                }
+//            }
+//            symbol.setIrVariable(variable);
+        }
     }
 }

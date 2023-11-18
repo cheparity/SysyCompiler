@@ -8,7 +8,7 @@ import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
 import frontEnd.parser.dataStruct.utils.LoggerUtil;
 import frontEnd.parser.dataStruct.utils.ParserUtil;
-import frontEnd.symbols.*;
+import middleEnd.symbols.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -700,6 +700,7 @@ public class RecursiveDescentParser implements SysYParser {
         if (leftBrace.isPresent()) {
             block.addChild(leftBrace.get());
         } else {
+            this.nowSymbolTable = nowSymbolTable.getOuter();//释放符号表
             return failed(initIndex);
         }
 
@@ -713,6 +714,7 @@ public class RecursiveDescentParser implements SysYParser {
         if (rightBrace.isPresent()) {
             block.addChild(rightBrace.get());
         } else {
+            this.nowSymbolTable = nowSymbolTable.getOuter();//释放符号表
             return failed(initIndex);
         }
         this.nowSymbolTable = this.nowSymbolTable.getOuter();

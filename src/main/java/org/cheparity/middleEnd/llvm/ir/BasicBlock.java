@@ -1,16 +1,22 @@
 package middleEnd.llvm.ir;
 
-import frontEnd.symbols.SymbolTable;
+import middleEnd.symbols.SymbolTable;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public final class BasicBlock extends Value {
-    private List<Instruction> instructionList = new ArrayList<>();
+public class BasicBlock extends Value {
+    private final List<Instruction> instructionList = new ArrayList<>();
+    private final List<NestBlock> nestBlockList = new ArrayList<>();
     private SymbolTable symbolTable;
+    private Function entryFunc;
 
     BasicBlock(String name) {
-        super(IrType.LabelTyID, name);
+        super(IrType.create(IrType.IrTypeID.LabelTyID), name);
+    }
+
+    protected void addNestBlock(NestBlock block) {
+        this.nestBlockList.add(block);
     }
 
     public SymbolTable getSymbolTable() {
@@ -19,6 +25,14 @@ public final class BasicBlock extends Value {
 
     public void setSymbolTable(SymbolTable symbolTable) {
         this.symbolTable = symbolTable;
+    }
+
+    public Function getEntryFunc() {
+        return this.entryFunc;
+    }
+
+    void setEntryFunc(Function function) {
+        this.entryFunc = function;
     }
 
     void addInstruction(Instruction instruction) {

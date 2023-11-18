@@ -34,6 +34,6 @@ public final class GlobalDeclInstruction extends Instruction {
     //<name> = dso_local <op Code> <type value>
     @Override
     public String toIrCode() {
-        return String.format("%s = dso_local %s %s", getName(), modifier, variable.toIrCode());
+        return String.format("%s = dso_local %s %s", variable.getName(), modifier, variable.toIrCode());
     }
 }

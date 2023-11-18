@@ -21,7 +21,7 @@ public class Variable extends Value implements Countable {
     Variable(IrType type, String name) {
         super(type, name);
         readonly = false;
-        this.pointer = new PointerValue(type, name);
+        this.pointer = new PointerValue(type, name, this);
         this.pointer.pointAt = this; //将指针变量指向自己
     }
 
@@ -36,7 +36,7 @@ public class Variable extends Value implements Countable {
     Variable(IrType type, String name, boolean readonly) {
         super(type, name);
         this.readonly = readonly;
-        this.pointer = new PointerValue(type, name);
+        this.pointer = new PointerValue(type, name, this);
     }
 
     /**
@@ -60,23 +60,17 @@ public class Variable extends Value implements Countable {
         this.number = number;
     }
 
-    /**
-     * 只被<font color='red'>{@link PointerValue}调用</font>。当new一个指针变量的时候，会自动调用此方法。
-     *
-     * @param pointer 指针变量
-     */
-    protected void setPointer(PointerValue pointer) {
-        this.pointer = pointer;
-    }
-
-
-    PointerValue toPointer() {
+    public PointerValue toPointer() {
         return pointer;
     }
 
+    /**
+     * 修改：只输出了变量名。可能会导致某些指令（如ret指令）出bug。
+     *
+     * @return 如果有数值则输出数值，否则输出寄存器名。
+     */
     @Override
     public String toIrCode() {
-        var n = getNumber().isEmpty() ? getName() : getNumber().get(); //如果有数值，则输出数值；否则输出数字
-        return getType().toIrCode() + " " + n;
+        return getNumber().isEmpty() ? getName() : getNumber().get().toString();
     }
 }

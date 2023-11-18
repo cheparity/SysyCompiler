@@ -6,8 +6,9 @@ import java.util.List;
 public class Function extends GlobalValue implements GlobalObjects {
     private final List<Argument> arguments = new ArrayList<>();
     private final IrType returnType;
+    private final Module module; //所属module
+    //    private final List<BasicBlock> blockList = new ArrayList<>();
     private BasicBlock entryBlock;
-    private Module module;
 
     Function(IrType type, String name, Module module) {
         super(type, name);
@@ -25,6 +26,15 @@ public class Function extends GlobalValue implements GlobalObjects {
 
     void setEntryBlock(BasicBlock entryBlock) {
         this.entryBlock = entryBlock;
+        entryBlock.setEntryFunc(this);
+    }
+
+//    public void addBasicBlock(BasicBlock basicBlock) {
+//        this.blockList.add(basicBlock);
+//    }
+
+    public Module getModule() {
+        return module;
     }
 
     @Override
