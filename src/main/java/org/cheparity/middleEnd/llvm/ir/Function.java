@@ -24,12 +24,15 @@ public class Function extends GlobalValue implements GlobalObjects {
         return arguments;
     }
 
+    BasicBlock getEntryBlock() {
+        return entryBlock;
+    }
+
     void setEntryBlock(BasicBlock entryBlock) {
         this.entryBlock = entryBlock;
         entryBlock.setEntryFunc(this);
     }
-
-//    public void addBasicBlock(BasicBlock basicBlock) {
+    //    public void addBasicBlock(BasicBlock basicBlock) {
 //        this.blockList.add(basicBlock);
 //    }
 

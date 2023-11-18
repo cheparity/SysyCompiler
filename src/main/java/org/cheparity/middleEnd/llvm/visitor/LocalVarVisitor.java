@@ -36,27 +36,15 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
                     Variable variable = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID, nodeUnion.getNumber());
                     symbol.setIrVariable(variable);
                 } else {
+                    //是一个 variable（未知量）
                     PointerValue pointerValue = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID);
                     throw new RuntimeException("Not implement!"); //todo
                 }
             } else {
                 //没有初值
                 PointerValue pointerValue = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID);
-                throw new RuntimeException("Not implement!"); //todo
+                symbol.setPointer(pointerValue);
             }
-
-//            Variable variable = builder.buildLocalVariable(basicBlock, IrTypeID.Int32TyID);
-//            if (varDef.getChildren().size() != 1) {
-//                //VarDef -> Ident '=' InitVal
-//                var nodeUnion = new IrUtil(builder, basicBlock).calc(varDef.getChild(2).getChild(0));
-//                if (nodeUnion.isNum) {
-//                    variable.setNumber(nodeUnion.getNumber());
-//                } else {
-//                    //todo 这里换成其他指令如add是不是会快一点？
-//                    builder.buildLoadInst(basicBlock, variable, nodeUnion.getVariable().toPointer());
-//                }
-//            }
-//            symbol.setIrVariable(variable);
         }
     }
 }

@@ -34,7 +34,7 @@ public final class IrType implements IrPrintable {
 
     public enum IrTypeID implements IrPrintable {
         // PrimitiveTypes - make sure LastPrimitiveTyID stays up to date.
-        VoidTyID(""),        //0: type with no size
+        VoidTyID("void"),        //0: type with no size
         BitTyID("i1"),      //1-bit type
         ByteTyID("i8"),
         Int32TyID("i32"),       //2: 32-bit int type

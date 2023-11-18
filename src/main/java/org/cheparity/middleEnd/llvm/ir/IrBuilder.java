@@ -251,8 +251,12 @@ public class IrBuilder {
                 .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.Int32TyID), "@getint").addArg(new Argument(IrType.create(IrType.IrTypeID.VoidTyID), "a")))
                 .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putint").addArg(new Argument(IrType.create(IrType.IrTypeID.Int32TyID), "a")))
                 .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putch").addArg(new Argument(IrType.create(IrType.IrTypeID.Int32TyID), "a")))
-                .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putst").addArg(new Argument(IrType.create(IrType.IrTypeID.ByteTyID), "a")));
-
+                .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putstr").addArg(new Argument(IrType.create(IrType.IrTypeID.ByteTyID), "a")));
+        module
+                .insertFunc(new Function(IrType.create(IrType.IrTypeID.Int32TyID), "@getint", module))
+                .insertFunc(new Function(IrType.create(IrType.IrTypeID.VoidTyID), "@putint", module))
+                .insertFunc(new Function(IrType.create(IrType.IrTypeID.VoidTyID), "@putch", module))
+                .insertFunc(new Function(IrType.create(IrType.IrTypeID.VoidTyID), "@putstr", module));
         return module;
     }
 
@@ -272,5 +276,27 @@ public class IrBuilder {
 
     public void buildVoidRetInst(BasicBlock block) {
         block.addInstruction(new RetInstruction());
+    }
+
+    public Variable buildCallInst(BasicBlock block, String funName, Variable... arguments) {
+        Module module = block.getEntryFunc().getModule();
+        Function func = module.getFunc("@" + funName);
+        Variable variable = new Variable(func.getType(), allocator.allocate());
+        CallInstruction callInstruction = new CallInstruction(func, variable, arguments);
+        block.addInstruction(callInstruction);
+        return variable;
+    }
+
+    /**
+     * 把一个寄存器的值赋给一个变量，形如：store i32 %5, i32* %4
+     *
+     * @param basicBlock   所属块
+     * @param variable     变量
+     * @param pointerValue 寄存器
+     */
+    public void buildAssignInst(BasicBlock basicBlock, Variable variable, PointerValue pointerValue) {
+        StoreInstruction storeInstruction = new StoreInstruction(variable, pointerValue);
+        basicBlock.addInstruction(storeInstruction);
+        pointerValue.setPointAt(variable);
     }
 }

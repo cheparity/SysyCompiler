@@ -5,6 +5,10 @@ import frontEnd.parser.dataStruct.GrammarType;
 import middleEnd.ASTNodeVisitor;
 import middleEnd.llvm.ir.BasicBlock;
 import middleEnd.llvm.ir.IrBuilder;
+import middleEnd.llvm.ir.Variable;
+import middleEnd.symbols.Symbol;
+
+import java.util.List;
 
 public final class StmtVisitor implements ASTNodeVisitor {
     private final BasicBlock basicBlock;
@@ -54,6 +58,39 @@ public final class StmtVisitor implements ASTNodeVisitor {
         else if (stmt.getChild(0).getGrammarType() == GrammarType.BLOCK) {
             //语法检查阶段时已经确保语法没问题了，即不会出现引用块内变量的情况。
             stmt.accept(new BlockVisitor(basicBlock, builder));
+        }
+        //Stmt -> LVal '=' 'getint''('')'';'
+        else if (stmt.deepDownFind(GrammarType.GETINT, 1).isPresent()) {
+            var lval = stmt.getChild(0);
+            String lvalName = lval.getChild(0).getRawValue();
+            assert basicBlock.getSymbolTable().getSymbol(lvalName).isPresent();
+            Symbol symbol = basicBlock.getSymbolTable().getSymbol(lvalName).get();
+            //给symbol重新赋值
+            Variable variable = builder.buildCallInst(basicBlock, "getint");
+            builder.buildAssignInst(basicBlock, variable, symbol.getPointer());
+        }
+        //stmt -> 'printf''('FormatString{','Exp}')'';'
+        else if (stmt.getChild(0).getGrammarType() == GrammarType.PRINTF) {
+            var formatString = stmt.getChild(2).getRawValue();
+            List<ASTNode> exps = stmt.getChildren().stream().filter(node -> node.getGrammarType() == GrammarType.EXP).toList();
+            var args = new Variable[exps.size()];
+            for (int i = 0; i < exps.size(); i++) {
+                var res = new IrUtil(builder, basicBlock).calc(exps.get(i));
+                if (res.isNum) args[i] = builder.buildConstIntNum(res.getNumber());
+                else args[i] = res.getVariable();
+            }
+            //解析formatString
+            char[] chars = formatString.toCharArray();
+            int argCnt = 0;
+            for (int i = 0; i < chars.length; i++) {
+                if (chars[i] == '%' && chars[i + 1] == 'd') {
+                    builder.buildCallInst(basicBlock, "putch", args[argCnt]);
+                    argCnt++;
+                    i++;
+                } else {
+                    builder.buildCallInst(basicBlock, "putch", builder.buildConstIntNum(chars[i]));
+                }
+            }
         }
     }
 }

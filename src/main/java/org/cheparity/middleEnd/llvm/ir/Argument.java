@@ -7,6 +7,6 @@ public final class Argument extends Value {
 
     @Override
     public String toIrCode() {
-        return null; //todo
+        return getType().toIrCode();
     }
 }

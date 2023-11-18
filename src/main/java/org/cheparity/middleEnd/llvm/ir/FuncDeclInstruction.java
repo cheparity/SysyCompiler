@@ -18,4 +18,18 @@ public class FuncDeclInstruction extends Instruction {
         this.arguments.addAll(Arrays.asList(arguments));
         return this;
     }
+
+    @Override
+    public String toIrCode() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("declare ").append(retType.toIrCode()).append(" ").append(funcName).append("(");
+        for (int i = 0; i < arguments.size(); i++) {
+            var type = arguments.get(i);
+            if (type.getType().getBasicType() == IrType.IrTypeID.VoidTyID) continue;
+            sb.append(type.toIrCode());
+            if (i != arguments.size() - 1) sb.append(", ");
+        }
+        sb.append(")");
+        return sb.toString();
+    }
 }

@@ -9,9 +9,6 @@ public class Module extends Value {
             "declare void @putint(i32)\n" +
             "declare void @putch(i32)\n" +
             "declare void @putstr(i8*)\n\n";
-    /**
-     * Module's Type is considered as VoidTyID
-     */
     List<Function> functions = new ArrayList<>();
     List<GlobalValue> globalValues = new ArrayList<>();
     List<Instruction> globalInstructions = new ArrayList<>();
@@ -29,8 +26,18 @@ public class Module extends Value {
         return this;
     }
 
-    void insertFunc(Function function) {
+    Module insertFunc(Function function) {
         functions.add(function);
+        return this;
+    }
+
+    Function getFunc(String name) {
+        for (var func : functions) {
+            if (func.getName().equals(name)) {
+                return func;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -42,6 +49,7 @@ public class Module extends Value {
         }
         sb.append("\n");
         for (Function function : functions) {
+            if (function.getEntryBlock() == null) continue; //decl的函数
             sb.append(function.toIrCode()).append("\n");
         }
         return sb.toString();

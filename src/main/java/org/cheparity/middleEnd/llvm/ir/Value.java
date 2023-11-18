@@ -60,10 +60,5 @@ public abstract class Value implements IrPrintable {
         return type + " " + name;
     }
 
-//    void replaceAllUsesWith(Value newValue) {
-//        for (Use use : useList) {
-//            use.set(newValue);
-//        }
-//    }
 
 }

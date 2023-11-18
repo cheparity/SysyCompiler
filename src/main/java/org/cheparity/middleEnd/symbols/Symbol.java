@@ -1,6 +1,7 @@
 package middleEnd.symbols;
 
 import frontEnd.lexer.dataStruct.Token;
+import middleEnd.llvm.ir.PointerValue;
 import middleEnd.llvm.ir.Variable;
 
 import java.util.Optional;
@@ -22,6 +23,10 @@ public abstract class Symbol {
      * The register that this symbol is assigned to.
      */
     private Variable irVariable;
+    /**
+     * 在没有初始化的时候，没有irVariable，只有pointer
+     */
+    private PointerValue pointer;
 
     public Symbol(SymbolTable table, SymbolType type, Token token) {
         this.symbolTable = table;
@@ -57,4 +62,11 @@ public abstract class Symbol {
     }
 
 
+    public PointerValue getPointer() {
+        return pointer;
+    }
+
+    public void setPointer(PointerValue pointer) {
+        this.pointer = pointer;
+    }
 }
