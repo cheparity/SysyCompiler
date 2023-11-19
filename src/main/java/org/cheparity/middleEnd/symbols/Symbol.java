@@ -20,13 +20,13 @@ public abstract class Symbol {
      */
     private final Token token;
     /**
-     * The register that this symbol is assigned to.
+     * 函数被load进寄存器时，初始化irVariable。
      */
     private Variable irVariable;
     /**
-     * 在没有初始化的时候，没有irVariable，只有pointer
+     * 符号的地址。<font color='red'>当初始化符号时，初始化地址；当给符号赋值时调用store指令，也是给地址赋值。</font>
      */
-    private PointerValue pointer;
+    private PointerValue pointerValue;
 
     public Symbol(SymbolTable table, SymbolType type, Token token) {
         this.symbolTable = table;
@@ -61,12 +61,7 @@ public abstract class Symbol {
         return this.type;
     }
 
-
     public PointerValue getPointer() {
-        return pointer;
-    }
-
-    public void setPointer(PointerValue pointer) {
-        this.pointer = pointer;
+        return this.irVariable.toPointer();
     }
 }

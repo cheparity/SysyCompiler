@@ -3,7 +3,10 @@ package middleEnd.llvm.visitor;
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
 import middleEnd.ASTNodeVisitor;
-import middleEnd.llvm.ir.*;
+import middleEnd.llvm.ir.BasicBlock;
+import middleEnd.llvm.ir.IrBuilder;
+import middleEnd.llvm.ir.IrType;
+import middleEnd.llvm.ir.Variable;
 import middleEnd.symbols.Symbol;
 import middleEnd.symbols.SymbolTable;
 
@@ -37,13 +40,13 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
                     symbol.setIrVariable(variable);
                 } else {
                     //是一个 variable（未知量）
-                    PointerValue pointerValue = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID);
+                    Variable pointerValue = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID);
                     throw new RuntimeException("Not implement!"); //todo
                 }
             } else {
                 //没有初值
-                PointerValue pointerValue = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID);
-                symbol.setPointer(pointerValue);
+                Variable pointerValue = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID);
+                symbol.setIrVariable(pointerValue);
             }
         }
     }

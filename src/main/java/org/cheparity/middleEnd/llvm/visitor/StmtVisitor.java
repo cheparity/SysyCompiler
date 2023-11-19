@@ -1,22 +1,27 @@
 package middleEnd.llvm.visitor;
 
+import frontEnd.parser.dataStruct.ASTLeaf;
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
 import middleEnd.ASTNodeVisitor;
+import middleEnd.llvm.NodeUnion;
 import middleEnd.llvm.ir.BasicBlock;
 import middleEnd.llvm.ir.IrBuilder;
 import middleEnd.llvm.ir.Variable;
 import middleEnd.symbols.Symbol;
+import middleEnd.symbols.SymbolTable;
 
 import java.util.List;
 
 public final class StmtVisitor implements ASTNodeVisitor {
     private final BasicBlock basicBlock;
     private final IrBuilder builder;
+    private final SymbolTable symbolTable;
 
     public StmtVisitor(BasicBlock basicBlock, IrBuilder builder) {
         this.basicBlock = basicBlock;
         this.builder = builder;
+        this.symbolTable = basicBlock.getSymbolTable();
     }
 
     /**
@@ -67,11 +72,11 @@ public final class StmtVisitor implements ASTNodeVisitor {
             Symbol symbol = basicBlock.getSymbolTable().getSymbol(lvalName).get();
             //给symbol重新赋值
             Variable variable = builder.buildCallInst(basicBlock, "getint");
-            builder.buildAssignInst(basicBlock, variable, symbol.getPointer());
+            builder.buildStoreInst(basicBlock, variable, symbol.getPointer());
         }
         //stmt -> 'printf''('FormatString{','Exp}')'';'
         else if (stmt.getChild(0).getGrammarType() == GrammarType.PRINTF) {
-            var formatString = stmt.getChild(2).getRawValue();
+            var formatString = ((ASTLeaf) stmt.getChild(2)).getToken().getRawValue();
             List<ASTNode> exps = stmt.getChildren().stream().filter(node -> node.getGrammarType() == GrammarType.EXP).toList();
             var args = new Variable[exps.size()];
             for (int i = 0; i < exps.size(); i++) {
@@ -82,7 +87,7 @@ public final class StmtVisitor implements ASTNodeVisitor {
             //解析formatString
             char[] chars = formatString.toCharArray();
             int argCnt = 0;
-            for (int i = 0; i < chars.length; i++) {
+            for (int i = 1; i < chars.length - 1; i++) {
                 if (chars[i] == '%' && chars[i + 1] == 'd') {
                     builder.buildCallInst(basicBlock, "putch", args[argCnt]);
                     argCnt++;
@@ -90,6 +95,20 @@ public final class StmtVisitor implements ASTNodeVisitor {
                 } else {
                     builder.buildCallInst(basicBlock, "putch", builder.buildConstIntNum(chars[i]));
                 }
+            }
+        }
+        //Stmt -> LVal '=' Exp ';'
+        else if (stmt.getChild(0).getGrammarType() == GrammarType.LVAL) {
+            //LVal -> Ident {'[' Exp ']'}
+            assert symbolTable.getSymbol(stmt.getChild(0).getRawValue()).isPresent();
+            Symbol symbol = symbolTable.getSymbol(stmt.getChild(0).getRawValue()).get();
+            assert symbol.getIrVariable().isPresent();
+            Variable variable = symbol.getIrVariable().get();
+            NodeUnion result = new IrUtil(builder, basicBlock).calc(stmt.getChild(2));
+            if (result.isNum) {
+                builder.buildStoreInst(basicBlock, builder.buildConstIntNum(result.getNumber()), variable.toPointer());
+            } else {
+                builder.buildStoreInst(basicBlock, result.getVariable(), variable.toPointer());
             }
         }
     }

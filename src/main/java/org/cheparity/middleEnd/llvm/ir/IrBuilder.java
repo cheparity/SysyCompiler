@@ -134,7 +134,7 @@ public class IrBuilder {
      * @param varType    类型，如i32
      * @return 一个指针（pointerValue）
      */
-    public PointerValue buildLocalVariable(BasicBlock basicBlock, IrType.IrTypeID varType) {
+    public Variable buildLocalVariable(BasicBlock basicBlock, IrType.IrTypeID varType) {
         //        buildStoreInst(basicBlock,,pointerValue); //无初值，则只分配一个指针
         return buildAllocaInst(basicBlock, varType);
     }
@@ -161,30 +161,18 @@ public class IrBuilder {
     public Variable buildLocalVariable(BasicBlock basicBlock, IrType.IrTypeID varType, int value) {
         var pointer = buildLocalVariable(basicBlock, varType);
         IntConstValue intConstValue = new IntConstValue(value);
-        buildStoreInst(basicBlock, intConstValue, pointer);
-        return pointer.pointAt;
+        buildStoreInst(basicBlock, intConstValue, pointer.toPointer());
+        return pointer;
     }
 
-    /**
-     * 形如store i32 0, i32* %7。会给指针分配指向的值。
-     *
-     * @param basicBlock   所属块
-     * @param value        第一个操作数（数值，或者寄存器）
-     * @param pointerValue 第二个操作数（地址）
-     */
-    private void buildStoreInst(BasicBlock basicBlock, Variable value, PointerValue pointerValue) {
-        StoreInstruction storeInstruction = new StoreInstruction(value, pointerValue);
-        pointerValue.setPointAt(value);
-        basicBlock.addInstruction(storeInstruction);
-    }
 
     /**
      * 形如：%1 = alloca i32，建立的数据是一个<font color='red'>指针类型</font>
      *
      * @param basicBlock 指令所属的块
      */
-    private PointerValue buildAllocaInst(BasicBlock basicBlock, IrType.IrTypeID varType) {
-        PointerValue pointerValue = new PointerValue(IrType.create(varType), allocator.allocate());
+    private Variable buildAllocaInst(BasicBlock basicBlock, IrType.IrTypeID varType) {
+        Variable pointerValue = new Variable(IrType.create(varType), allocator.allocate());
         AllocaInstruction allocaInstruction = new AllocaInstruction(pointerValue);
         basicBlock.addInstruction(allocaInstruction);
         return pointerValue;
@@ -294,9 +282,10 @@ public class IrBuilder {
      * @param variable     变量
      * @param pointerValue 寄存器
      */
-    public void buildAssignInst(BasicBlock basicBlock, Variable variable, PointerValue pointerValue) {
+    public void buildStoreInst(BasicBlock basicBlock, Variable variable, PointerValue pointerValue) {
         StoreInstruction storeInstruction = new StoreInstruction(variable, pointerValue);
         basicBlock.addInstruction(storeInstruction);
         pointerValue.setPointAt(variable);
     }
+
 }
