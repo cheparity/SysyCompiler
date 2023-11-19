@@ -61,7 +61,7 @@ public final class BlockVisitor implements ASTNodeVisitor {
         if (nested) { //如果是嵌入块，就不应该构造函数的entry block
             basicBlock = builder.buildNestBlock(fatherBlock, block.getSymbolTable());
         } else { //visit入口块
-            basicBlock = builder.buildEntryBlock(function, block.getSymbolTable());
+            basicBlock = builder.buildBasicBlock(function, block.getSymbolTable());
         }
         //block -> {blockItem}
         for (var child : block.getChildren()) {

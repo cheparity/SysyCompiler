@@ -23,13 +23,13 @@ public class IrBuilder {
     }
 
     public NestBlock buildNestBlock(BasicBlock fatherBlock, SymbolTable symbolTable) {
-        NestBlock nestBlock = new NestBlock(fatherBlock.getName() + "-nested", fatherBlock);
+        NestBlock nestBlock = new NestBlock(fatherBlock.getName() + "-nested", fatherBlock); //嵌套块命名规则好像不占用寄存器
         nestBlock.setSymbolTable(symbolTable);
         return nestBlock;
     }
 
-    public BasicBlock buildEntryBlock(Function function, SymbolTable symbolTable) {
-        var bb = new BasicBlock("entry");
+    public BasicBlock buildBasicBlock(Function function, SymbolTable symbolTable) {
+        var bb = new BasicBlock(allocator.allocate()); //每个临时寄存器和基本块占用一个编号
         function.setEntryBlock(bb);
         bb.setSymbolTable(symbolTable);
         return bb;
@@ -134,7 +134,7 @@ public class IrBuilder {
      * @param varType    类型，如i32
      * @return 一个指针（pointerValue）
      */
-    public Variable buildLocalVariable(BasicBlock basicBlock, IrType.IrTypeID varType) {
+    public PointerValue buildLocalVariable(BasicBlock basicBlock, IrType.IrTypeID varType) {
         //        buildStoreInst(basicBlock,,pointerValue); //无初值，则只分配一个指针
         return buildAllocaInst(basicBlock, varType);
     }
@@ -158,10 +158,10 @@ public class IrBuilder {
      * @param varType    类型，如i32
      * @param value      值。既有可能是一个数字（如3），又有可能是一个寄存器（如%5），需要通过前面是否有%来区分。
      */
-    public Variable buildLocalVariable(BasicBlock basicBlock, IrType.IrTypeID varType, int value) {
+    public PointerValue buildLocalVariable(BasicBlock basicBlock, IrType.IrTypeID varType, int value) {
         var pointer = buildLocalVariable(basicBlock, varType);
         IntConstValue intConstValue = new IntConstValue(value);
-        buildStoreInst(basicBlock, intConstValue, pointer.toPointer());
+        buildStoreInst(basicBlock, intConstValue, pointer);
         return pointer;
     }
 
@@ -171,8 +171,8 @@ public class IrBuilder {
      *
      * @param basicBlock 指令所属的块
      */
-    private Variable buildAllocaInst(BasicBlock basicBlock, IrType.IrTypeID varType) {
-        Variable pointerValue = new Variable(IrType.create(varType), allocator.allocate());
+    private PointerValue buildAllocaInst(BasicBlock basicBlock, IrType.IrTypeID varType) {
+        PointerValue pointerValue = new PointerValue(IrType.create(varType), allocator.allocate());
         AllocaInstruction allocaInstruction = new AllocaInstruction(pointerValue);
         basicBlock.addInstruction(allocaInstruction);
         return pointerValue;
@@ -249,14 +249,14 @@ public class IrBuilder {
     }
 
     /**
-     * 形如 %8 = load i32, i32* %3, align 4
+     * 形如 %8 = load i32, i32* %3, align 4。%8由allocator自动分配。
      *
      * @param block   指令所属块。
-     * @param result  左操作数。让a = b，<font color='red'>而不分配新变量。</font>
      * @param pointer 右操作数。指针。
      * @return 只是为了重载的一致性，单纯返回a
      */
-    public Variable buildLoadInst(BasicBlock block, Variable result, PointerValue pointer) {
+    public Variable buildLoadInst(BasicBlock block, PointerValue pointer) {
+        var result = new Variable(pointer.getType(), allocator.allocate());
         LoadInstruction loadInstruction = new LoadInstruction(result, pointer);
         block.addInstruction(loadInstruction);
         return result;

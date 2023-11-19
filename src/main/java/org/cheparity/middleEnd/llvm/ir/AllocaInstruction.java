@@ -8,9 +8,9 @@ package middleEnd.llvm.ir;
  * %6 = alloca i32
  */
 public final class AllocaInstruction extends Instruction {
-    private final Variable operand;
+    private final PointerValue operand;
 
-    AllocaInstruction(Variable pointerValue) {
+    AllocaInstruction(PointerValue pointerValue) {
         this.operand = pointerValue;
     }
 

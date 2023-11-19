@@ -3,7 +3,9 @@ package middleEnd.llvm.visitor;
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
 import middleEnd.llvm.NodeUnion;
-import middleEnd.llvm.ir.*;
+import middleEnd.llvm.ir.BasicBlock;
+import middleEnd.llvm.ir.IrBuilder;
+import middleEnd.llvm.ir.Variable;
 import middleEnd.symbols.Symbol;
 import middleEnd.symbols.SymbolTable;
 
@@ -29,46 +31,46 @@ class IrUtil {
      * @param builder IrBuilder
      * @return 运算结果，可能是数也可能是寄存器
      */
-    private static Variable Op(Variable a, GrammarType type, Variable b, IrBuilder builder, BasicBlock block) {
-        assert type == GrammarType.PLUS | type == GrammarType.MINUS | type == GrammarType.MULTIPLY | type == GrammarType.DIVIDE | type == GrammarType.MOD;
-        boolean aIsRegister = a.getNumber().isEmpty();
-        boolean bIsRegister = b.getNumber().isEmpty();
-        //只要有一个是寄存器，那么就得生成寄存器码
-        //如果两个都不是寄存器，简单！直接转换为int相加
-        if (!aIsRegister && !bIsRegister) {
-            Integer numa = a.getNumber().get();
-            Integer numb = b.getNumber().get();
-            return switch (type) {
-                //这里不能调用buildBinInstruction，因为a，b都不是寄存器
-                case PLUS -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa + numb);
-                case MINUS -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa - numb);
-                case MULTIPLY -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa * numb);
-                case DIVIDE -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa / numb);
-                case MOD -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa % numb);
-                default -> throw new RuntimeException("Unexpected grammar type: " + type);
-            };
-        }
-        //如果有寄存器，两者就都得生成对应的寄存器指令，而且要加减乘除各种指令
-        //a = 10, b = %2
-        //a = %2, b = 10
-        //a = %2, b = %3
-        Operator add = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.ADD);
-        Operator sub = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.SUB);
-        Operator mul = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.MUL);
-        Operator div = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.SDIV);
-        Operator mod = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.SREM);
-        var aVar = aIsRegister ? a : builder.buildLocalVariable(block, a.getType().getBasicType(), a.getNumber().get());
-        var bVar = bIsRegister ? b : builder.buildLocalVariable(block, b.getType().getBasicType(), b.getNumber().get());
-        //现在aVar和bVar都是寄存器了
-        return switch (type) {
-            case PLUS -> builder.buildBinInstruction(block, aVar, add, bVar);
-            case MINUS -> builder.buildBinInstruction(block, aVar, sub, bVar);
-            case MULTIPLY -> builder.buildBinInstruction(block, aVar, mul, bVar);
-            case DIVIDE -> builder.buildBinInstruction(block, aVar, div, bVar);
-            case MOD -> builder.buildBinInstruction(block, aVar, mod, bVar);
-            default -> throw new RuntimeException("Unexpected grammar type: " + type);
-        };
-    }
+//    private static Variable Op(Variable a, GrammarType type, Variable b, IrBuilder builder, BasicBlock block) {
+//        assert type == GrammarType.PLUS | type == GrammarType.MINUS | type == GrammarType.MULTIPLY | type == GrammarType.DIVIDE | type == GrammarType.MOD;
+//        boolean aIsRegister = a.getNumber().isEmpty();
+//        boolean bIsRegister = b.getNumber().isEmpty();
+//        //只要有一个是寄存器，那么就得生成寄存器码
+//        //如果两个都不是寄存器，简单！直接转换为int相加
+//        if (!aIsRegister && !bIsRegister) {
+//            Integer numa = a.getNumber().get();
+//            Integer numb = b.getNumber().get();
+//            return switch (type) {
+//                //这里不能调用buildBinInstruction，因为a，b都不是寄存器
+//                case PLUS -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa + numb);
+//                case MINUS -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa - numb);
+//                case MULTIPLY -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa * numb);
+//                case DIVIDE -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa / numb);
+//                case MOD -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa % numb);
+//                default -> throw new RuntimeException("Unexpected grammar type: " + type);
+//            };
+//        }
+//        //如果有寄存器，两者就都得生成对应的寄存器指令，而且要加减乘除各种指令
+//        //a = 10, b = %2
+//        //a = %2, b = 10
+//        //a = %2, b = %3
+//        Operator add = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.ADD);
+//        Operator sub = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.SUB);
+//        Operator mul = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.MUL);
+//        Operator div = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.SDIV);
+//        Operator mod = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.SREM);
+//        var aVar = aIsRegister ? a : builder.buildLocalVariable(block, a.getType().getBasicType(), a.getNumber().get());
+//        var bVar = bIsRegister ? b : builder.buildLocalVariable(block, b.getType().getBasicType(), b.getNumber().get());
+//        //现在aVar和bVar都是寄存器了
+//        return switch (type) {
+//            case PLUS -> builder.buildBinInstruction(block, aVar, add, bVar);
+//            case MINUS -> builder.buildBinInstruction(block, aVar, sub, bVar);
+//            case MULTIPLY -> builder.buildBinInstruction(block, aVar, mul, bVar);
+//            case DIVIDE -> builder.buildBinInstruction(block, aVar, div, bVar);
+//            case MOD -> builder.buildBinInstruction(block, aVar, mod, bVar);
+//            default -> throw new RuntimeException("Unexpected grammar type: " + type);
+//        };
+//    }
 
     /**
      * @param node 节点
@@ -276,9 +278,10 @@ class IrUtil {
                 //如果可以获得值，那就返回
                 var num = symbol.getNumber();
                 if (num.isPresent()) return union.setNumber(num.get());
-                //如果没有赋初值，则要分配新的寄存器进行相加。一定是有Variable的，语法检查已经检查过了
-                assert symbol.getIrVariable().isPresent();
-                return union.setVariable(symbol.getIrVariable().get());
+                //如果没有赋初值
+                assert symbol.getPointer() != null;//这里symbol有可能只是分配了寄存器，没有load。则需要把指针load为一个寄存器，再赋值给union
+                Variable variable = builder.buildLoadInst(block, symbol.getPointer()); //此时variable为load出的寄存器
+                return union.setVariable(variable);
             }
             default -> throw new RuntimeException("Unexpected grammar type: " + node.getGrammarType());
         }

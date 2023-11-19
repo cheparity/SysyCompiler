@@ -6,7 +6,7 @@ import middleEnd.ASTNodeVisitor;
 import middleEnd.llvm.ir.BasicBlock;
 import middleEnd.llvm.ir.IrBuilder;
 import middleEnd.llvm.ir.IrType;
-import middleEnd.llvm.ir.Variable;
+import middleEnd.llvm.ir.PointerValue;
 import middleEnd.symbols.Symbol;
 import middleEnd.symbols.SymbolTable;
 
@@ -33,20 +33,21 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
             assert symbolTable.getSymbol(varRawName).isPresent();
             Symbol symbol = symbolTable.getSymbol(varRawName).get();
             if (varDef.deepDownFind(GrammarType.INIT_VAL, 1).isPresent()) {
-                //如果有初值
+                //如果有初值，建立的也是指针
                 var nodeUnion = new IrUtil(builder, basicBlock).calc(varDef.getChild(2).getChild(0));
                 if (nodeUnion.isNum) {
-                    Variable variable = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID, nodeUnion.getNumber());
-                    symbol.setIrVariable(variable);
+                    PointerValue pointer = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID,
+                            nodeUnion.getNumber());
+                    symbol.setPointer(pointer);
                 } else {
                     //是一个 variable（未知量）
-                    Variable pointerValue = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID);
+                    PointerValue pointerValue = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID);
                     throw new RuntimeException("Not implement!"); //todo
                 }
             } else {
                 //没有初值
-                Variable pointerValue = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID);
-                symbol.setIrVariable(pointerValue);
+                PointerValue pointerValue = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID);
+                symbol.setPointer(pointerValue);
             }
         }
     }

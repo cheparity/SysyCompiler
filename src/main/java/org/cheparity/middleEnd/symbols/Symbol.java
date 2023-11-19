@@ -20,13 +20,13 @@ public abstract class Symbol {
      */
     private final Token token;
     /**
-     * 函数被load进寄存器时，初始化irVariable。
+     * 局部变量<font color='red'>load进寄存器</font>时，或者<font color='red'>全局变量初始化</font>时，初始化irVariable。
      */
     private Variable irVariable;
     /**
      * 符号的地址。<font color='red'>当初始化符号时，初始化地址；当给符号赋值时调用store指令，也是给地址赋值。</font>
      */
-    private PointerValue pointerValue;
+    private PointerValue pointer;
 
     public Symbol(SymbolTable table, SymbolType type, Token token) {
         this.symbolTable = table;
@@ -62,6 +62,10 @@ public abstract class Symbol {
     }
 
     public PointerValue getPointer() {
-        return this.irVariable.toPointer();
+        return this.pointer;
+    }
+
+    public void setPointer(PointerValue pointer) {
+        this.pointer = pointer;
     }
 }
