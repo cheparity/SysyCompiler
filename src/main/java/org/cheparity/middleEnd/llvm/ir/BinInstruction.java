@@ -15,13 +15,13 @@ public final class BinInstruction extends Instruction {
         this.result = result;
         this.value1 = value1;
         this.value2 = value2;
-        assert value1.getType() == value2.getType();
+        assert value1.getType().getBasicType() == value2.getType().getBasicType();
         this.type = value1.getType();
     }
 
     @Override
     public String toIrCode() {
-        return result + " = " +
+        return result.toIrCode() + " = " +
                 this.operator.toIrCode() +
                 " " +
                 this.type.toIrCode() +

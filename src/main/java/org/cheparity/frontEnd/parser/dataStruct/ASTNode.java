@@ -79,6 +79,9 @@ public class ASTNode implements ASTNodeElement {
             LOGGER.warning("Index out of bound");
             return null;
         }
+        while (index < 0) {
+            index = index + children.size();
+        }
         return children.get(index % children.size());
     }
 

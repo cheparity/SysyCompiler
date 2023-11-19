@@ -7,6 +7,7 @@ import middleEnd.ASTNodeVisitor;
 import middleEnd.llvm.NodeUnion;
 import middleEnd.llvm.ir.BasicBlock;
 import middleEnd.llvm.ir.IrBuilder;
+import middleEnd.llvm.ir.PointerValue;
 import middleEnd.llvm.ir.Variable;
 import middleEnd.symbols.Symbol;
 import middleEnd.symbols.SymbolTable;
@@ -54,6 +55,7 @@ public final class StmtVisitor implements ASTNodeVisitor {
             if (stmt.getChildren().size() == 2) {
                 //没有exp的情况，直接build空返回语句。
                 builder.buildVoidRetInst(basicBlock);
+                return;
             }
             var res = new IrUtil(builder, basicBlock).calc(stmt.getChild(1));
             if (res.isNum) builder.buildRetInstOfConst(basicBlock, res.getNumber());
@@ -102,14 +104,18 @@ public final class StmtVisitor implements ASTNodeVisitor {
             //LVal -> Ident {'[' Exp ']'}
             assert symbolTable.getSymbol(stmt.getChild(0).getRawValue()).isPresent();
             Symbol symbol = symbolTable.getSymbol(stmt.getChild(0).getRawValue()).get();
-            assert symbol.getIrVariable().isPresent();
-            Variable variable = symbol.getIrVariable().get();
+            PointerValue pointer = symbol.getPointer();
+            assert pointer != null;
             NodeUnion result = new IrUtil(builder, basicBlock).calc(stmt.getChild(2));
             if (result.isNum) {
-                builder.buildStoreInst(basicBlock, builder.buildConstIntNum(result.getNumber()), variable.toPointer());
+                builder.buildStoreInst(basicBlock, builder.buildConstIntNum(result.getNumber()), pointer);
             } else {
-                builder.buildStoreInst(basicBlock, result.getVariable(), variable.toPointer());
+                builder.buildStoreInst(basicBlock, result.getVariable(), pointer);
             }
+        }
+        //Stmt -> Exp ';'
+        else if (stmt.getChild(0).getGrammarType() == GrammarType.EXP) {
+            new IrUtil(builder, basicBlock).calc(stmt.getChild(0));
         }
     }
 }

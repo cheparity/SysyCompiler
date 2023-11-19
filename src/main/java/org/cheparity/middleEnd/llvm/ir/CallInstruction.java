@@ -36,7 +36,8 @@ public final class CallInstruction extends Instruction {
     @Override
     public String toIrCode() {
         var sb = new StringBuilder();
-        sb.append(receiver.getName()).append(" = ").append("call ").append(function.getType().toIrCode()).append(" ").append(function.getName()).append(
+        if (receiver != null) sb.append(receiver.getName()).append(" = ");
+        sb.append("call ").append(function.getType().toIrCode()).append(" ").append(function.getName()).append(
                 "(");
         for (int i = 0; i < args.length; i++) {
             sb.append(args[i].getType().toIrCode()).append(" ").append(args[i].getName());

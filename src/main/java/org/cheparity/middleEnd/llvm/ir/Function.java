@@ -16,7 +16,7 @@ public class Function extends GlobalValue implements GlobalObjects {
         this.module = module;
     }
 
-    void insertParam(Argument argument) {
+    void insertArgument(Argument argument) {
         arguments.add(argument);
     }
 
@@ -51,7 +51,7 @@ public class Function extends GlobalValue implements GlobalObjects {
                 .append("(");
         for (int i = 0; i < arguments.size(); i++) {
             var arg = arguments.get(i);
-            sb.append(arg.getType()).append(" ").append(arg.getName());
+            sb.append(arg.getType().toIrCode()).append(" ").append(arg.getName());
             if (i != arguments.size() - 1) {
                 sb.append(", ");
             }

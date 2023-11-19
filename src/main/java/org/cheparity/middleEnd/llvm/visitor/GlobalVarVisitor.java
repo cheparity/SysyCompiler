@@ -44,7 +44,8 @@ public final class GlobalVarVisitor implements ASTNodeVisitor {
             var variable = builder.buildGlobalVariable(module, IrType.IrTypeID.Int32TyID, name, number);
             assert globalSymbolTable.getSymbol(name).isPresent();
             Symbol symbol = globalSymbolTable.getSymbol(name).get();
-            symbol.setIrVariable(variable);
+            symbol.setPointer(variable);
+            //是的，还要分配指针
         }
     }
 
@@ -54,13 +55,13 @@ public final class GlobalVarVisitor implements ASTNodeVisitor {
         for (var constDef : constDecl.getChildren()) {
             if (constDef.getGrammarType() != GrammarType.CONST_DEF) continue;
             //直接以变量名命名
-            String name = "@" + constDef.getChild(0).getRawValue();
+            String name = constDef.getChild(0).getRawValue();
             //常量计算一定有确定的值，在错误处理阶段检查过
             var number = IrUtil.CalculateConst4Global(constDef.getChild(2));
             var variable = builder.buildGlobalConstantValue(module, IrType.IrTypeID.Int32TyID, name, number);
             assert globalSymbolTable.getSymbol(name).isPresent();
             Symbol symbol = globalSymbolTable.getSymbol(name).get();
-            symbol.setIrVariable(variable);
+            symbol.setPointer(variable);
         }
     }
 

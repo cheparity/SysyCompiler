@@ -5,7 +5,7 @@ import java.util.Optional;
 /**
  * 指针变量。可以通过Variable找到对应的PointerValue，但是不能通过PointerValue找到对应的Variable（除非指针变量拥有对应的Variable）
  */
-public final class PointerValue extends Value {
+public class PointerValue extends Value {
     /**
      * 所指对象。<font color='red'>可以为空</font>
      */

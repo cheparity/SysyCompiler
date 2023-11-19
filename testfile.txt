@@ -1,6 +1,16 @@
+int a=1000;
+int aaa(int a,int b){
+        return a+b;
+}
+void ab(){
+        a=1200;
+        return;
+}
 int main(){
-  int a;
-  a=getint();
-  printf("hello:%d",a);
-  return 0;
+        ab();
+        int b;
+        b=a+a;
+        a=getint();
+        printf("%d",aaa(a,b));
+        return 0;
 }

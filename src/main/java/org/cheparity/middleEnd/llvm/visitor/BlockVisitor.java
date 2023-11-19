@@ -43,17 +43,7 @@ public final class BlockVisitor implements ASTNodeVisitor {
         this.builder = builder;
     }
 
-//    /**
-//     * 当block<font color='red'>是另一个block的子块时</font>，调用此构造方法。
-//     *
-//     * @param fatherBlock 所属块
-//     * @param builder     父级块的构造方法
-//     */
-//    public BlockVisitor(BasicBlock fatherBlock, IrBuilder builder) {
-//        this.function = null;
-//        this.builder = builder;
-//    }
-
+    
     @Override
     public void visit(ASTNode block) {
         assert block.getGrammarType().equals(GrammarType.BLOCK);
@@ -61,7 +51,7 @@ public final class BlockVisitor implements ASTNodeVisitor {
         if (nested) { //如果是嵌入块，就不应该构造函数的entry block
             basicBlock = builder.buildNestBlock(fatherBlock, block.getSymbolTable());
         } else { //visit入口块
-            basicBlock = builder.buildBasicBlock(function, block.getSymbolTable());
+            basicBlock = builder.buildEntryBlock(function, block.getSymbolTable());
         }
         //block -> {blockItem}
         for (var child : block.getChildren()) {

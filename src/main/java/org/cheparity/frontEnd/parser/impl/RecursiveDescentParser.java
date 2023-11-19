@@ -521,7 +521,6 @@ public class RecursiveDescentParser implements SysYParser {
         Optional<ASTNode> block = parseBlock(params.toArray(new VarSymbol[0]));
         if (block.isPresent()) {
             funcDef.addChild(block.get());
-//            this.nowSymbolTable = new SymbolTable(this.nowSymbolTable, funcDef); //todo 在block里已经有了？为什么这里还要建一遍？
         } else {
             return failed(initIndex);
         }
@@ -579,6 +578,10 @@ public class RecursiveDescentParser implements SysYParser {
         if (retNode.isEmpty()) {
             error(mainFuncDef, new RetStmtMissedError(block.get().lastToken()));
         }
+        //全局符号表中注册main函数
+        var globalSymbolTable = SymbolTable.getGlobal();
+        globalSymbolTable.addSymbol(new FuncSymbol(globalSymbolTable, mainTk.get().getToken(), FuncType.INT),
+                mainFuncDef.getErrorHandler());
         return done(mainFuncDef);
     }
 

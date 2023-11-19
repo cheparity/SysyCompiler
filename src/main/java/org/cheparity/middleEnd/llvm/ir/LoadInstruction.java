@@ -17,6 +17,6 @@ public final class LoadInstruction extends Instruction {
 
     @Override
     public String toIrCode() {
-        return "load " + type.toIrCode() + " " + pointerValue.toIrCode();
+        return result.toIrCode() + " = load " + type.toIrCode() + ", " + pointerValue.getType().toIrCode() + "* " + pointerValue.getName();
     }
 }

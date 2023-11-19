@@ -46,7 +46,7 @@ public final class IrType implements IrPrintable {
         FunctionTyID(""),    ///< 12: Functions
         StructTyID(""),      ///< 13: Structures(no use in SysY)
         ArrayTyID(""),       ///< 14: Arrays
-        PointerTyID(""),     ///< 15: Pointers(no use in SysY)
+        PointerTyID(""),     ///< 15: Pointers
         VectorTyID(""); ///< 16: SIMD 'packed' format, or other vector type(no use in SysY)
         private final String value;
 

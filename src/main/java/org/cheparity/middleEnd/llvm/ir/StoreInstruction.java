@@ -23,6 +23,6 @@ public final class StoreInstruction extends Instruction {
 
     @Override
     public String toIrCode() {
-        return "store " + value.getType().toIrCode() + " " + value.toIrCode() + ", " + pointerValue.toIrCode();
+        return "store " + value.getType().toIrCode() + " " + value.toIrCode() + ", " + pointerValue.getType().toIrCode() + "* " + pointerValue.getName();
     }
 }

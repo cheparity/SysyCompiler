@@ -2,7 +2,11 @@ package middleEnd.llvm.ir;
 
 import middleEnd.llvm.IrContext;
 import middleEnd.llvm.RegisterAllocator;
+import middleEnd.symbols.FuncSymbol;
 import middleEnd.symbols.SymbolTable;
+import middleEnd.symbols.VarSymbol;
+
+import java.util.List;
 
 public class IrBuilder {
     private RegisterAllocator allocator;
@@ -16,10 +20,23 @@ public class IrBuilder {
     }
 
     public Function buildFunction(IrType.IrTypeID type, String name, Module module) {
-        String funcName = allocator.allocate(name);
-        var func = new Function(IrType.create(type), funcName, module);
+        String funcName = "@" + name;
+        var func = new Function(IrType.create(type, IrType.IrTypeID.FunctionTyID), funcName, module);
         module.insertFunc(func);
         return func;
+    }
+
+    /**
+     * 负责把argument new出来，并添加到function中。
+     *
+     * @param function 所属函数
+     * @param type     参数类型
+     * @return new出来的参数
+     */
+    public Argument buildArg(Function function, IrType type) {
+        Argument argument = new Argument(type, allocator.allocate());
+        function.insertArgument(argument);
+        return argument;
     }
 
     public NestBlock buildNestBlock(BasicBlock fatherBlock, SymbolTable symbolTable) {
@@ -28,10 +45,23 @@ public class IrBuilder {
         return nestBlock;
     }
 
-    public BasicBlock buildBasicBlock(Function function, SymbolTable symbolTable) {
+    public BasicBlock buildEntryBlock(Function function, SymbolTable symbolTable) {
         var bb = new BasicBlock(allocator.allocate()); //每个临时寄存器和基本块占用一个编号
         function.setEntryBlock(bb);
         bb.setSymbolTable(symbolTable);
+        //为了从符号表中找到函数参数，并更新其指针。1.注意是从全局符号表查找function 2.注意function的name之前有个@，所以要substring(1)
+        assert SymbolTable.getGlobal().getFuncSymbol(function.getName().substring(1)).isPresent();
+        FuncSymbol funcSymbol = SymbolTable.getGlobal().getFuncSymbol(function.getName().substring(1)).get();
+        List<VarSymbol> params = funcSymbol.getParams();
+        //将function的所有arguments，先alloca一个新pointer，再将arg里的寄存器store进point中
+        for (int i = 0; i < function.getArguments().size(); i++) {
+            Argument arg = function.getArguments().get(i);
+            VarSymbol argSymbol = params.get(i);
+            PointerValue pointer = buildAllocaInst(bb, arg.getType().getBasicType());
+            buildStoreInst(bb, new Variable(IrType.create(IrType.IrTypeID.Int32TyID), arg.getName()), pointer);
+            //还应该把这个指针存进符号表中
+            argSymbol.setPointer(pointer);
+        }
         return bb;
     }
 
@@ -119,7 +149,7 @@ public class IrBuilder {
      * @return 返回一个result的Variable，这个Variable是<font color='red'>寄存器或者值</font>，里面存放了结果
      */
     public Variable buildBinInstruction(BasicBlock basicBlock, Variable a, Operator op, Variable b) {
-        assert a.getType() == b.getType(); //可能后续会出现需要强转的情况，之后再看
+        assert a.getType().getBasicType() == b.getType().getBasicType(); //可能后续会出现需要强转的情况，之后再看
         assert a.getNumber().isEmpty() || b.getNumber().isEmpty(); //不能出现二者同时有初值的情况
         var result = new Variable(a.getType(), allocator.allocate()); //新建一个result变量
         var bins = new BinInstruction(result, a, b, op);
@@ -172,14 +202,15 @@ public class IrBuilder {
      * @param basicBlock 指令所属的块
      */
     private PointerValue buildAllocaInst(BasicBlock basicBlock, IrType.IrTypeID varType) {
-        PointerValue pointerValue = new PointerValue(IrType.create(varType), allocator.allocate());
+        PointerValue pointerValue = new PointerValue(IrType.create(varType, IrType.IrTypeID.PointerTyID), allocator.allocate());
         AllocaInstruction allocaInstruction = new AllocaInstruction(pointerValue);
         basicBlock.addInstruction(allocaInstruction);
         return pointerValue;
     }
 
     /**
-     * 建立全局常量<font color='red'>及其declare声明指令</font>
+     * 建立全局常量<font color='red'>及其declare声明指令</font>。其实和global variable一样，会出现符号表中存放的是值还是指针的问题。只不过const
+     * value在使用时就替换掉了，所以可能不用仔细考虑。
      * <p>
      * 形如：@a = dso_local constant i32 1
      *
@@ -190,7 +221,7 @@ public class IrBuilder {
      * @return 返回的不是指令，而是<font color='red'>Build出的GlobalVariable</font>
      */
     public GlobalVariable buildGlobalConstantValue(Module module, IrType.IrTypeID type, String name, int number) {
-        var globalVariable = new GlobalVariable(IrType.create(type), name, true);
+        var globalVariable = new GlobalVariable(IrType.create(type), "@" + name, true);
         globalVariable.setNumber(number);
         module.insertGlobal(globalVariable);
         var inst = new GlobalDeclInstruction(globalVariable, true);
@@ -239,12 +270,12 @@ public class IrBuilder {
                 .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.Int32TyID), "@getint").addArg(new Argument(IrType.create(IrType.IrTypeID.VoidTyID), "a")))
                 .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putint").addArg(new Argument(IrType.create(IrType.IrTypeID.Int32TyID), "a")))
                 .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putch").addArg(new Argument(IrType.create(IrType.IrTypeID.Int32TyID), "a")))
-                .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putstr").addArg(new Argument(IrType.create(IrType.IrTypeID.ByteTyID), "a")));
+                .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putstr").addArg(new Argument(IrType.create(IrType.IrTypeID.ByteTyID, IrType.IrTypeID.PointerTyID), "a")));
         module
-                .insertFunc(new Function(IrType.create(IrType.IrTypeID.Int32TyID), "@getint", module))
-                .insertFunc(new Function(IrType.create(IrType.IrTypeID.VoidTyID), "@putint", module))
-                .insertFunc(new Function(IrType.create(IrType.IrTypeID.VoidTyID), "@putch", module))
-                .insertFunc(new Function(IrType.create(IrType.IrTypeID.VoidTyID), "@putstr", module));
+                .insertFunc(new Function(IrType.create(IrType.IrTypeID.Int32TyID, IrType.IrTypeID.FunctionTyID), "@getint", module))
+                .insertFunc(new Function(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putint", module))
+                .insertFunc(new Function(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putch", module))
+                .insertFunc(new Function(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putstr", module));
         return module;
     }
 
@@ -253,7 +284,7 @@ public class IrBuilder {
      *
      * @param block   指令所属块。
      * @param pointer 右操作数。指针。
-     * @return 只是为了重载的一致性，单纯返回a
+     * @return 返回load进的寄存器（左操作数）
      */
     public Variable buildLoadInst(BasicBlock block, PointerValue pointer) {
         var result = new Variable(pointer.getType(), allocator.allocate());
@@ -266,13 +297,20 @@ public class IrBuilder {
         block.addInstruction(new RetInstruction());
     }
 
-    public Variable buildCallInst(BasicBlock block, String funName, Variable... arguments) {
+    public Variable buildCallInst(BasicBlock block, String funName, Variable... paramVariables) {
         Module module = block.getEntryFunc().getModule();
         Function func = module.getFunc("@" + funName);
         Variable variable = new Variable(func.getType(), allocator.allocate());
-        CallInstruction callInstruction = new CallInstruction(func, variable, arguments);
+        CallInstruction callInstruction = new CallInstruction(func, variable, paramVariables);
         block.addInstruction(callInstruction);
         return variable;
+    }
+
+    public void buildVoidCallInst(BasicBlock block, String funName, Variable... paramVariables) {
+        Module module = block.getEntryFunc().getModule();
+        Function func = module.getFunc("@" + funName);
+        CallInstruction callInstruction = new CallInstruction(func, paramVariables);
+        block.addInstruction(callInstruction);
     }
 
     /**
@@ -285,7 +323,6 @@ public class IrBuilder {
     public void buildStoreInst(BasicBlock basicBlock, Variable variable, PointerValue pointerValue) {
         StoreInstruction storeInstruction = new StoreInstruction(variable, pointerValue);
         basicBlock.addInstruction(storeInstruction);
-        pointerValue.setPointAt(variable);
     }
 
 }

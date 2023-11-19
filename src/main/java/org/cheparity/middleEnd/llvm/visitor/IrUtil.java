@@ -5,9 +5,15 @@ import frontEnd.parser.dataStruct.GrammarType;
 import middleEnd.llvm.NodeUnion;
 import middleEnd.llvm.ir.BasicBlock;
 import middleEnd.llvm.ir.IrBuilder;
+import middleEnd.llvm.ir.PointerValue;
 import middleEnd.llvm.ir.Variable;
+import middleEnd.symbols.FuncType;
 import middleEnd.symbols.Symbol;
 import middleEnd.symbols.SymbolTable;
+import middleEnd.symbols.VarSymbol;
+
+import java.util.ArrayList;
+import java.util.List;
 
 class IrUtil {
     private final SymbolTable table;
@@ -75,14 +81,20 @@ class IrUtil {
     /**
      * @param node 节点
      * @return 整数数值
-     * @deprecated 由于只能计算const相加的情况，而不能计算寄存器相加的情况，所以弃用。
      */
     public static int CalculateConst4Global(ASTNode node) {
         switch (node.getGrammarType()) {
-            case EXP, NUMBER -> {
-                // Exp -> AddExp
+            case CONST_INIT_VAL -> {
+                //ConstInitVal -> ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
+                if (node.getChildren().size() == 1) {
+                    return CalculateConst4Global(node.getChild(0));
+                }
+                throw new RuntimeException("Not implement array!");
+            }
+            case CONST_EXP, EXP, NUMBER -> {
                 return CalculateConst4Global(node.getChild(0));
             }
+            // Exp -> AddExp
             case INT_CONST -> {
                 return Integer.parseInt(node.getRawValue());
             }
@@ -251,13 +263,25 @@ class IrUtil {
                         default -> throw new RuntimeException("Unexpected grammar type: " + unaryOp);
                     }
                 }
-                if (node.getChildren().size() == 3) {
-                    //Ident '(' [FuncRParams] ')'
-                    var funcName = node.getChild(0).getRawValue();
-                    var funcRParams = node.getChild(2);
-                    //todo 查表找到函数，计算参数，返回结果
-                    throw new RuntimeException("not implemented of function");
+                //Ident '(' [FuncRParams] ')'
+                String funcName = node.getChild(0).getRawValue();
+                //1.符号表里查函数，函数里获得参数符号 2.获取符号pointer 3.将pointer load进具体的variable里 4.将寄存器variable存进symbol
+                assert SymbolTable.getGlobal().getFuncSymbol(funcName).isPresent();
+                List<VarSymbol> params = SymbolTable.getGlobal().getFuncSymbol(funcName).get().getParams();
+                ArrayList<Variable> paramVariables = new ArrayList<>();
+                for (VarSymbol paramSymbol : params) {
+                    PointerValue pointer = paramSymbol.getPointer();
+                    Variable variable = builder.buildLoadInst(block, pointer);
+                    paramVariables.add(variable);
+                    paramSymbol.setIrVariable(variable);
                 }
+                //5.build call inst
+                if (SymbolTable.getGlobal().getFuncSymbol(funcName).get().getFuncType() == FuncType.VOID) {
+                    builder.buildVoidCallInst(block, funcName, paramVariables.toArray(new Variable[0]));
+                    return union.setNumber(0);
+                }
+                Variable variable = builder.buildCallInst(block, funcName, paramVariables.toArray(new Variable[0]));
+                return union.setVariable(variable);
             }
             case PRIMARY_EXP -> {
 //                PrimaryExp ->  LVal | Number | '(' Exp ')'
