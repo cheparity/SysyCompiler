@@ -52,6 +52,7 @@ public final class StmtVisitor implements ASTNodeVisitor {
     public void visit(ASTNode stmt) {
         //stmt -> 'return' Exp ';'
         if (stmt.getChild(0).getGrammarType() == GrammarType.RETURN) {
+            //焯！如果没有return，还要补上，否则过不了llvm的编译。那就默认ret void / ret i32 0（不在这里做，在Function里做）
             if (stmt.getChildren().size() == 2) {
                 //没有exp的情况，直接build空返回语句。
                 builder.buildVoidRetInst(basicBlock);
@@ -91,8 +92,11 @@ public final class StmtVisitor implements ASTNodeVisitor {
             int argCnt = 0;
             for (int i = 1; i < chars.length - 1; i++) {
                 if (chars[i] == '%' && chars[i + 1] == 'd') {
-                    builder.buildCallInst(basicBlock, "putch", args[argCnt]);
+                    builder.buildCallInst(basicBlock, "putint", args[argCnt]);
                     argCnt++;
+                    i++;
+                } else if (chars[i] == '\\' && chars[i + 1] == 'n') {
+                    builder.buildCallInst(basicBlock, "putch", builder.buildConstIntNum(10));
                     i++;
                 } else {
                     builder.buildCallInst(basicBlock, "putch", builder.buildConstIntNum(chars[i]));

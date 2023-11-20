@@ -39,6 +39,10 @@ public class BasicBlock extends Value {
         instructionList.add(instruction);
     }
 
+    Instruction getLastInstruction() {
+        return instructionList.get(instructionList.size() - 1);
+    }
+
     @Override
     public String toIrCode() {
         var sb = new StringBuilder();

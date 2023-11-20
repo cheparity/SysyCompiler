@@ -7,7 +7,11 @@ public class IrContext implements IrPrintable {
     Module irModule;
 
     IrContext() {
-        
+
+    }
+
+    public Module getIrModule() {
+        return irModule;
     }
 
     public void setIrModule(Module irModule) {

@@ -199,7 +199,7 @@ class IrUtil {
     public NodeUnion calc(ASTNode node) {
         NodeUnion union = new NodeUnion(node, builder, block);
         switch (node.getGrammarType()) {
-            case EXP, NUMBER -> {
+            case CONST_EXP, EXP, NUMBER -> {
                 // Exp -> AddExp
                 return calc(node.getChild(0));
             }
@@ -264,22 +264,36 @@ class IrUtil {
                     }
                 }
                 //Ident '(' [FuncRParams] ')'
+                //FuncRParams -> Exp { ',' Exp }
                 String funcName = node.getChild(0).getRawValue();
                 //1.符号表里查函数，函数里获得参数符号 2.获取符号pointer 3.将pointer load进具体的variable里 4.将寄存器variable存进symbol
                 assert SymbolTable.getGlobal().getFuncSymbol(funcName).isPresent();
-                List<VarSymbol> params = SymbolTable.getGlobal().getFuncSymbol(funcName).get().getParams();
-                ArrayList<Variable> paramVariables = new ArrayList<>();
-                for (VarSymbol paramSymbol : params) {
-                    PointerValue pointer = paramSymbol.getPointer();
-                    Variable variable = builder.buildLoadInst(block, pointer);
-                    paramVariables.add(variable);
-                    paramSymbol.setIrVariable(variable);
+                List<VarSymbol> fparams = SymbolTable.getGlobal().getFuncSymbol(funcName).get().getParams();
+                ArrayList<Variable> paramVariables = new ArrayList<>(); //新建一个variable列表，用于存放实参
+
+                //for循环是在构建实参列表paramVariables
+                for (int i = 0; i < fparams.size(); i++) {
+                    var pSymbol = fparams.get(i);
+                    var pNode = node.getChild(2).getChild(2 * i); //0->0, 1->2, 2->4, .. i->2*i
+                    NodeUnion calc = calc(pNode);
+                    //如果传参是数字：%2 = call i32 @foo(i32 1) 直接call
+                    if (calc.isNum) {
+                        paramVariables.add(builder.buildConstIntNum(calc.getNumber()));
+                        continue;
+                    }
+                    //如果传参是变量
+                    PointerValue pointer = pSymbol.getPointer();
+                    Variable register = builder.buildLoadInst(block, pointer); //此时variable为load出的寄存器
+                    paramVariables.add(register); //将寄存器存入列表
+                    pSymbol.setIrVariable(register); //将寄存器存入符号表
                 }
                 //5.build call inst
+                //如果是void，直接call
                 if (SymbolTable.getGlobal().getFuncSymbol(funcName).get().getFuncType() == FuncType.VOID) {
-                    builder.buildVoidCallInst(block, funcName, paramVariables.toArray(new Variable[0]));
+                    builder.buildCallInst(block, funcName, paramVariables.toArray(new Variable[0]));
                     return union.setNumber(0);
                 }
+                //如果是int，call后再load
                 Variable variable = builder.buildCallInst(block, funcName, paramVariables.toArray(new Variable[0]));
                 return union.setVariable(variable);
             }
@@ -306,6 +320,13 @@ class IrUtil {
                 assert symbol.getPointer() != null;//这里symbol有可能只是分配了寄存器，没有load。则需要把指针load为一个寄存器，再赋值给union
                 Variable variable = builder.buildLoadInst(block, symbol.getPointer()); //此时variable为load出的寄存器
                 return union.setVariable(variable);
+            }
+            case CONST_INIT_VAL -> {
+                //ConstInitVal -> ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
+                if (node.getChildren().size() == 1) {
+                    return calc(node.getChild(0));
+                }
+                throw new RuntimeException("Not implement array!");
             }
             default -> throw new RuntimeException("Unexpected grammar type: " + node.getGrammarType());
         }

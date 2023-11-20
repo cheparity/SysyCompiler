@@ -7,8 +7,8 @@ import middleEnd.llvm.visitor.FuncVisitor;
 import middleEnd.llvm.visitor.GlobalVarVisitor;
 
 public class IrTranslator {
+    public static final IrContext context = new IrContext();
     private static IrTranslator instance;
-    private final IrContext context = new IrContext();
 
     private IrTranslator() {
     }

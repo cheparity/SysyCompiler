@@ -7,6 +7,8 @@ import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
 import frontEnd.parser.dataStruct.utils.LoggerUtil;
 import frontEnd.parser.impl.RecursiveDescentParser;
+import middleEnd.llvm.IrContext;
+import middleEnd.llvm.IrTranslator;
 
 import java.io.*;
 import java.util.TreeSet;
@@ -16,22 +18,24 @@ public class Compiler {
     private static final Logger LOGGER = LoggerUtil.getLogger();
     private static final SysYLexer lexer = LexerImpl.getInstance();
     private static final SysYParser parser = RecursiveDescentParser.getInstance();
+    private static final IrTranslator irTranslator = IrTranslator.getInstance();
     private static final FileOutputStream fos;
 
     static {
-        File f = new File("error.txt");
+        File f = new File("pcoderesult.txt");
         if (f.exists()) f.delete();
         try {
-            fos = new FileOutputStream("error.txt");
+            fos = new FileOutputStream("pcoderesult.txt");
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         }
     }
 
     public static void main(String[] args) {
-        printLexAnswer();
-        printGrammarAnswer();
-        printErrorAnswer();
+//        printLexAnswer();
+//        printGrammarAnswer();
+//        printErrorAnswer();
+        printLlvmIrAnswer();
     }
 
     private static void printLexAnswer() {
@@ -73,6 +77,15 @@ public class Compiler {
         TreeSet<GrammarError> errors = parser.getAST().getErrors();
         PrintStream ps = new PrintStream(fos);
         errors.forEach(e -> ps.println(e.getToken().getLineNum() + " " + e.getCode().getValue()));
+    }
+
+    private static void printLlvmIrAnswer() {
+        parser.setTokens(LexerImpl.getInstance().getAllTokens());
+        ASTNode ast = parser.getAST();
+        IrContext irContext = irTranslator.translate2LlvmIr(ast);
+//        System.out.println(irContext.toIrCode());
+        PrintStream ps = new PrintStream(fos);
+        ps.println(irContext.toIrCode());
     }
 
 }

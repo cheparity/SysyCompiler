@@ -66,47 +66,118 @@ public final class NodeUnion {
     }
 
     public NodeUnion add(NodeUnion other) {
-        if (this.isNum) {
+        if (this.isNum && other.isNum) { //二者都是数字
             return this.setNumber(this.number + other.number);
         }
-        Variable ret = builder.buildBinInstruction(block, this.variable, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
-                Operator.OpCode.ADD), other.variable);
+
+        if (!this.isNum && !other.isNum) { //二者都不是数字
+            Variable ret = builder.buildBinInstruction(block, this.variable, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
+                    Operator.OpCode.ADD), other.variable);
+            return this.setVariable(ret);
+        }
+        //有一个是数字，是数字的就需要build const variable与另一个相加
+        Variable ret;
+        if (this.isNum) {
+            ret = builder.buildBinInstruction(block, builder.buildConstIntNum(this.number),
+                    Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
+                            Operator.OpCode.ADD), other.variable);
+        } else {
+            ret = builder.buildBinInstruction(block, this.variable, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
+                    Operator.OpCode.ADD), builder.buildConstIntNum(other.number));
+        }
         return this.setVariable(ret);
+
     }
 
     public NodeUnion sub(NodeUnion other) {
-        if (this.isNum) {
-            return this.setNumber(this.number - other.number);
+        if (this.isNum && other.isNum) { //二者都是数字
+            return this.setNumber(this.number + other.number);
         }
-        Variable ret = builder.buildBinInstruction(block, this.variable, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
-                Operator.OpCode.SUB), other.variable);
+
+        if (!this.isNum && !other.isNum) { //二者都不是数字
+            Variable ret = builder.buildBinInstruction(block, this.variable, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
+                    Operator.OpCode.SUB), other.variable);
+            return this.setVariable(ret);
+        }
+        //有一个是数字，是数字的就需要build const variable与另一个相加
+        Variable ret;
+        if (this.isNum) {
+            ret = builder.buildBinInstruction(block, builder.buildConstIntNum(this.number),
+                    Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
+                            Operator.OpCode.SUB), other.variable);
+        } else {
+            ret = builder.buildBinInstruction(block, this.variable, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
+                    Operator.OpCode.SUB), builder.buildConstIntNum(other.number));
+        }
         return this.setVariable(ret);
     }
 
     public NodeUnion mul(NodeUnion other) {
-        if (this.isNum) {
-            return this.setNumber(this.number * other.number);
+        if (this.isNum && other.isNum) { //二者都是数字
+            return this.setNumber(this.number + other.number);
         }
-        Variable ret = builder.buildBinInstruction(block, this.variable, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
-                Operator.OpCode.MUL), other.variable);
+
+        if (!this.isNum && !other.isNum) { //二者都不是数字
+            Variable ret = builder.buildBinInstruction(block, this.variable, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
+                    Operator.OpCode.MUL), other.variable);
+            return this.setVariable(ret);
+        }
+        //有一个是数字，是数字的就需要build const variable与另一个相加
+        Variable ret;
+        if (this.isNum) {
+            ret = builder.buildBinInstruction(block, builder.buildConstIntNum(this.number),
+                    Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
+                            Operator.OpCode.MUL), other.variable);
+        } else {
+            ret = builder.buildBinInstruction(block, this.variable, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
+                    Operator.OpCode.MUL), builder.buildConstIntNum(other.number));
+        }
         return this.setVariable(ret);
     }
 
     public NodeUnion div(NodeUnion other) {
-        if (this.isNum) {
-            return this.setNumber(this.number / other.number);
+        if (this.isNum && other.isNum) { //二者都是数字
+            return this.setNumber(this.number + other.number);
         }
-        Variable ret = builder.buildBinInstruction(block, this.variable, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
-                Operator.OpCode.SDIV), other.variable);
+
+        if (!this.isNum && !other.isNum) { //二者都不是数字
+            Variable ret = builder.buildBinInstruction(block, this.variable, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
+                    Operator.OpCode.SDIV), other.variable);
+            return this.setVariable(ret);
+        }
+        //有一个是数字，是数字的就需要build const variable与另一个相加
+        Variable ret;
+        if (this.isNum) {
+            ret = builder.buildBinInstruction(block, builder.buildConstIntNum(this.number),
+                    Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
+                            Operator.OpCode.SDIV), other.variable);
+        } else {
+            ret = builder.buildBinInstruction(block, this.variable, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
+                    Operator.OpCode.SDIV), builder.buildConstIntNum(other.number));
+        }
         return this.setVariable(ret);
     }
 
     public NodeUnion mod(NodeUnion other) {
-        if (this.isNum) {
-            return this.setNumber(this.number % other.number);
+        if (this.isNum && other.isNum) { //二者都是数字
+            return this.setNumber(this.number + other.number);
         }
-        Variable ret = builder.buildBinInstruction(block, this.variable, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
-                Operator.OpCode.SREM), other.variable);
+
+        if (!this.isNum && !other.isNum) { //二者都不是数字
+            Variable ret = builder.buildBinInstruction(block, this.variable, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
+                    Operator.OpCode.SREM), other.variable);
+            return this.setVariable(ret);
+        }
+        //有一个是数字，是数字的就需要build const variable与另一个相加
+        Variable ret;
+        if (this.isNum) {
+            ret = builder.buildBinInstruction(block, builder.buildConstIntNum(this.number),
+                    Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
+                            Operator.OpCode.SREM), other.variable);
+        } else {
+            ret = builder.buildBinInstruction(block, this.variable, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID),
+                    Operator.OpCode.SREM), builder.buildConstIntNum(other.number));
+        }
         return this.setVariable(ret);
     }
 

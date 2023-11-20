@@ -1,6 +1,7 @@
 package middleEnd.llvm.ir;
 
 import middleEnd.llvm.IrContext;
+import middleEnd.llvm.IrTranslator;
 import middleEnd.llvm.RegisterAllocator;
 import middleEnd.symbols.FuncSymbol;
 import middleEnd.symbols.SymbolTable;
@@ -298,8 +299,13 @@ public class IrBuilder {
     }
 
     public Variable buildCallInst(BasicBlock block, String funName, Variable... paramVariables) {
-        Module module = block.getEntryFunc().getModule();
+        IrContext context = IrTranslator.context;
+        Module module = context.getIrModule();
         Function func = module.getFunc("@" + funName);
+        if (func.getReturnType().getBasicType() == IrType.IrTypeID.VoidTyID) {
+            buildVoidCallInst(block, funName, paramVariables);
+            return null;
+        }
         Variable variable = new Variable(func.getType(), allocator.allocate());
         CallInstruction callInstruction = new CallInstruction(func, variable, paramVariables);
         block.addInstruction(callInstruction);
@@ -307,7 +313,8 @@ public class IrBuilder {
     }
 
     public void buildVoidCallInst(BasicBlock block, String funName, Variable... paramVariables) {
-        Module module = block.getEntryFunc().getModule();
+        IrContext context = IrTranslator.context;
+        Module module = context.getIrModule();
         Function func = module.getFunc("@" + funName);
         CallInstruction callInstruction = new CallInstruction(func, paramVariables);
         block.addInstruction(callInstruction);

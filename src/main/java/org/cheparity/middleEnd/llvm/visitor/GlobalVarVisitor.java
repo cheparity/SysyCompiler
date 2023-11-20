@@ -35,7 +35,10 @@ public final class GlobalVarVisitor implements ASTNodeVisitor {
             String name = varDef.getChild(0).getRawValue();
             if (varDef.getChildren().size() == 1) {
                 //VarDef -> Ident
-                builder.buildGlobalVariable(module, IrType.IrTypeID.Int32TyID, name);
+                assert globalSymbolTable.getSymbol(name).isPresent();
+                var variable = builder.buildGlobalVariable(module, IrType.IrTypeID.Int32TyID, name);
+                Symbol symbol = globalSymbolTable.getSymbol(name).get();
+                symbol.setPointer(variable);
                 continue;
             }
             //VarDef -> Ident '=' InitVal（一定有确切数字值）

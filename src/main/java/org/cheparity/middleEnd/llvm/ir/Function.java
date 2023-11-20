@@ -40,6 +40,10 @@ public class Function extends GlobalValue implements GlobalObjects {
         return module;
     }
 
+    public IrType getReturnType() {
+        return returnType;
+    }
+
     @Override
     public String toIrCode() {
         var sb = new StringBuilder();
@@ -58,7 +62,16 @@ public class Function extends GlobalValue implements GlobalObjects {
         }
         sb.append(")").append(" {");
         sb.append("\n");
+        //如果没有ret，则需要补上ret，否则过不了llvm的编译。那就默认ret void / ret i32 0
+        if (!(entryBlock.getLastInstruction() instanceof RetInstruction)) {
+            if (returnType.getBasicType() == IrType.IrTypeID.VoidTyID) {
+                entryBlock.addInstruction(new RetInstruction());
+            } else {
+                entryBlock.addInstruction(new RetInstruction(new IntConstValue(0)));
+            }
+        }
         sb.append(entryBlock.toIrCode());
+        //如果没有ret，则需要补上ret，否则过不了llvm的编译。那就默认ret void / ret i32 0
         sb.append("}");
         return sb.toString();
     }
