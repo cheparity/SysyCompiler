@@ -108,7 +108,7 @@ public final class StmtVisitor implements ASTNodeVisitor {
             //LVal -> Ident {'[' Exp ']'}
             assert symbolTable.getSymbol(stmt.getChild(0).getRawValue()).isPresent();
             Symbol symbol = symbolTable.getSymbol(stmt.getChild(0).getRawValue()).get();
-            PointerValue pointer = symbol.getPointer();
+            PointerValue pointer = symbol.getPointer(); //a:%1
             assert pointer != null;
             NodeUnion result = new IrUtil(builder, basicBlock).calc(stmt.getChild(2));
             if (result.isNum) {

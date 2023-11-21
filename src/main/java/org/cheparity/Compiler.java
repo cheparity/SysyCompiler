@@ -22,10 +22,10 @@ public class Compiler {
     private static final FileOutputStream fos;
 
     static {
-        File f = new File("pcoderesult.txt");
+        File f = new File("llvm_ir.txt");
         if (f.exists()) f.delete();
         try {
-            fos = new FileOutputStream("pcoderesult.txt");
+            fos = new FileOutputStream("llvm_ir.txt");
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         }

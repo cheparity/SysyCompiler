@@ -5,7 +5,6 @@ import frontEnd.parser.dataStruct.GrammarType;
 import middleEnd.llvm.NodeUnion;
 import middleEnd.llvm.ir.BasicBlock;
 import middleEnd.llvm.ir.IrBuilder;
-import middleEnd.llvm.ir.PointerValue;
 import middleEnd.llvm.ir.Variable;
 import middleEnd.symbols.FuncType;
 import middleEnd.symbols.Symbol;
@@ -273,7 +272,7 @@ class IrUtil {
 
                 //for循环是在构建实参列表paramVariables
                 for (int i = 0; i < fparams.size(); i++) {
-                    var pSymbol = fparams.get(i);
+//                    var pSymbol = fparams.get(i);
                     var pNode = node.getChild(2).getChild(2 * i); //0->0, 1->2, 2->4, .. i->2*i
                     NodeUnion calc = calc(pNode);
                     //如果传参是数字：%2 = call i32 @foo(i32 1) 直接call
@@ -282,10 +281,10 @@ class IrUtil {
                         continue;
                     }
                     //如果传参是变量
-                    PointerValue pointer = pSymbol.getPointer();
-                    Variable register = builder.buildLoadInst(block, pointer); //此时variable为load出的寄存器
-                    paramVariables.add(register); //将寄存器存入列表
-                    pSymbol.setIrVariable(register); //将寄存器存入符号表
+//                    PointerValue pointer = pSymbol.getPointer();
+//                    Variable register = builder.buildLoadInst(block, pointer); //此时variable为load出的寄存器
+                    paramVariables.add(calc.getVariable()); //将寄存器存入列表
+//                    pSymbol.setIrVariable(calc.getVariable()); //将寄存器存入符号表 todo 想清楚
                 }
                 //5.build call inst
                 //如果是void，直接call

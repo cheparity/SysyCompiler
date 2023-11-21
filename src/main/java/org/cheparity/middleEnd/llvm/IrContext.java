@@ -18,6 +18,7 @@ public class IrContext implements IrPrintable {
         this.irModule = irModule;
     }
 
+
     @Override
     public String toIrCode() {
         return irModule.toIrCode();

@@ -38,10 +38,21 @@ public abstract class Symbol {
         return Optional.ofNullable(irVariable);
     }
 
+    /**
+     * 如果变量被load出来，可以设置该变量的寄存器但好像还没有写更新寄存器的逻辑，故<font color='red'>先不要用</font>
+     *
+     * @param irVariable 变量的寄存器
+     */
     public void setIrVariable(Variable irVariable) {
         this.irVariable = irVariable;
     }
 
+
+    /**
+     * 如果变量被load出来，可以设置该变量的寄存器，此时变量就有了值。但还没有写更新寄存器的逻辑，故<font color='red'>先不要用</font>
+     *
+     * @return 变量寄存器中的值
+     */
     public Optional<Integer> getNumber() {
         if (irVariable != null) {
             return irVariable.getNumber();

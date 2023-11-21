@@ -5,10 +5,6 @@ import java.util.Arrays;
 import java.util.List;
 
 public class Module extends Value {
-    private final static String HEADER = "declare i32 @getint()\n" +
-            "declare void @putint(i32)\n" +
-            "declare void @putch(i32)\n" +
-            "declare void @putstr(i8*)\n\n";
     List<Function> functions = new ArrayList<>();
     List<GlobalValue> globalValues = new ArrayList<>();
     List<Instruction> globalInstructions = new ArrayList<>();
