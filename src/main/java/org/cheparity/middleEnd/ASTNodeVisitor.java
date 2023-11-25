@@ -9,7 +9,7 @@ import frontEnd.parser.dataStruct.ASTNode;
  * <p>
  * 2. FuncDefVisitor => FuncDef & MainFuncDef
  * <p>
- * 3. BlockVisitor => Block
+ * 3. EntryBlockVisitor => Block
  * <p>
  * 4. BlockItemVisitor => BlockItem
  */

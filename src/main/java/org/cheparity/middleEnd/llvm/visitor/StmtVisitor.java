@@ -4,7 +4,7 @@ import frontEnd.parser.dataStruct.ASTLeaf;
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
 import middleEnd.ASTNodeVisitor;
-import middleEnd.llvm.ir.BasicBlock;
+import middleEnd.llvm.ir.EntryBlock;
 import middleEnd.llvm.ir.IrBuilder;
 import middleEnd.llvm.ir.PointerValue;
 import middleEnd.llvm.ir.Variable;
@@ -15,11 +15,11 @@ import middleEnd.symbols.SymbolTable;
 import java.util.List;
 
 public final class StmtVisitor implements ASTNodeVisitor {
-    private final BasicBlock basicBlock;
+    private final EntryBlock basicBlock;
     private final IrBuilder builder;
     private final SymbolTable symbolTable;
 
-    public StmtVisitor(BasicBlock basicBlock, IrBuilder builder) {
+    public StmtVisitor(EntryBlock basicBlock, IrBuilder builder) {
         this.basicBlock = basicBlock;
         this.builder = builder;
         this.symbolTable = basicBlock.getSymbolTable();

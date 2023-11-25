@@ -8,7 +8,7 @@ public class Function extends GlobalValue implements GlobalObjects {
     private final IrType returnType;
     private final Module module; //所属module
     //    private final List<BasicBlock> blockList = new ArrayList<>();
-    private BasicBlock entryBlock;
+    private EntryBlock entryBlock;
 
     Function(IrType type, String name, Module module) {
         super(type, name);
@@ -28,7 +28,7 @@ public class Function extends GlobalValue implements GlobalObjects {
         return entryBlock;
     }
 
-    void setEntryBlock(BasicBlock entryBlock) {
+    void setEntryBlock(EntryBlock entryBlock) {
         this.entryBlock = entryBlock;
         entryBlock.setEntryFunc(this);
     }

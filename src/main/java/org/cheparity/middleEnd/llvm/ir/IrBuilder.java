@@ -45,10 +45,10 @@ public class IrBuilder {
      * @param symbolTable 符号表
      * @return 返回一个嵌套块
      */
-    public NestedBlock buildAnonymousBlock(BasicBlock fatherBlock, SymbolTable symbolTable) {
-        NestedBlock nestedBlock = new NestedBlock(fatherBlock); //匿名块命名规则不占用寄存器
-        nestedBlock.setSymbolTable(symbolTable);
-        return nestedBlock;
+    public AnonymousBlock buildAnonymousBlock(BasicBlock fatherBlock, SymbolTable symbolTable) {
+        AnonymousBlock anonymousBlock = new AnonymousBlock(fatherBlock); //匿名块命名规则不占用寄存器
+        anonymousBlock.setSymbolTable(symbolTable);
+        return anonymousBlock;
     }
 
 
@@ -59,8 +59,8 @@ public class IrBuilder {
      * @param symbolTable 符号表
      * @return 返回一个函数入口块
      */
-    public BasicBlock buildEntryBlock(Function function, SymbolTable symbolTable) {
-        var bb = new BasicBlock(allocator.allocate()); //每个临时寄存器和基本块占用一个编号
+    public EntryBlock buildEntryBlock(Function function, SymbolTable symbolTable) {
+        var bb = new EntryBlock(allocator.allocate()); //每个临时寄存器和基本块占用一个编号
         function.setEntryBlock(bb);
         bb.setSymbolTable(symbolTable);
         //为了从符号表中找到函数参数，并更新其指针。1.注意是从全局符号表查找function 2.注意function的name之前有个@，所以要substring(1)

@@ -230,7 +230,7 @@ public class ASTNode implements ASTNodeElement {
             children.stream()
                     .filter(node -> node.getGrammarType() == GrammarType.FUNC_DEF | node.getGrammarType() == GrammarType.MAIN_FUNC_DEF)
                     .forEach(visitor::visit);
-        } else if (visitor instanceof BlockVisitor) {
+        } else if (visitor instanceof EntryBlockVisitor) {
             //过滤出函数体
             children.stream()
                     .filter(node -> node.getGrammarType() == GrammarType.BLOCK)
