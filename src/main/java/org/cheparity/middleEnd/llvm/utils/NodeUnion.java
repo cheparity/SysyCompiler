@@ -1,4 +1,4 @@
-package middleEnd.llvm;
+package middleEnd.llvm.utils;
 
 import frontEnd.parser.dataStruct.ASTNode;
 import middleEnd.llvm.ir.*;
@@ -7,7 +7,7 @@ import middleEnd.llvm.ir.*;
  * 一个联合结构，为ASTNode拓展了两个属性：number，variable。当我们不知道一个ASTNode节点是number还是register的时候，就用这个结构来表示。
  */
 public final class NodeUnion {
-    private final ASTNode node;
+    final ASTNode node;
     private final IrBuilder builder;
     private final BasicBlock block;
     public boolean isNum;
@@ -15,9 +15,9 @@ public final class NodeUnion {
     private int number;
 
     public NodeUnion(ASTNode node, IrBuilder builder, BasicBlock block) {
-        this.node = node;
         this.builder = builder;
         this.block = block;
+        this.node = node;
     }
 
     public int getNumber() {
@@ -189,5 +189,231 @@ public final class NodeUnion {
         this.variable = variable;
         this.isNum = false;
         return this;
+    }
+
+    public NodeUnion or(NodeUnion other) {
+        if (this.isNum && other.isNum) {
+            //只要有一个不是0，则结果为1
+            if (this.number != 0 || other.number != 0) return this.setNumber(1);
+            else return this.setNumber(0);
+        }
+        //否则分配指令进行或运算
+        Variable ret;
+        if (this.isNum) {
+            ret = builder.buildLogicInst(
+                    block,
+                    builder.buildConstIntNum(this.number),
+                    Operator.create(IrType.create(IrType.IrTypeID.BitTyID), Operator.OpCode.OR),
+                    other.variable
+            );
+        } else {
+            ret = builder.buildLogicInst(
+                    block,
+                    this.variable,
+                    Operator.create(IrType.create(IrType.IrTypeID.BitTyID), Operator.OpCode.OR),
+                    builder.buildConstIntNum(other.number)
+            );
+        }
+        return this.setVariable(ret);
+    }
+
+    public NodeUnion and(NodeUnion other) {
+        if (this.isNum && other.isNum) {
+            //只要有一个是0，则结果为0
+            if (this.number == 0 || other.number == 0) return this.setNumber(0);
+            else return this.setNumber(1);
+        }
+        //否则分配指令进行与运算
+        Variable ret;
+        if (this.isNum) {
+            ret = builder.buildLogicInst(
+                    block,
+                    builder.buildConstIntNum(this.number),
+                    Operator.create(IrType.create(IrType.IrTypeID.BitTyID), Operator.OpCode.AND),
+                    other.variable
+            );
+        } else {
+            ret = builder.buildLogicInst(
+                    block,
+                    this.variable,
+                    Operator.create(IrType.create(IrType.IrTypeID.BitTyID), Operator.OpCode.AND),
+                    builder.buildConstIntNum(other.number)
+            );
+        }
+        return this.setVariable(ret);
+    }
+
+    public NodeUnion eq(NodeUnion other) {
+        if (this.isNum && other.isNum) {
+            if (this.number == other.number) return this.setNumber(1);
+            else return this.setNumber(0);
+        }
+        Variable ret;
+        if (this.isNum) {
+            ret = builder.buildLogicInst(
+                    block,
+                    builder.buildConstIntNum(this.number),
+                    Operator.create(IrType.create(IrType.IrTypeID.BitTyID), Operator.OpCode.AND),
+                    other.variable
+            );
+        } else {
+            ret = builder.buildLogicInst(
+                    block,
+                    this.variable,
+                    Operator.create(IrType.create(IrType.IrTypeID.BitTyID), Operator.OpCode.AND),
+                    builder.buildConstIntNum(other.number)
+            );
+        }
+        return this.setVariable(ret);
+    }
+
+    /**
+     * 逻辑不等于
+     *
+     * @param other 另一个NodeUnion
+     * @return 逻辑不等于的结果
+     */
+    public NodeUnion ne(NodeUnion other) {
+        if (this.isNum && other.isNum) {
+            if (this.number != other.number) return this.setNumber(1);
+            else return this.setNumber(0);
+        }
+        Variable ret;
+        if (this.isNum) {
+            ret = builder.buildLogicInst(
+                    block,
+                    builder.buildConstIntNum(this.number),
+                    IcmpInstruction.Cond.NE,
+                    other.variable
+            );
+        } else {
+            ret = builder.buildLogicInst(
+                    block,
+                    this.variable,
+                    IcmpInstruction.Cond.NE,
+                    builder.buildConstIntNum(other.number)
+            );
+        }
+        return this.setVariable(ret);
+    }
+
+    /**
+     * 逻辑小于
+     *
+     * @param other 另一个NodeUnion
+     * @return 逻辑小于的结果
+     */
+    public NodeUnion lt(NodeUnion other) {
+        if (this.isNum && other.isNum) {
+            if (this.number < other.number) return this.setNumber(1);
+            else return this.setNumber(0);
+        }
+        Variable ret;
+        if (this.isNum) {
+            ret = builder.buildLogicInst(
+                    block,
+                    builder.buildConstIntNum(this.number),
+                    IcmpInstruction.Cond.SLT,
+                    other.variable
+            );
+        } else {
+            ret = builder.buildLogicInst(
+                    block,
+                    this.variable,
+                    IcmpInstruction.Cond.SLT,
+                    builder.buildConstIntNum(other.number)
+            );
+        }
+        return this.setVariable(ret);
+    }
+
+    /**
+     * 逻辑小于等于
+     *
+     * @param other 另一个NodeUnion
+     * @return 逻辑小于等于的结果
+     */
+    public NodeUnion le(NodeUnion other) {
+        if (this.isNum && other.isNum) {
+            if (this.number <= other.number) return this.setNumber(1);
+            else return this.setNumber(0);
+        }
+        Variable ret;
+        if (this.isNum) {
+            ret = builder.buildLogicInst(
+                    block,
+                    builder.buildConstIntNum(this.number),
+                    IcmpInstruction.Cond.SLE,
+                    other.variable
+            );
+        } else {
+            ret = builder.buildLogicInst(
+                    block,
+                    this.variable,
+                    IcmpInstruction.Cond.SLE,
+                    builder.buildConstIntNum(other.number)
+            );
+        }
+        return this.setVariable(ret);
+    }
+
+    /**
+     * 逻辑大于
+     *
+     * @param other 另一个NodeUnion
+     * @return 逻辑大于的结果
+     */
+    public NodeUnion gt(NodeUnion other) {
+        if (this.isNum && other.isNum) {
+            if (this.number > other.number) return this.setNumber(1);
+            else return this.setNumber(0);
+        }
+        Variable ret;
+        if (this.isNum) {
+            ret = builder.buildLogicInst(
+                    block,
+                    builder.buildConstIntNum(this.number),
+                    IcmpInstruction.Cond.SGT,
+                    other.variable
+            );
+        } else {
+            ret = builder.buildLogicInst(
+                    block,
+                    this.variable,
+                    IcmpInstruction.Cond.SGT,
+                    builder.buildConstIntNum(other.number)
+            );
+        }
+        return this.setVariable(ret);
+    }
+
+    /**
+     * 逻辑大于等于
+     *
+     * @param other 另一个NodeUnion
+     * @return 逻辑大于等于的结果
+     */
+    public NodeUnion ge(NodeUnion other) {
+        if (this.isNum && other.isNum) {
+            if (this.number >= other.number) return this.setNumber(1);
+            else return this.setNumber(0);
+        }
+        Variable ret;
+        if (this.isNum) {
+            ret = builder.buildLogicInst(
+                    block,
+                    builder.buildConstIntNum(this.number),
+                    IcmpInstruction.Cond.SGE,
+                    other.variable
+            );
+        } else {
+            ret = builder.buildLogicInst(
+                    block,
+                    this.variable,
+                    IcmpInstruction.Cond.SGE,
+                    builder.buildConstIntNum(other.number)
+            );
+        }
+        return this.setVariable(ret);
     }
 }

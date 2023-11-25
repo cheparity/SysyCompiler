@@ -1,6 +1,5 @@
 package middleEnd.llvm.ir;
 
-import middleEnd.llvm.IrContext;
 import middleEnd.llvm.IrTranslator;
 import middleEnd.llvm.RegisterAllocator;
 import middleEnd.symbols.FuncSymbol;
@@ -32,20 +31,34 @@ public class IrBuilder {
      *
      * @param function 所属函数
      * @param type     参数类型
-     * @return new出来的参数
      */
-    public Argument buildArg(Function function, IrType type) {
+    public void buildArg(Function function, IrType type) {
         Argument argument = new Argument(type, allocator.allocate());
         function.insertArgument(argument);
-        return argument;
     }
 
-    public NestBlock buildNestBlock(BasicBlock fatherBlock, SymbolTable symbolTable) {
-        NestBlock nestBlock = new NestBlock(fatherBlock.getName() + "-nested", fatherBlock); //嵌套块命名规则好像不占用寄存器
-        nestBlock.setSymbolTable(symbolTable);
-        return nestBlock;
+
+    /**
+     * 建立一个匿名嵌套块，区别与函数入口块和if for等跳转语句建立的块
+     *
+     * @param fatherBlock 父块
+     * @param symbolTable 符号表
+     * @return 返回一个嵌套块
+     */
+    public NestedBlock buildAnonymousBlock(BasicBlock fatherBlock, SymbolTable symbolTable) {
+        NestedBlock nestedBlock = new NestedBlock(fatherBlock); //匿名块命名规则不占用寄存器
+        nestedBlock.setSymbolTable(symbolTable);
+        return nestedBlock;
     }
 
+
+    /**
+     * 建立函数入口块
+     *
+     * @param function    函数
+     * @param symbolTable 符号表
+     * @return 返回一个函数入口块
+     */
     public BasicBlock buildEntryBlock(Function function, SymbolTable symbolTable) {
         var bb = new BasicBlock(allocator.allocate()); //每个临时寄存器和基本块占用一个编号
         function.setEntryBlock(bb);
@@ -81,6 +94,7 @@ public class IrBuilder {
                 register);
     }
 
+
     /**
      * 形如：%5 = sub nsw i32 0, %4，表示%5寄存器是%4寄存器的取反
      * <p>
@@ -100,15 +114,62 @@ public class IrBuilder {
         zeroConst.setNumber(0);
         var zero = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), "0", true);
         zero.setNumber(0);
-        var op1 = buildCmpInst(block, variable, new IcmpInstruction.Condition(IcmpInstruction.Condition.Cond.NE), zero);
+        var op1 = buildCmpInst(block, variable, IcmpInstruction.Cond.NE, zero);
         var trueVariable = new Variable(IrType.create(IrType.IrTypeID.BitTyID), "true", true);
         trueVariable.setNumber(1);
         return buildBinInstruction(block, op1, Operator.create(IrType.create(IrType.IrTypeID.BitTyID), Operator.OpCode.XOR), trueVariable);
     }
 
-    public Variable buildCmpInst(BasicBlock block, Variable a, IcmpInstruction.Condition condition, Variable b) {
+    /**
+     * 专门构建与或非等逻辑运算的函数。
+     * <p>
+     * 1. <font color='red'>等和不等运算</font>：直接build icmp instruction，得到的结果即为返回结果
+     * <p>
+     * 2. 与或运算：与0进行icmp之后，得到bit变量，再进行buildBinInst（and/or）得到bit的变量结果
+     *
+     * @param block 所属基本块
+     * @param a     左操作数
+     * @param b     右操作数
+     * @param op    操作码（{@link IcmpInstruction.Cond}）
+     * @return 返回一个result的Variable，这个Variable是<font color='red'>寄存器</font>，里面存放了结果
+     */
+    public Variable buildLogicInst(BasicBlock block, Variable a, IcmpInstruction.Cond op, Variable b) {
         assert a.getType() == b.getType();
-        Variable res = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
+        return buildCmpInst(block, a, op, b);
+    }
+
+    /**
+     * 专门构建与或非等逻辑运算的函数。
+     * <p>
+     * 1. 等和不等运算：直接build icmp instruction，得到的结果即为返回结果
+     * <p>
+     * 2. <font color='red'>与或运算</font>：与0进行icmp之后，得到bit变量，再进行buildBinInst（and/or）得到bit的变量结果
+     *
+     * @param block 所属基本块
+     * @param a     左操作数
+     * @param b     右操作数
+     * @param op    操作码（{@link Operator.OpCode}）
+     * @return 返回一个result的Variable，这个Variable是<font color='red'>寄存器</font>，里面存放了结果
+     */
+    public Variable buildLogicInst(BasicBlock block, Variable a, Operator op, Variable b) {
+        assert op.opCode == Operator.OpCode.AND || op.opCode == Operator.OpCode.OR;
+        Variable ares = buildCmpInst(block, a, IcmpInstruction.Cond.SGT, b);
+        Variable bres = buildCmpInst(block, b, IcmpInstruction.Cond.SGT, b);
+        return buildBinInstruction(block, ares, op, bres);
+    }
+
+    /**
+     * 形如：  %4 = icmp slt i32 %3, 2      ; ===> if %3 < 2
+     *
+     * @param block     所属块
+     * @param a         左值
+     * @param condition 比较条件
+     * @param b         右值
+     * @return 结果variable
+     */
+    public Variable buildCmpInst(BasicBlock block, Variable a, IcmpInstruction.Cond condition, Variable b) {
+        assert a.getType() == b.getType();
+        Variable res = new Variable(IrType.create(IrType.IrTypeID.BitTyID), allocator.allocate());
         IcmpInstruction icmpInstruction = new IcmpInstruction(res, a, b, condition);
         block.addInstruction(icmpInstruction);
         return res;

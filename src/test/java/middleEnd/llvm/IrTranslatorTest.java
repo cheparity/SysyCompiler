@@ -5,6 +5,7 @@ import frontEnd.parser.SysYParser;
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.impl.RecursiveDescentParser;
 import junit.framework.TestCase;
+import middleEnd.llvm.ir.IrContext;
 
 public class IrTranslatorTest extends TestCase {
 
@@ -12,7 +13,7 @@ public class IrTranslatorTest extends TestCase {
     IrTranslator irTranslator = IrTranslator.getInstance();
 
 
-    public void testVisit() {
+    public void testLlvmIr() {
         sysYParser.setTokens(LexerImpl.getInstance().getAllTokens());
         ASTNode ast = sysYParser.getAST();
         IrContext irContext = irTranslator.translate2LlvmIr(ast);

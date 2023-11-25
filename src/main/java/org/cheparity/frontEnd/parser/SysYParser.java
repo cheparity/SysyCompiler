@@ -8,7 +8,7 @@ import java.util.List;
 public interface SysYParser {
     ASTNode getAST();
 
-    void setTokens(List<Token> tokens);
+    SysYParser setTokens(List<Token> tokens);
 
     void parse();
 }

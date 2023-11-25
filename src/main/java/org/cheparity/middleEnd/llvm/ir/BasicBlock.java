@@ -6,17 +6,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class BasicBlock extends Value {
+    final List<NestedBlock> nestedBlocks = new ArrayList<>();
     private final List<Instruction> instructionList = new ArrayList<>();
-    private final List<NestBlock> nestBlockList = new ArrayList<>();
     private SymbolTable symbolTable;
     private Function entryFunc;
 
     BasicBlock(String name) {
         super(IrType.create(IrType.IrTypeID.LabelTyID), name);
-    }
-
-    protected void addNestBlock(NestBlock block) {
-        this.nestBlockList.add(block);
     }
 
     public SymbolTable getSymbolTable() {

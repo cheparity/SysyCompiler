@@ -5,10 +5,10 @@ import frontEnd.parser.SysYParser;
 import frontEnd.parser.dataStruct.ASTLeaf;
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
-import frontEnd.parser.dataStruct.utils.LoggerUtil;
 import frontEnd.parser.impl.RecursiveDescentParser;
-import middleEnd.llvm.IrContext;
 import middleEnd.llvm.IrTranslator;
+import middleEnd.llvm.ir.IrContext;
+import utils.LoggerUtil;
 
 import java.io.*;
 import java.util.TreeSet;

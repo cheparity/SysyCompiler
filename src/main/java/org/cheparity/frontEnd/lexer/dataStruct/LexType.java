@@ -1,8 +1,8 @@
 package frontEnd.lexer.dataStruct;
 
 import exception.LexErrorException;
-import frontEnd.parser.dataStruct.utils.LoggerUtil;
 import frontEnd.parser.dataStruct.utils.RegUtil;
+import utils.LoggerUtil;
 
 import java.util.Arrays;
 import java.util.regex.Pattern;

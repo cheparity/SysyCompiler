@@ -60,5 +60,4 @@ public abstract class Value implements IrPrintable {
         return type + " " + name;
     }
 
-
 }

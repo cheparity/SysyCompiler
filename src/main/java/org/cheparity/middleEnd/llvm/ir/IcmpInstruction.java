@@ -6,12 +6,12 @@ import middleEnd.os.IrPrintable;
  * [result] = icmp [cond] [ty] [op1], [op2]   ; yields i1 or [N x i1]:result
  */
 public class IcmpInstruction extends Instruction {
-    private final Variable result;
-    private final Variable op1;
-    private final Variable op2;
-    private final Condition cond;
+    final Variable result;
+    final Variable op1;
+    final Variable op2;
+    final Cond cond;
 
-    public IcmpInstruction(Variable result, Variable op1, Variable op2, Condition condition) {
+    public IcmpInstruction(Variable result, Variable op1, Variable op2, Cond condition) {
         this.result = result;
         this.op1 = op1;
         this.op2 = op2;
@@ -23,35 +23,56 @@ public class IcmpInstruction extends Instruction {
         return "icmp " + cond.toIrCode() + " " + op1.getType().toIrCode() + " " + op1.toIrCode() + ", " + op2.toIrCode();
     }
 
-    static class Condition implements IrPrintable {
-        private final Cond cond;
+    public enum Cond implements IrPrintable {
+        /**
+         * equal
+         */
+        EQ("eq"),
+        /**
+         * not equal
+         */
+        NE("ne"),
+        /**
+         * unsigned greater than
+         */
+        UGT("ugt"),
+        /**
+         * unsigned greater or equal
+         */
+        UGE("uge"),
+        /**
+         * unsigned less than
+         */
+        ULT("ult"),
+        /**
+         * unsigned less or equal
+         */
+        ULE("ule"),
+        /**
+         * signed greater than
+         */
+        SGT("sgt"),
+        /**
+         * signed greater or equal
+         */
+        SGE("sge"),
+        /**
+         * signed less than
+         */
+        SLT("slt"),
+        /**
+         * signed less than or equal
+         */
+        SLE("sle");
+        final String value;
 
-        Condition(Cond cond) {
-            this.cond = cond;
+        Cond(String value) {
+            this.value = value;
         }
 
         @Override
         public String toIrCode() {
-            return this.cond.value;
-        }
-
-        enum Cond {
-            EQ("eq"),
-            NE("ne"),
-            UGT("ugt"),
-            UGE("uge"),
-            ULT("ult"),
-            ULE("ule"),
-            SGT("sgt"),
-            SGE("sge"),
-            SLT("slt"),
-            SLE("sle");
-            final String value;
-
-            Cond(String value) {
-                this.value = value;
-            }
-
+            return this.value;
         }
     }
 }

@@ -3,10 +3,10 @@ package frontEnd.parser.dataStruct;
 import exception.GrammarError;
 import frontEnd.lexer.dataStruct.Token;
 import frontEnd.parser.ASTNodeElement;
-import frontEnd.parser.dataStruct.utils.LoggerUtil;
 import middleEnd.ASTNodeVisitor;
 import middleEnd.llvm.visitor.*;
 import middleEnd.symbols.SymbolTable;
+import utils.LoggerUtil;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -2,10 +2,10 @@ package middleEnd.llvm.visitor;
 
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
-import middleEnd.llvm.NodeUnion;
 import middleEnd.llvm.ir.BasicBlock;
 import middleEnd.llvm.ir.IrBuilder;
 import middleEnd.llvm.ir.Variable;
+import middleEnd.llvm.utils.NodeUnion;
 import middleEnd.symbols.FuncType;
 import middleEnd.symbols.Symbol;
 import middleEnd.symbols.SymbolTable;
@@ -24,58 +24,6 @@ class IrUtil {
         this.table = block.getSymbolTable();
         this.builder = builder;
     }
-
-    /**
-     * 自定义的双目运算符（我现在觉得应该用不到了），接受两个variable，分配寄存器，相加
-     *
-     * @param a       第一个操作数
-     * @param b       第二个操作数
-     * @param type    运算符类型。目前通过<font color='red'>{@link GrammarType}来区分运算类型。</font>只可能是<font
-     *                color='red'>加减乘除模</font>，而<font
-     *                color='red'>不能是正负号等单目运算符。</font>
-     * @param builder IrBuilder
-     * @return 运算结果，可能是数也可能是寄存器
-     */
-//    private static Variable Op(Variable a, GrammarType type, Variable b, IrBuilder builder, BasicBlock block) {
-//        assert type == GrammarType.PLUS | type == GrammarType.MINUS | type == GrammarType.MULTIPLY | type == GrammarType.DIVIDE | type == GrammarType.MOD;
-//        boolean aIsRegister = a.getNumber().isEmpty();
-//        boolean bIsRegister = b.getNumber().isEmpty();
-//        //只要有一个是寄存器，那么就得生成寄存器码
-//        //如果两个都不是寄存器，简单！直接转换为int相加
-//        if (!aIsRegister && !bIsRegister) {
-//            Integer numa = a.getNumber().get();
-//            Integer numb = b.getNumber().get();
-//            return switch (type) {
-//                //这里不能调用buildBinInstruction，因为a，b都不是寄存器
-//                case PLUS -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa + numb);
-//                case MINUS -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa - numb);
-//                case MULTIPLY -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa * numb);
-//                case DIVIDE -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa / numb);
-//                case MOD -> builder.buildLocalVariable(block, a.getType().getBasicType(), numa % numb);
-//                default -> throw new RuntimeException("Unexpected grammar type: " + type);
-//            };
-//        }
-//        //如果有寄存器，两者就都得生成对应的寄存器指令，而且要加减乘除各种指令
-//        //a = 10, b = %2
-//        //a = %2, b = 10
-//        //a = %2, b = %3
-//        Operator add = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.ADD);
-//        Operator sub = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.SUB);
-//        Operator mul = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.MUL);
-//        Operator div = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.SDIV);
-//        Operator mod = Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.SREM);
-//        var aVar = aIsRegister ? a : builder.buildLocalVariable(block, a.getType().getBasicType(), a.getNumber().get());
-//        var bVar = bIsRegister ? b : builder.buildLocalVariable(block, b.getType().getBasicType(), b.getNumber().get());
-//        //现在aVar和bVar都是寄存器了
-//        return switch (type) {
-//            case PLUS -> builder.buildBinInstruction(block, aVar, add, bVar);
-//            case MINUS -> builder.buildBinInstruction(block, aVar, sub, bVar);
-//            case MULTIPLY -> builder.buildBinInstruction(block, aVar, mul, bVar);
-//            case DIVIDE -> builder.buildBinInstruction(block, aVar, div, bVar);
-//            case MOD -> builder.buildBinInstruction(block, aVar, mod, bVar);
-//            default -> throw new RuntimeException("Unexpected grammar type: " + type);
-//        };
-//    }
 
     /**
      * @param node 节点
@@ -195,12 +143,12 @@ class IrUtil {
         return 0;
     }
 
-    public NodeUnion calc(ASTNode node) {
+    public NodeUnion calcAloExp(ASTNode node) {
         NodeUnion union = new NodeUnion(node, builder, block);
         switch (node.getGrammarType()) {
             case CONST_EXP, EXP, NUMBER -> {
                 // Exp -> AddExp
-                return calc(node.getChild(0));
+                return calcAloExp(node.getChild(0));
             }
             case INT_CONST -> {
                 return union.setNumber(Integer.parseInt(node.getRawValue()));
@@ -209,12 +157,12 @@ class IrUtil {
                 // AddExp -> MulExp | AddExp '+' MulExp | AddExp '-' MulExp
                 // AddExp -> MulExp {('+'|'-') MulExp}
                 if (node.getChildren().size() == 1) {
-                    return calc(node.getChild(0));
+                    return calcAloExp(node.getChild(0));
                 }
-                var addRes = calc(node.getChild(0));
+                var addRes = calcAloExp(node.getChild(0));
                 for (int i = 1; i < node.getChildren().size(); i += 2) {
                     var plusOrMinus = node.getChild(i).getGrammarType();
-                    var mulRes = calc(node.getChild(i + 1));
+                    var mulRes = calcAloExp(node.getChild(i + 1));
                     addRes = (plusOrMinus == GrammarType.PLUS) ? (addRes.add(mulRes)) : (addRes.sub(mulRes));
                 }
 
@@ -224,11 +172,11 @@ class IrUtil {
                 // MulExp -> UnaryExp | MulExp ('*' | '/' | '%') UnaryExp
                 // MulExp -> UnaryExp { ('*' | '/' | '%') UnaryExp }
                 if (node.getChildren().size() == 1) {
-                    return calc(node.getChild(0));
+                    return calcAloExp(node.getChild(0));
                 }
-                var mulRes = calc(node.getChild(0));
+                var mulRes = calcAloExp(node.getChild(0));
                 for (int i = 1; i < node.getChildren().size(); i += 2) {
-                    var unaryRes = calc(node.getChild(i + 1));
+                    var unaryRes = calcAloExp(node.getChild(i + 1));
                     var mulOrDivOrMod = node.getChild(i).getGrammarType();
                     mulRes = switch (mulOrDivOrMod) {
                         case MULTIPLY -> mulRes.mul(unaryRes);
@@ -242,13 +190,13 @@ class IrUtil {
             case UNARY_EXP -> {
                 //UnaryExp -> PrimaryExp | UnaryOp UnaryExp | Ident '(' [FuncRParams] ')'
                 if (node.getChildren().size() == 1) {
-                    return calc(node.getChild(0));
+                    return calcAloExp(node.getChild(0));
                 }
                 if (node.getChildren().size() == 2) {
 //                    UnaryOp -> '+' | '−' | '!'
                     var unaryOp = node.getChild(0).getChild(0).getGrammarType();
                     var unaryExp = node.getChild(1);
-                    var unaryExpRes = calc(unaryExp);
+                    var unaryExpRes = calcAloExp(unaryExp);
                     switch (unaryOp) {
                         case PLUS -> {
                             return unaryExpRes;
@@ -274,7 +222,7 @@ class IrUtil {
                 for (int i = 0; i < fparams.size(); i++) {
 //                    var pSymbol = fparams.get(i);
                     var pNode = node.getChild(2).getChild(2 * i); //0->0, 1->2, 2->4, .. i->2*i
-                    NodeUnion calc = calc(pNode);
+                    NodeUnion calc = calcAloExp(pNode);
                     //如果传参是数字：%2 = call i32 @foo(i32 1) 直接call
                     if (calc.isNum) {
                         paramVariables.add(builder.buildConstIntNum(calc.getNumber()));
@@ -299,10 +247,10 @@ class IrUtil {
             case PRIMARY_EXP -> {
 //                PrimaryExp ->  LVal | Number | '(' Exp ')'
                 if (node.getChildren().size() == 1) {
-                    return calc(node.getChild(0));
+                    return calcAloExp(node.getChild(0));
                 }
                 if (node.getChildren().size() == 3) {
-                    return calc(node.getChild(1));
+                    return calcAloExp(node.getChild(1));
                 }
             }
             case LVAL -> {
@@ -323,12 +271,80 @@ class IrUtil {
             case CONST_INIT_VAL -> {
                 //ConstInitVal -> ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
                 if (node.getChildren().size() == 1) {
-                    return calc(node.getChild(0));
+                    return calcAloExp(node.getChild(0));
                 }
                 throw new RuntimeException("Not implement array!");
             }
             default -> throw new RuntimeException("Unexpected grammar type: " + node.getGrammarType());
         }
         throw new RuntimeException("You shouldn't walk this");
+    }
+
+    public NodeUnion calcCondExp(ASTNode node) {
+        //Cond -> LOrExp
+        //LOrExp -> LAndExp | LOrExp '||' LAndExp
+        //LAndExp -> EqExp | LAndExp '&&' EqExp
+        //EqExp -> RelExp | EqExp ('==' | '!=') RelExp
+        //RelExp -> AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
+        switch (node.getGrammarType()) {
+            case COND -> {
+                return calcCondExp(node.getChild(0));
+            }
+            case LOR_EXP -> {
+                if (node.getChildren().size() == 1) {
+                    return calcCondExp(node.getChild(0));
+                }
+                var lOrExp = calcCondExp(node.getChild(0));
+                var lAndExp = calcCondExp(node.getChild(2));
+                var op = node.getChild(1).getGrammarType();
+                return switch (op) {
+                    case LOGICAL_OR -> lOrExp.or(lAndExp);
+                    default -> throw new RuntimeException("Unexpected grammar type: " + op);
+                };
+            }
+            case LAND_EXP -> {
+                if (node.getChildren().size() == 1) {
+                    return calcCondExp(node.getChild(0));
+                }
+                var lAndExp = calcCondExp(node.getChild(0));
+                var eqExp = calcCondExp(node.getChild(2));
+                var op = node.getChild(1).getGrammarType();
+                return switch (op) {
+                    case LOGICAL_AND -> lAndExp.and(eqExp);
+                    default -> throw new RuntimeException("Unexpected grammar type: " + op);
+                };
+            }
+            case EQ_EXP -> {
+                if (node.getChildren().size() == 1) {
+                    return calcCondExp(node.getChild(0));
+                }
+                var eqExp = calcCondExp(node.getChild(0));
+                var relExp = calcCondExp(node.getChild(2));
+                var op = node.getChild(1).getGrammarType();
+                return switch (op) {
+                    case EQUAL -> eqExp.eq(relExp);
+                    case NOT_EQUAL -> eqExp.ne(relExp);
+                    default -> throw new RuntimeException("Unexpected grammar type: " + op);
+                };
+            }
+            case REL_EXP -> {
+                if (node.getChildren().size() == 1) {
+                    return calcCondExp(node.getChild(0));
+                }
+                var relExp = calcCondExp(node.getChild(0));
+                var addExp = calcCondExp(node.getChild(2));
+                var op = node.getChild(1).getGrammarType();
+                return switch (op) {
+                    case LESS_THAN -> relExp.lt(addExp);
+                    case LESS_THAN_EQUAL -> relExp.le(addExp);
+                    case GREATER_THAN -> relExp.gt(addExp);
+                    case GREATER_THAN_EQUAL -> relExp.ge(addExp);
+                    default -> throw new RuntimeException("Unexpected grammar type: " + op);
+                };
+            }
+            default -> {
+                return calcAloExp(node); //剩余的情况就是算术表达式
+            }
+        }
     }
 }

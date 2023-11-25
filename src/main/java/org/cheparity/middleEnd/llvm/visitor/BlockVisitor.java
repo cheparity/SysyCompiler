@@ -43,13 +43,13 @@ public final class BlockVisitor implements ASTNodeVisitor {
         this.builder = builder;
     }
 
-    
+
     @Override
     public void visit(ASTNode block) {
         assert block.getGrammarType().equals(GrammarType.BLOCK);
         BasicBlock basicBlock;
         if (nested) { //如果是嵌入块，就不应该构造函数的entry block
-            basicBlock = builder.buildNestBlock(fatherBlock, block.getSymbolTable());
+            basicBlock = builder.buildAnonymousBlock(fatherBlock, block.getSymbolTable());
         } else { //visit入口块
             basicBlock = builder.buildEntryBlock(function, block.getSymbolTable());
         }

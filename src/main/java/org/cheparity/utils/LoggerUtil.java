@@ -1,4 +1,4 @@
-package frontEnd.parser.dataStruct.utils;
+package utils;
 
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
@@ -19,7 +19,7 @@ public class LoggerUtil {
      * FINER
      * FINEST
      */
-    private static final Level LEVEL = Level.OFF;
+    private static final Level LEVEL = Level.INFO;
     private static final Handler CONSOLE_HANDLER = new ConsoleHandler();
     private static final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
 

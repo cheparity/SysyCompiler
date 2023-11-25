@@ -2,6 +2,7 @@ package middleEnd.llvm;
 
 import frontEnd.parser.dataStruct.ASTNode;
 import middleEnd.llvm.ir.IrBuilder;
+import middleEnd.llvm.ir.IrContext;
 import middleEnd.llvm.ir.Module;
 import middleEnd.llvm.visitor.FuncVisitor;
 import middleEnd.llvm.visitor.GlobalVarVisitor;
@@ -19,10 +20,6 @@ public class IrTranslator {
             return instance;
         }
         return instance;
-    }
-
-    public IrContext getContext() {
-        return context;
     }
 
     public IrContext translate2LlvmIr(ASTNode node) {

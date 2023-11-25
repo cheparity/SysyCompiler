@@ -6,9 +6,9 @@ import frontEnd.parser.SysYParser;
 import frontEnd.parser.dataStruct.ASTLeaf;
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
-import frontEnd.parser.dataStruct.utils.LoggerUtil;
 import frontEnd.parser.dataStruct.utils.ParserUtil;
 import middleEnd.symbols.*;
+import utils.LoggerUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,12 +33,13 @@ public class RecursiveDescentParser implements SysYParser {
     }
 
     @Override
-    public void setTokens(List<Token> tokens) {
+    public SysYParser setTokens(List<Token> tokens) {
         if (tokens.isEmpty()) {
             throw new NoSuchElementException("No tokens to parse!");
         }
         this.tokens = tokens;
         this.nowToken = tokens.get(0);
+        return this;
     }
 
     private void error(ASTNode node, GrammarError e) {

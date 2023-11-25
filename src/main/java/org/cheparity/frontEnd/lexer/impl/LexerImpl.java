@@ -4,8 +4,8 @@ import frontEnd.lexer.LexPool;
 import frontEnd.lexer.SysYLexer;
 import frontEnd.lexer.dataStruct.LexType;
 import frontEnd.lexer.dataStruct.Token;
-import frontEnd.parser.dataStruct.utils.LoggerUtil;
 import frontEnd.parser.dataStruct.utils.RegUtil;
+import utils.LoggerUtil;
 
 import java.io.IOException;
 import java.nio.file.Files;

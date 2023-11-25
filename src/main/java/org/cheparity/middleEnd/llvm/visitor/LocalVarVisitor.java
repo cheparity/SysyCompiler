@@ -39,7 +39,7 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
             var constRawName = constDef.getChild(0).getRawValue();
             assert symbolTable.getSymbol(constRawName).isPresent();
             Symbol symbol = symbolTable.getSymbol(constRawName).get();
-            var nodeUnion = new IrUtil(builder, basicBlock).calc(constDef.getChild(2));
+            var nodeUnion = new IrUtil(builder, basicBlock).calcAloExp(constDef.getChild(2));
             if (nodeUnion.isNum) {
                 PointerValue pointer = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID, nodeUnion.getNumber());
                 symbol.setPointer(pointer);
@@ -64,7 +64,7 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
             Symbol symbol = symbolTable.getSymbol(varRawName).get();
             if (varDef.deepDownFind(GrammarType.INIT_VAL, 1).isPresent()) {
                 //如果有初值，建立的也是指针
-                var nodeUnion = new IrUtil(builder, basicBlock).calc(varDef.getChild(2).getChild(0));
+                var nodeUnion = new IrUtil(builder, basicBlock).calcAloExp(varDef.getChild(2).getChild(0));
                 if (nodeUnion.isNum) {
                     PointerValue pointer = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID,
                             nodeUnion.getNumber());
