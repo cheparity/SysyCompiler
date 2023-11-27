@@ -26,6 +26,19 @@ public final class StmtVisitor implements ASTNodeVisitor {
     }
 
     /**
+     * 为了处理匿名块的情况，需要把<font color='red'>匿名块里的符号表</font>单独传递过来。
+     *
+     * @param basicBlock  基本块
+     * @param builder     IrBuilder
+     * @param symbolTable 匿名块里的符号表
+     */
+    public StmtVisitor(BasicBlock basicBlock, IrBuilder builder, SymbolTable symbolTable) {
+        this.basicBlock = basicBlock;
+        this.builder = builder;
+        this.symbolTable = symbolTable;
+    }
+
+    /**
      * Stmt ->
      * <p>
      * LVal '=' Exp ';'
@@ -54,11 +67,6 @@ public final class StmtVisitor implements ASTNodeVisitor {
         if (stmt.getChild(0).getGrammarType() == GrammarType.RETURN) {
             visitRetStmt(stmt);
         }
-        //Stmt -> Block
-        else if (stmt.getChild(0).getGrammarType() == GrammarType.BLOCK) {
-            //语法检查阶段时已经确保语法没问题了，即不会出现引用块内变量的情况。
-            visitBlock(stmt);
-        }
         //Stmt -> LVal '=' 'getint''('')'';'
         else if (stmt.deepDownFind(GrammarType.GETINT, 1).isPresent()) {
             visitGetintStmt(stmt);
@@ -79,12 +87,30 @@ public final class StmtVisitor implements ASTNodeVisitor {
         else if (stmt.getChild(0).getGrammarType() == GrammarType.IF) {
             visitIfStmt(stmt);
         }
+        //Stmt -> Block 如果是匿名块，不要用blockVisitor解析。如果是控制流的块，则用blockVisitor解析
+        else if (stmt.getChild(0).getGrammarType() == GrammarType.BLOCK) {
+            //语法检查阶段时已经确保语法没问题了，即不会出现引用块内变量的情况。
+            visitBlock(stmt);
+        }
     }
 
     private void visitBlock(ASTNode blockStmt) {
         //build嵌套块（非函数入口块）
-        //此时有两种情况：1. 匿名块 2. 从控制流语句过来的块。
-        blockStmt.accept(new BlockVisitor(basicBlock, builder));
+        //此时有两种情况：1. 匿名块 2. 从控制流语句过来的块。特点:控制流过来的块，其兄弟必有if或者for
+        GrammarType brotherGraTy = blockStmt.getFather().getChild(0).getGrammarType();
+        if (brotherGraTy == GrammarType.IF || brotherGraTy == GrammarType.FOR) {
+            var newBlk = builder.buildBasicBlock(basicBlock);
+            blockStmt.accept(new BlockVisitor(newBlk, builder));
+            return;
+        }
+        // 匿名块。注意调用的**构造函数**是不一样的
+        for (var child : blockStmt.getChild(0).getChildren()) {
+            if (child.getGrammarType() != GrammarType.BLOCK_ITEM) continue;
+            SymbolTable blockST = blockStmt.getChild(0).getSymbolTable();
+            assert blockST != null;
+            child.accept(new LocalVarVisitor(basicBlock, builder, blockST));
+            child.accept(new StmtVisitor(basicBlock, builder, blockST));
+        }
     }
 
     private void visitLvalStmt(ASTNode lvalStmt) {
@@ -158,14 +184,17 @@ public final class StmtVisitor implements ASTNodeVisitor {
         //RelExp -> AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
         ASTNode condNode = ifStmt.getChild(2);
         ASTNode ifTrueNode = ifStmt.getChild(4);
+
+        NodeUnion union = new IrUtil(builder, basicBlock).calcLogicExp(condNode);
+        if (union.isNum) {
+            //todo 如果是数字，表明可以直接判断，就不用去建立if语句结构
+            throw new RuntimeException("Not implement!");
+        }
+        Variable variable = union.getVariable();
+        visit(ifTrueNode);
         if (ifStmt.deepDownFind(GrammarType.ELSE, 1).isPresent()) {
             ASTNode elseStmt = ifStmt.getChild(-1);
+            visit(elseStmt);
         }
-        //必须要在这里把entryBlock打断，此时意味着{this.basicBlock}走到了终点
-        //然后建立一个新的basicBlock，将本block的后继设为它们
-//        builder.buildBasicBlock(basicBlock,)
-        //Stmt -> 上面那一堆，可能要建立一个label
-
-
     }
 }

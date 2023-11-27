@@ -197,6 +197,16 @@ public final class NodeUnion {
             if (this.number != 0 || other.number != 0) return this.setNumber(1);
             else return this.setNumber(0);
         }
+        if (!this.isNum && !other.isNum) {
+            Variable ret = builder.buildLogicInst(
+                    block,
+                    this.variable,
+                    Operator.create(IrType.create(IrType.IrTypeID.BitTyID), Operator.OpCode.OR),
+                    other.variable
+            );
+            return this.setVariable(ret);
+        }
+
         //否则分配指令进行或运算
         Variable ret;
         if (this.isNum) {
@@ -223,6 +233,15 @@ public final class NodeUnion {
             if (this.number == 0 || other.number == 0) return this.setNumber(0);
             else return this.setNumber(1);
         }
+        if (!this.isNum && !other.isNum) {
+            Variable ret = builder.buildLogicInst(
+                    block,
+                    this.variable,
+                    Operator.create(IrType.create(IrType.IrTypeID.BitTyID), Operator.OpCode.AND),
+                    other.variable
+            );
+            return this.setVariable(ret);
+        }
         //否则分配指令进行与运算
         Variable ret;
         if (this.isNum) {
@@ -248,19 +267,28 @@ public final class NodeUnion {
             if (this.number == other.number) return this.setNumber(1);
             else return this.setNumber(0);
         }
+        if (!this.isNum && !other.isNum) {
+            Variable ret = builder.buildLogicInst(
+                    block,
+                    this.variable,
+                    IcmpInstruction.Cond.EQ,
+                    other.variable
+            );
+            return this.setVariable(ret);
+        }
         Variable ret;
         if (this.isNum) {
             ret = builder.buildLogicInst(
                     block,
                     builder.buildConstIntNum(this.number),
-                    Operator.create(IrType.create(IrType.IrTypeID.BitTyID), Operator.OpCode.AND),
+                    IcmpInstruction.Cond.EQ,
                     other.variable
             );
         } else {
             ret = builder.buildLogicInst(
                     block,
                     this.variable,
-                    Operator.create(IrType.create(IrType.IrTypeID.BitTyID), Operator.OpCode.AND),
+                    IcmpInstruction.Cond.EQ,
                     builder.buildConstIntNum(other.number)
             );
         }
@@ -278,6 +306,16 @@ public final class NodeUnion {
             if (this.number != other.number) return this.setNumber(1);
             else return this.setNumber(0);
         }
+        if (!this.isNum && !other.isNum) {
+            Variable ret = builder.buildLogicInst(
+                    block,
+                    this.variable,
+                    IcmpInstruction.Cond.NE,
+                    other.variable
+            );
+            return this.setVariable(ret);
+        }
+
         Variable ret;
         if (this.isNum) {
             ret = builder.buildLogicInst(
@@ -307,6 +345,15 @@ public final class NodeUnion {
         if (this.isNum && other.isNum) {
             if (this.number < other.number) return this.setNumber(1);
             else return this.setNumber(0);
+        }
+        if (!this.isNum && !other.isNum) {
+            Variable ret = builder.buildLogicInst(
+                    block,
+                    this.variable,
+                    IcmpInstruction.Cond.SLT,
+                    other.variable
+            );
+            return this.setVariable(ret);
         }
         Variable ret;
         if (this.isNum) {
@@ -338,6 +385,15 @@ public final class NodeUnion {
             if (this.number <= other.number) return this.setNumber(1);
             else return this.setNumber(0);
         }
+        if (!this.isNum && !other.isNum) {
+            Variable ret = builder.buildLogicInst(
+                    block,
+                    this.variable,
+                    IcmpInstruction.Cond.SLE,
+                    other.variable
+            );
+            return this.setVariable(ret);
+        }
         Variable ret;
         if (this.isNum) {
             ret = builder.buildLogicInst(
@@ -368,6 +424,15 @@ public final class NodeUnion {
             if (this.number > other.number) return this.setNumber(1);
             else return this.setNumber(0);
         }
+        if (!this.isNum && !other.isNum) {
+            Variable ret = builder.buildLogicInst(
+                    block,
+                    this.variable,
+                    IcmpInstruction.Cond.SGT,
+                    other.variable
+            );
+            return this.setVariable(ret);
+        }
         Variable ret;
         if (this.isNum) {
             ret = builder.buildLogicInst(
@@ -397,6 +462,15 @@ public final class NodeUnion {
         if (this.isNum && other.isNum) {
             if (this.number >= other.number) return this.setNumber(1);
             else return this.setNumber(0);
+        }
+        if (!this.isNum && !other.isNum) {
+            Variable ret = builder.buildLogicInst(
+                    block,
+                    this.variable,
+                    IcmpInstruction.Cond.SGE,
+                    other.variable
+            );
+            return this.setVariable(ret);
         }
         Variable ret;
         if (this.isNum) {

@@ -1,7 +1,8 @@
-int test;
-int main(){
-    printf("Hello World\n");
-    test = getint();
-    printf("%d",test);
+int main()
+{
+    int a = 10;
+    {
+        int b = 10;
+    }
     return 0;
 }

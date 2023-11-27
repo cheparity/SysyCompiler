@@ -7,8 +7,7 @@ public class Function extends GlobalValue implements GlobalObjects {
     private final List<Argument> arguments = new ArrayList<>();
     private final IrType returnType;
     private final Module module; //所属module
-    //    private final List<BasicBlock> blockList = new ArrayList<>();
-    private EntryBlock entryBlock;
+    private final List<BasicBlock> blockList = new ArrayList<>();
 
     Function(IrType type, String name, Module module) {
         super(type, name);
@@ -25,19 +24,24 @@ public class Function extends GlobalValue implements GlobalObjects {
     }
 
     BasicBlock getEntryBlock() {
-        return entryBlock;
+        return getBlockList().get(0);
     }
 
-    void setEntryBlock(EntryBlock entryBlock) {
-        this.entryBlock = entryBlock;
-        entryBlock.setEntryFunc(this);
+    void setEntryBlock(BasicBlock entryBlock) {
+        assert getBlockList().isEmpty();
+        addBlock(entryBlock);
     }
-    //    public void addBasicBlock(BasicBlock basicBlock) {
-//        this.blockList.add(basicBlock);
-//    }
 
-    public Module getModule() {
-        return module;
+    List<BasicBlock> getBlockList() {
+        return this.blockList;
+    }
+
+    BasicBlock getLastBlock() {
+        return getBlockList().get(getBlockList().size() - 1);
+    }
+
+    void addBlock(BasicBlock block) {
+        this.getBlockList().add(block);
     }
 
     public IrType getReturnType() {
@@ -63,14 +67,15 @@ public class Function extends GlobalValue implements GlobalObjects {
         sb.append(")").append(" {");
         sb.append("\n");
         //如果没有ret，则需要补上ret，否则过不了llvm的编译。那就默认ret void / ret i32 0
-        if (!(entryBlock.getLastInstruction() instanceof RetInstruction)) {
+        if (!(getLastBlock().getLastInstruction() instanceof RetInstruction)) {
             if (returnType.getBasicType() == IrType.IrTypeID.VoidTyID) {
-                entryBlock.addInstruction(new RetInstruction());
+                getLastBlock().addInstruction(new RetInstruction());
             } else {
-                entryBlock.addInstruction(new RetInstruction(new IntConstValue(0)));
+                getLastBlock().addInstruction(new RetInstruction(new IntConstValue(0)));
             }
         }
-        sb.append(entryBlock.toIrCode());
+        //打印blockList
+        getBlockList().forEach(block -> sb.append(block.toIrCode()));
         //如果没有ret，则需要补上ret，否则过不了llvm的编译。那就默认ret void / ret i32 0
         sb.append("}");
         return sb.toString();

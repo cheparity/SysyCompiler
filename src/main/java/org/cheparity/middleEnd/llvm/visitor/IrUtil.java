@@ -280,7 +280,7 @@ class IrUtil {
         throw new RuntimeException("You shouldn't walk this");
     }
 
-    public NodeUnion calcCondExp(ASTNode node) {
+    public NodeUnion calcLogicExp(ASTNode node) {
         //Cond -> LOrExp
         //LOrExp -> LAndExp | LOrExp '||' LAndExp
         //LAndExp -> EqExp | LAndExp '&&' EqExp
@@ -288,14 +288,14 @@ class IrUtil {
         //RelExp -> AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
         switch (node.getGrammarType()) {
             case COND -> {
-                return calcCondExp(node.getChild(0));
+                return calcLogicExp(node.getChild(0));
             }
             case LOR_EXP -> {
                 if (node.getChildren().size() == 1) {
-                    return calcCondExp(node.getChild(0));
+                    return calcLogicExp(node.getChild(0));
                 }
-                var lOrExp = calcCondExp(node.getChild(0));
-                var lAndExp = calcCondExp(node.getChild(2));
+                var lOrExp = calcLogicExp(node.getChild(0));
+                var lAndExp = calcLogicExp(node.getChild(2));
                 var op = node.getChild(1).getGrammarType();
                 return switch (op) {
                     case LOGICAL_OR -> lOrExp.or(lAndExp);
@@ -304,10 +304,10 @@ class IrUtil {
             }
             case LAND_EXP -> {
                 if (node.getChildren().size() == 1) {
-                    return calcCondExp(node.getChild(0));
+                    return calcLogicExp(node.getChild(0));
                 }
-                var lAndExp = calcCondExp(node.getChild(0));
-                var eqExp = calcCondExp(node.getChild(2));
+                var lAndExp = calcLogicExp(node.getChild(0));
+                var eqExp = calcLogicExp(node.getChild(2));
                 var op = node.getChild(1).getGrammarType();
                 return switch (op) {
                     case LOGICAL_AND -> lAndExp.and(eqExp);
@@ -316,10 +316,10 @@ class IrUtil {
             }
             case EQ_EXP -> {
                 if (node.getChildren().size() == 1) {
-                    return calcCondExp(node.getChild(0));
+                    return calcLogicExp(node.getChild(0));
                 }
-                var eqExp = calcCondExp(node.getChild(0));
-                var relExp = calcCondExp(node.getChild(2));
+                var eqExp = calcLogicExp(node.getChild(0));
+                var relExp = calcLogicExp(node.getChild(2));
                 var op = node.getChild(1).getGrammarType();
                 return switch (op) {
                     case EQUAL -> eqExp.eq(relExp);
@@ -329,10 +329,10 @@ class IrUtil {
             }
             case REL_EXP -> {
                 if (node.getChildren().size() == 1) {
-                    return calcCondExp(node.getChild(0));
+                    return calcLogicExp(node.getChild(0));
                 }
-                var relExp = calcCondExp(node.getChild(0));
-                var addExp = calcCondExp(node.getChild(2));
+                var relExp = calcLogicExp(node.getChild(0));
+                var addExp = calcLogicExp(node.getChild(2));
                 var op = node.getChild(1).getGrammarType();
                 return switch (op) {
                     case LESS_THAN -> relExp.lt(addExp);

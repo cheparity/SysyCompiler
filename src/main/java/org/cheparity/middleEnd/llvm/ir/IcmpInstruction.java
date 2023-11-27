@@ -20,7 +20,7 @@ public class IcmpInstruction extends Instruction {
 
     @Override
     public String toIrCode() {
-        return "icmp " + cond.toIrCode() + " " + op1.getType().toIrCode() + " " + op1.toIrCode() + ", " + op2.toIrCode();
+        return String.format("%s = icmp %s %s %s, %s", result.toIrCode(), cond.toIrCode(), op1.getType().toIrCode(), op1.toIrCode(), op2.toIrCode());
     }
 
     public enum Cond implements IrPrintable {

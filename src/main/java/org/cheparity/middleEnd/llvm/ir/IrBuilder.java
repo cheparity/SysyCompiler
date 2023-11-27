@@ -37,32 +37,30 @@ public class IrBuilder {
         function.insertArgument(argument);
     }
 
-
     /**
-     * 建立一个匿名嵌套块，区别与函数入口块和if for等跳转语句建立的块
+     * 建造基本块（区别于函数入口块）
      *
-     * @param fatherBlock 父块
-     * @param symbolTable 符号表
-     * @return 返回一个嵌套块
+     * @param predecessor 前驱块
+     * @return 返回新建立的基本块
      */
-    public AnonymousBlock buildAnonymousBlock(BasicBlock fatherBlock, SymbolTable symbolTable) {
-        AnonymousBlock anonymousBlock = new AnonymousBlock(fatherBlock); //匿名块命名规则不占用寄存器
-        anonymousBlock.setSymbolTable(symbolTable);
-        return anonymousBlock;
+    public BasicBlock buildBasicBlock(BasicBlock predecessor) {
+        var bb = new BasicBlock(allocator.allocate());
+        predecessor.addSuccessor(bb);
+        bb.addPredecessor(predecessor);
+        return bb;
     }
 
 
     /**
-     * 建立函数入口块
+     * 建立函数入口块。与buildBasicBlock的区别是，还需要把函数的参数存进符号表中。
      *
-     * @param function    函数
-     * @param symbolTable 符号表
+     * @param function 函数
      * @return 返回一个函数入口块
      */
-    public EntryBlock buildEntryBlock(Function function, SymbolTable symbolTable) {
-        var bb = new EntryBlock(allocator.allocate()); //每个临时寄存器和基本块占用一个编号
+    public BasicBlock buildEntryBlock(Function function) {
+        var bb = new BasicBlock(allocator.allocate()); //每个临时寄存器和基本块占用一个编号
+        //entry block的前驱是没有的
         function.setEntryBlock(bb);
-        bb.setSymbolTable(symbolTable);
         //为了从符号表中找到函数参数，并更新其指针。1.注意是从全局符号表查找function 2.注意function的name之前有个@，所以要substring(1)
         assert SymbolTable.getGlobal().getFuncSymbol(function.getName().substring(1)).isPresent();
         FuncSymbol funcSymbol = SymbolTable.getGlobal().getFuncSymbol(function.getName().substring(1)).get();
@@ -168,7 +166,7 @@ public class IrBuilder {
      * @return 结果variable
      */
     public Variable buildCmpInst(BasicBlock block, Variable a, IcmpInstruction.Cond condition, Variable b) {
-        assert a.getType() == b.getType();
+//        assert a.getType() == b.getType();
         Variable res = new Variable(IrType.create(IrType.IrTypeID.BitTyID), allocator.allocate());
         IcmpInstruction icmpInstruction = new IcmpInstruction(res, a, b, condition);
         block.addInstruction(icmpInstruction);

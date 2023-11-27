@@ -247,7 +247,6 @@ public class ASTNode implements ASTNodeElement {
                 }
             }
         } else if (visitor instanceof StmtVisitor) {
-            assert this.getGrammarType() == GrammarType.BLOCK_ITEM;
             // BlockItem -> Decl | Stmt
             if (getChild(0).getGrammarType() == GrammarType.STMT) {
                 visitor.visit(getChild(0));
