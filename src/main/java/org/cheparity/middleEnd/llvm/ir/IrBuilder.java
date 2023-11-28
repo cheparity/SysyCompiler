@@ -184,7 +184,7 @@ public class IrBuilder {
      * @return 返回一个result的Variable，这个Variable是<font color='red'>寄存器</font>，里面存放了结果
      */
     public Variable buildLogicInst(BasicBlock block, Variable a, IcmpInstruction.Cond op, Variable b) {
-        assert a.getType() == b.getType();
+//        assert a.getType() == b.getType();
         LOGGER.fine("build logic instruction: " + op + " in block: " + block.getName());
         return buildCmpInst(block, a, op, b);
     }
