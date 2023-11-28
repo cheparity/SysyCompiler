@@ -44,27 +44,8 @@ public final class NodeUnion {
         return this.setVariable(ret);
     }
 
-    /**
-     * 取反。如果是数值，直接取反；如果是寄存器，分配指令进行取反。
-     * <p>
-     * %4 = load i32, i32* %2, align 4
-     * <p>
-     * %5 = icmp ne i32 %4, 0
-     * <p>
-     * %6 = xor i1 %5, true
-     * <p>
-     *
-     * @return 取反后的NodeUnion
-     */
-    public NodeUnion not() {
-        if (this.isNum) {
-            return this.setNumber(this.number == 0 ? 1 : 0);
-        }
-        //否则分配指令进行取反
-        var ret = builder.buildNotInst(block, variable);
-        return this.setVariable(ret);
-    }
 
+    /// ======================== begin 四则运算，算数运算 ================================
     public NodeUnion add(NodeUnion other) {
         if (this.isNum && other.isNum) { //二者都是数字
             return this.setNumber(this.number + other.number);
@@ -181,6 +162,7 @@ public final class NodeUnion {
         return this.setVariable(ret);
     }
 
+    /// ======================== end 四则运算，算数运算 ================================
     public Variable getVariable() {
         return this.variable;
     }
@@ -189,6 +171,29 @@ public final class NodeUnion {
         this.variable = variable;
         this.isNum = false;
         return this;
+    }
+
+    /// ======================== begin 位运算，逻辑运算 ================================
+
+    /**
+     * 取反。如果是数值，直接取反；如果是寄存器，分配指令进行取反。
+     * <p>
+     * %4 = load i32, i32* %2, align 4
+     * <p>
+     * %5 = icmp ne i32 %4, 0
+     * <p>
+     * %6 = xor i1 %5, true
+     * <p>
+     *
+     * @return 取反后的NodeUnion
+     */
+    public NodeUnion not() {
+        if (this.isNum) {
+            return this.setNumber(this.number == 0 ? 1 : 0);
+        }
+        //否则分配指令进行取反
+        var ret = builder.buildNotInst(block, variable);
+        return this.setVariable(ret);
     }
 
     public NodeUnion or(NodeUnion other) {
@@ -490,4 +495,6 @@ public final class NodeUnion {
         }
         return this.setVariable(ret);
     }
+
+    /// ======================== end 位运算，逻辑运算 ================================
 }

@@ -73,7 +73,7 @@ public class Function extends GlobalValue implements GlobalObjects {
             if (returnType.getBasicType() == IrType.IrTypeID.VoidTyID) {
                 getLastBlock().addInstruction(new RetInstruction());
             } else {
-                getLastBlock().addInstruction(new RetInstruction(new IntConstValue(0)));
+                getLastBlock().addInstruction(new RetInstruction(new ConstValue(0, IrType.IrTypeID.Int32TyID)));
             }
         }
         getBlockList().forEach(block -> sb.append(block.toIrCode()));

@@ -18,17 +18,10 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
         this.symbolTable = basicBlock.getSymbolTable();
     }
 
-    /**
-     * 为了处理匿名块的情况，需要把<font color='red'>匿名块里的符号表</font>单独传递过来。
-     *
-     * @param basicBlock  基本块
-     * @param builder     IrBuilder
-     * @param symbolTable 匿名块里的符号表
-     */
-    public LocalVarVisitor(BasicBlock basicBlock, IrBuilder builder, SymbolTable symbolTable) {
+    public LocalVarVisitor(BasicBlock basicBlock, IrBuilder builder) {
         this.basicBlock = basicBlock;
         this.builder = builder;
-        this.symbolTable = symbolTable;
+        this.symbolTable = basicBlock.getSymbolTable();
     }
 
     @Override

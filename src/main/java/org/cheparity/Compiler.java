@@ -33,9 +33,9 @@ public class Compiler {
 
     public static void main(String[] args) {
 //        printLexAnswer();
-//        printGrammarAnswer();
+        printGrammarAnswer();
 //        printErrorAnswer();
-        printLlvmIrAnswer();
+//        printLlvmIrAnswer();
     }
 
     private static void printLexAnswer() {

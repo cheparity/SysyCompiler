@@ -47,7 +47,7 @@ public class RecursiveDescentParser implements SysYParser {
         StackTraceElement ste = new Exception().getStackTrace()[1];
         String methodName = ste.getMethodName();
         int lineNumber = ste.getLineNumber();
-        LOGGER.severe(methodName + " throws " + e.getMessage() + " at line " + lineNumber);
+//        LOGGER.warning(methodName + " throws " + e.getMessage() + " at line " + lineNumber);
         node.addGrammarError(e);
     }
 
@@ -1274,31 +1274,65 @@ public class RecursiveDescentParser implements SysYParser {
      * @return Optional<ASTNode> representing the parsed MulExp
      */
     private Optional<ASTNode> parseMulExp() {
+//        int initIndex = nowIndex;
+//        var mulExp = begin(GrammarType.MUL_EXP);
+//
+//        var unaryExp = parseUnaryExp();
+//        if (unaryExp.isPresent()) {
+//            mulExp.addChild(unaryExp.get());
+//        } else {
+//            return failed(initIndex);
+//        }
+//
+//        Optional<ASTLeaf> operator;
+//        while ((operator = parseTerminal(GrammarType.MULTIPLY, GrammarType.DIVIDE, GrammarType.MOD)).isPresent()) {
+//            ASTNode mul = new ASTNode(GrammarType.MUL_EXP);
+//            mul.addChild(unaryExp.get());
+//            mulExp.replaceLastChild(mul);
+//
+//            mulExp.addChild(operator.get());
+//            unaryExp = parseUnaryExp();
+//            if (unaryExp.isPresent()) {
+//                mulExp.addChild(unaryExp.get());
+//            } else {
+//                return failed(initIndex);
+//            }
+//        }
+//        return done(mulExp);
+
         int initIndex = nowIndex;
-        var mulExp = begin(GrammarType.MUL_EXP);
+        var ret = begin(GrammarType.MUL_EXP);
+        Optional<ASTNode> now;
+        List<ASTNode> unaryExpList = new ArrayList<>();
+        List<ASTNode> mulOpList = new ArrayList<>();
+        Optional<ASTLeaf> mulOp = Optional.empty();
 
-        var unaryExp = parseUnaryExp();
-        if (unaryExp.isPresent()) {
-            mulExp.addChild(unaryExp.get());
-        } else {
-            return failed(initIndex);
-        }
-
-        Optional<ASTLeaf> operator;
-        while ((operator = parseTerminal(GrammarType.MULTIPLY, GrammarType.DIVIDE, GrammarType.MOD)).isPresent()) {
-            ASTNode mul = new ASTNode(GrammarType.MUL_EXP);
-            mul.addChild(unaryExp.get());
-            mulExp.replaceLastChild(mul);
-
-            mulExp.addChild(operator.get());
-            unaryExp = parseUnaryExp();
-            if (unaryExp.isPresent()) {
-                mulExp.addChild(unaryExp.get());
+        do {
+            now = parseUnaryExp();
+            if (now.isPresent()) {
+                unaryExpList.add(now.get());
             } else {
                 return failed(initIndex);
             }
+            mulOp.ifPresent(mulOpList::add);
+        } while ((mulOp = parseTerminal(GrammarType.MULTIPLY, GrammarType.DIVIDE, GrammarType.MOD)).isPresent());
+
+        //从前往后，每两个unaryExp合成一个mulExp
+        ret.addChild(unaryExpList.get(0));
+        if (unaryExpList.size() == 1) {
+            return done(ret);
         }
-        return done(mulExp);
+        int j = 0;
+        for (var i = 1; i < unaryExpList.size(); i++) {
+            var unaryExp = unaryExpList.get(i);
+            var newMulExp = new ASTNode(GrammarType.MUL_EXP);
+            ret = newMulExp
+                    .addChild(ret)
+                    .addChild(mulOpList.get(j))
+                    .addChild(unaryExp);
+            j++;
+        }
+        return done(ret);
     }
 
     /**
@@ -1309,32 +1343,67 @@ public class RecursiveDescentParser implements SysYParser {
      * @return Optional<ASTNode> representing the parsed AddExp
      */
     private Optional<ASTNode> parseAddExp() {
+//        int initIndex = nowIndex;
+//        var addExp = begin(GrammarType.ADD_EXP);
+//
+//        var mulExp = parseMulExp();
+//        if (mulExp.isPresent()) {
+//            addExp.addChild(mulExp.get());
+//        } else {
+//            return failed(initIndex);
+//        }
+//
+//        Optional<ASTLeaf> operator;
+//        while ((operator = parseTerminal(GrammarType.PLUS, GrammarType.MINUS)).isPresent()) {
+//            ASTNode add = new ASTNode(GrammarType.ADD_EXP);
+//            add.addChild(mulExp.get());
+//            addExp.replaceLastChild(add);
+//
+//            addExp.addChild(operator.get());
+//            mulExp = parseMulExp();
+//            if (mulExp.isPresent()) {
+//                addExp.addChild(mulExp.get());
+//            } else {
+//                return failed(initIndex);
+//            }
+//        }
+//
+//        return done(addExp);
+
         int initIndex = nowIndex;
-        var addExp = begin(GrammarType.ADD_EXP);
+        var ret = begin(GrammarType.ADD_EXP);
+        Optional<ASTNode> now;
+        List<ASTNode> mulExpList = new ArrayList<>();
+        List<ASTNode> addOpList = new ArrayList<>();
+        Optional<ASTLeaf> addOp = Optional.empty();
 
-        var mulExp = parseMulExp();
-        if (mulExp.isPresent()) {
-            addExp.addChild(mulExp.get());
-        } else {
-            return failed(initIndex);
-        }
-
-        Optional<ASTLeaf> operator;
-        while ((operator = parseTerminal(GrammarType.PLUS, GrammarType.MINUS)).isPresent()) {
-            ASTNode add = new ASTNode(GrammarType.ADD_EXP);
-            add.addChild(mulExp.get());
-            addExp.replaceLastChild(add);
-
-            addExp.addChild(operator.get());
-            mulExp = parseMulExp();
-            if (mulExp.isPresent()) {
-                addExp.addChild(mulExp.get());
+        do {
+            now = parseMulExp();
+            if (now.isPresent()) {
+                mulExpList.add(now.get());
             } else {
                 return failed(initIndex);
             }
+            addOp.ifPresent(addOpList::add);
+        } while ((addOp = parseTerminal(GrammarType.PLUS, GrammarType.MINUS)).isPresent());
+
+        //从前往后，每两个mulExp合成一个addExp
+        ret.addChild(mulExpList.get(0));
+        if (mulExpList.size() == 1) {
+            return done(ret);
         }
 
-        return done(addExp);
+        int j = 0;
+        for (var i = 1; i < mulExpList.size(); i++) {
+            var mulExp = mulExpList.get(i);
+            var newAddExp = new ASTNode(GrammarType.ADD_EXP);
+            ret = newAddExp
+                    .addChild(ret)
+                    .addChild(addOpList.get(j))
+                    .addChild(mulExp);
+            j++;
+        }
+        return done(ret);
     }
 
     /**
@@ -1345,31 +1414,66 @@ public class RecursiveDescentParser implements SysYParser {
      * @return Optional representing the parsed RelExp
      */
     private Optional<ASTNode> parseRelExp() {
+//        int initIndex = nowIndex;
+//        var relExp = begin(GrammarType.REL_EXP);
+//
+//        var addExp = parseAddExp();
+//        if (addExp.isPresent()) {
+//            relExp.addChild(addExp.get());
+//        } else {
+//            return failed(initIndex);
+//        }
+//
+//        Optional<ASTLeaf> operator;
+//        while ((operator = parseTerminal(GrammarType.LESS_THAN, GrammarType.LESS_THAN_EQUAL, GrammarType.GREATER_THAN, GrammarType.GREATER_THAN_EQUAL)).isPresent()) {
+//            ASTNode rel = new ASTNode(GrammarType.REL_EXP);
+//            rel.addChild(addExp.get());
+//
+//            relExp.replaceLastChild(rel);
+//            relExp.addChild(operator.get());
+//            addExp = parseAddExp();
+//            if (addExp.isPresent()) {
+//                relExp.addChild(addExp.get());
+//            } else {
+//                return failed(initIndex);
+//            }
+//        }
+//        return done(relExp);
+
         int initIndex = nowIndex;
-        var relExp = begin(GrammarType.REL_EXP);
+        var ret = begin(GrammarType.REL_EXP);
+        Optional<ASTNode> now;
+        List<ASTNode> addExpList = new ArrayList<>();
+        List<ASTNode> relOpList = new ArrayList<>();
+        Optional<ASTLeaf> relOp = Optional.empty();
 
-        var addExp = parseAddExp();
-        if (addExp.isPresent()) {
-            relExp.addChild(addExp.get());
-        } else {
-            return failed(initIndex);
-        }
-
-        Optional<ASTLeaf> operator;
-        while ((operator = parseTerminal(GrammarType.LESS_THAN, GrammarType.LESS_THAN_EQUAL, GrammarType.GREATER_THAN, GrammarType.GREATER_THAN_EQUAL)).isPresent()) {
-            ASTNode rel = new ASTNode(GrammarType.REL_EXP);
-            rel.addChild(addExp.get());
-
-            relExp.replaceLastChild(rel);
-            relExp.addChild(operator.get());
-            addExp = parseAddExp();
-            if (addExp.isPresent()) {
-                relExp.addChild(addExp.get());
+        do {
+            now = parseAddExp();
+            if (now.isPresent()) {
+                addExpList.add(now.get());
             } else {
                 return failed(initIndex);
             }
+            relOp.ifPresent(relOpList::add);
+        } while ((relOp = parseTerminal(GrammarType.LESS_THAN, GrammarType.LESS_THAN_EQUAL, GrammarType.GREATER_THAN, GrammarType.GREATER_THAN_EQUAL)).isPresent());
+
+        //从前往后，每两个addExp合成一个relExp
+        ret.addChild(addExpList.get(0));
+
+        if (addExpList.size() == 1) {
+            return done(ret);
         }
-        return done(relExp);
+        int j = 0;
+        for (var i = 1; i < addExpList.size(); i++) {
+            var addExp = addExpList.get(i);
+            var newRelExp = new ASTNode(GrammarType.REL_EXP);
+            ret = newRelExp
+                    .addChild(ret)
+                    .addChild(relOpList.get(j))
+                    .addChild(addExp);
+            j++;
+        }
+        return done(ret);
     }
 
     /**
@@ -1380,30 +1484,64 @@ public class RecursiveDescentParser implements SysYParser {
      * @return Optional representing the parsed EqExp
      */
     private Optional<ASTNode> parseEqExp() {
+//        int initIndex = nowIndex;
+//        var eqExp = begin(GrammarType.EQ_EXP);
+//        var relExp = parseRelExp();
+//        if (relExp.isPresent()) {
+//            eqExp.addChild(relExp.get());
+//        } else {
+//            return failed(initIndex);
+//        }
+//
+//        Optional<ASTLeaf> operator;
+//        while ((operator = parseTerminal(GrammarType.EQUAL, GrammarType.NOT_EQUAL)).isPresent()) {
+//            ASTNode eq = new ASTNode(GrammarType.EQ_EXP);
+//            eq.addChild(relExp.get());
+//            eqExp.replaceLastChild(eq);
+//
+//            eqExp.addChild(operator.get());
+//            relExp = parseRelExp();
+//            if (relExp.isPresent()) {
+//                eqExp.addChild(relExp.get());
+//            } else {
+//                return failed(initIndex);
+//            }
+//        }
+//        return done(eqExp);
+
         int initIndex = nowIndex;
-        var eqExp = begin(GrammarType.EQ_EXP);
-        var relExp = parseRelExp();
-        if (relExp.isPresent()) {
-            eqExp.addChild(relExp.get());
-        } else {
-            return failed(initIndex);
-        }
+        var ret = begin(GrammarType.EQ_EXP);
+        Optional<ASTNode> now;
+        List<ASTNode> relExpList = new ArrayList<>();
+        List<ASTNode> eqOpList = new ArrayList<>();
+        Optional<ASTLeaf> eqOp = Optional.empty();
 
-        Optional<ASTLeaf> operator;
-        while ((operator = parseTerminal(GrammarType.EQUAL, GrammarType.NOT_EQUAL)).isPresent()) {
-            ASTNode eq = new ASTNode(GrammarType.EQ_EXP);
-            eq.addChild(relExp.get());
-            eqExp.replaceLastChild(eq);
-
-            eqExp.addChild(operator.get());
-            relExp = parseRelExp();
-            if (relExp.isPresent()) {
-                eqExp.addChild(relExp.get());
+        do {
+            now = parseRelExp();
+            if (now.isPresent()) {
+                relExpList.add(now.get());
             } else {
                 return failed(initIndex);
             }
+            eqOp.ifPresent(eqOpList::add);
+        } while ((eqOp = parseTerminal(GrammarType.EQUAL, GrammarType.NOT_EQUAL)).isPresent());
+
+        //从前往后，每两个relExp合成一个eqExp
+        ret.addChild(relExpList.get(0));
+        if (relExpList.size() == 1) {
+            return done(ret);
         }
-        return done(eqExp);
+        int j = 0;
+        for (var i = 1; i < relExpList.size(); i++) {
+            var relExp = relExpList.get(i);
+            var newEqExp = new ASTNode(GrammarType.EQ_EXP);
+            ret = newEqExp
+                    .addChild(ret)
+                    .addChild(eqOpList.get(j))
+                    .addChild(relExp);
+            j++;
+        }
+        return done(ret);
     }
 
     /**
@@ -1414,26 +1552,60 @@ public class RecursiveDescentParser implements SysYParser {
      * @return Optional<ASTNode> representing the parsed LAndExp
      */
     private Optional<ASTNode> parseLAndExp() {
+//        int initIndex = nowIndex;
+//        var lAndExp = begin(GrammarType.LAND_EXP);
+//
+//        Optional<ASTNode> EqExp;
+//        EqExp = parseEqExp();
+//        if (EqExp.isPresent()) lAndExp.addChild(EqExp.get());
+//        else return failed(initIndex);
+//
+//        Optional<ASTLeaf> logicalAnd;
+//        while ((logicalAnd = parseTerminal(GrammarType.LOGICAL_AND)).isPresent()) {
+//            ASTNode lAnd = new ASTNode(GrammarType.LAND_EXP);
+//            lAnd.addChild(EqExp.get());
+//            lAndExp.replaceLastChild(lAnd);
+//
+//            lAndExp.addChild(logicalAnd.get());
+//            EqExp = parseEqExp();
+//            if (EqExp.isEmpty()) return failed(initIndex);
+//            lAndExp.addChild(EqExp.get());
+//        }
+//        return done(lAndExp);
         int initIndex = nowIndex;
-        var lAndExp = begin(GrammarType.LAND_EXP);
+        var ret = begin(GrammarType.LAND_EXP);
+        Optional<ASTNode> now;
+        List<ASTNode> eqExpList = new ArrayList<>();
+        List<ASTNode> logicalAndList = new ArrayList<>();
+        Optional<ASTLeaf> and = Optional.empty();
 
-        Optional<ASTNode> EqExp;
-        EqExp = parseEqExp();
-        if (EqExp.isPresent()) lAndExp.addChild(EqExp.get());
-        else return failed(initIndex);
+        do {
+            now = parseEqExp();
+            if (now.isPresent()) {
+                eqExpList.add(now.get());
+            } else {
+                return failed(initIndex);
+            }
+            and.ifPresent(logicalAndList::add);
+        } while ((and = parseTerminal(GrammarType.LOGICAL_AND)).isPresent());
 
-        Optional<ASTLeaf> logicalAnd;
-        while ((logicalAnd = parseTerminal(GrammarType.LOGICAL_AND)).isPresent()) {
-            ASTNode lAnd = new ASTNode(GrammarType.LAND_EXP);
-            lAnd.addChild(EqExp.get());
-            lAndExp.replaceLastChild(lAnd);
-
-            lAndExp.addChild(logicalAnd.get());
-            EqExp = parseEqExp();
-            if (EqExp.isEmpty()) return failed(initIndex);
-            lAndExp.addChild(EqExp.get());
+        //从前往后，每两个eqExp合成一个lAndExp
+        ret.addChild(eqExpList.get(0));
+        if (eqExpList.size() == 1) {
+            return done(ret);
         }
-        return done(lAndExp);
+        int j = 0;
+        for (var i = 1; i < eqExpList.size(); i++) {
+            var eqExp = eqExpList.get(i);
+            var newLAndExp = new ASTNode(GrammarType.LAND_EXP);
+            ret = newLAndExp
+                    .addChild(ret)
+                    .addChild(logicalAndList.get(j))
+                    .addChild(eqExp);
+            j++;
+        }
+        return done(ret);
+
     }
 
     /**
@@ -1444,29 +1616,62 @@ public class RecursiveDescentParser implements SysYParser {
      * @return Optional<ASTNode> representing the parsed LOrExp
      */
     private Optional<ASTNode> parseLOrExp() {
+//        int initIndex = nowIndex;
+//        var LOrExp = begin(GrammarType.LOR_EXP);
+//
+//        Optional<ASTNode> lAndExp;
+//        lAndExp = parseLAndExp();
+//        if (lAndExp.isPresent()) {
+//            LOrExp.addChild(lAndExp.get());
+//        } else {
+//            return failed(initIndex);
+//        }
+//
+//        Optional<ASTLeaf> logicalOr;
+//        while ((logicalOr = parseTerminal(GrammarType.LOGICAL_OR)).isPresent()) {
+//            ASTNode lOr = new ASTNode(GrammarType.LOR_EXP); //新LorExp
+//            lOr.addChild(lAndExp.get()); //把旧的最后一个lAndExp加到新
+//            LOrExp.replaceLastChild(lOr);
+//
+//            LOrExp.addChild(logicalOr.get());
+//            lAndExp = parseLAndExp();
+//            if (lAndExp.isEmpty()) return failed(initIndex);
+//            LOrExp.addChild(lAndExp.get());
+//        }
+//        return done(LOrExp);
         int initIndex = nowIndex;
-        var LOrExp = begin(GrammarType.LOR_EXP);
+        var ret = begin(GrammarType.LOR_EXP);
+        Optional<ASTNode> now;
+        List<ASTNode> lAndExpList = new ArrayList<>();
+        List<ASTNode> logicalOrList = new ArrayList<>();
+        Optional<ASTLeaf> or = Optional.empty();
 
-        Optional<ASTNode> lAndExp;
-        lAndExp = parseLAndExp();
-        if (lAndExp.isPresent()) {
-            LOrExp.addChild(lAndExp.get());
-        } else {
-            return failed(initIndex);
+        do {
+            now = parseLAndExp();
+            if (now.isPresent()) {
+                lAndExpList.add(now.get());
+            } else {
+                return failed(initIndex);
+            }
+            or.ifPresent(logicalOrList::add);
+        } while ((or = parseTerminal(GrammarType.LOGICAL_OR)).isPresent());
+
+        //从前往后，每两个lAndExp合成一个lOrExp
+        ret.addChild(lAndExpList.get(0));
+        if (lAndExpList.size() == 1) {
+            return done(ret);
         }
-
-        Optional<ASTLeaf> logicalOr;
-        while ((logicalOr = parseTerminal(GrammarType.LOGICAL_OR)).isPresent()) {
-            ASTNode lOr = new ASTNode(GrammarType.LOR_EXP);
-            lOr.addChild(lAndExp.get());
-            LOrExp.replaceLastChild(lOr);
-
-            LOrExp.addChild(logicalOr.get());
-            lAndExp = parseLAndExp();
-            if (lAndExp.isEmpty()) return failed(initIndex);
-            LOrExp.addChild(lAndExp.get());
+        int j = 0;
+        for (var i = 1; i < lAndExpList.size(); i++) {
+            var lAndExp = lAndExpList.get(i);
+            var newLOrExp = new ASTNode(GrammarType.LOR_EXP);
+            ret = newLOrExp
+                    .addChild(ret)
+                    .addChild(logicalOrList.get(j))
+                    .addChild(lAndExp);
+            j++;
         }
-        return done(LOrExp);
+        return done(ret);
     }
 
     /**

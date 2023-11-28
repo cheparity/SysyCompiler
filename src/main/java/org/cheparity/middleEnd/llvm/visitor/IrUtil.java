@@ -143,9 +143,19 @@ class IrUtil {
         return 0;
     }
 
+    /**
+     * 如果stmt本身就是一个块了，就不用包；如果是单语句的形式，就包装成块，并把<font color='red'>原来所属块的符号表</font>传递给新块
+     *
+     * @param stmt        单语句/块
+     * @param symbolTable 原来所属块的符号表
+     * @return 包装好的块
+     */
     public static ASTNode wrapStmtAsBlock(ASTNode stmt, SymbolTable symbolTable) {
         assert stmt.getGrammarType() == GrammarType.STMT;
+        //如果本身的第一个child就是块，就不用包装了
         if (stmt.getChild(0).getGrammarType() == GrammarType.BLOCK) return stmt;
+        //由：stmt(old)
+        //到：stmt（new） -> Block -> BlockItem -> stmt(old)
         ASTNode blk = new ASTNode(GrammarType.BLOCK);
         ASTNode blkItm = new ASTNode(GrammarType.BLOCK_ITEM);
         blk
@@ -311,7 +321,14 @@ class IrUtil {
                     return calcLogicExp(node.getChild(0));
                 }
                 var lOrExp = calcLogicExp(node.getChild(0));
+                if (lOrExp.isNum && lOrExp.getNumber() == 1) {
+                    //短路求值
+                    return lOrExp;
+                }
                 var lAndExp = calcLogicExp(node.getChild(2));
+                if (lAndExp.isNum && lAndExp.getNumber() == 1) {
+                    return lAndExp;
+                }
                 var op = node.getChild(1).getGrammarType();
                 return switch (op) {
                     case LOGICAL_OR -> lOrExp.or(lAndExp);
@@ -323,7 +340,13 @@ class IrUtil {
                     return calcLogicExp(node.getChild(0));
                 }
                 var lAndExp = calcLogicExp(node.getChild(0));
+                if (lAndExp.isNum && lAndExp.getNumber() == 0) {
+                    return lAndExp;
+                }
                 var eqExp = calcLogicExp(node.getChild(2));
+                if (eqExp.isNum && eqExp.getNumber() == 0) {
+                    return eqExp;
+                }
                 var op = node.getChild(1).getGrammarType();
                 return switch (op) {
                     case LOGICAL_AND -> lAndExp.and(eqExp);

@@ -14,11 +14,23 @@ public final class BlockVisitor implements ASTNodeVisitor {
      */
     private BasicBlock basicBlock;
 
+    /**
+     * 只在{@link StmtVisitor}里被调用
+     *
+     * @param predecessor 前驱基本块
+     * @param builder     IrBuilder
+     */
     public BlockVisitor(BasicBlock predecessor, IrBuilder builder) {
         this.basicBlock = builder.buildBasicBlock(predecessor);
         this.builder = builder;
     }
 
+    /**
+     * 只在{@link FuncVisitor}里被调用
+     *
+     * @param function 入口函数
+     * @param builder  IrBuilder
+     */
     public BlockVisitor(Function function, IrBuilder builder) {
         this.basicBlock = builder.buildEntryBlock(function);
         this.builder = builder;

@@ -32,16 +32,6 @@ public class ASTNode implements ASTNodeElement {
         return this;
     }
 
-    public void removeLastChild() {
-        this.children.get(this.children.size() - 1).setFather(null);
-        this.children.remove(this.children.size() - 1);
-    }
-
-    public void replaceLastChild(ASTNode node) {
-        this.removeLastChild();
-        this.addChild(node);
-    }
-
     public ErrorHandler getErrorHandler() {
         return this.errorHandler;
     }
@@ -192,7 +182,6 @@ public class ASTNode implements ASTNodeElement {
      * @return the leaves of the tree
      */
     public List<Token> getLeaves() {
-        assert this.getGrammarType().isNonTerminal();
         List<Token> tokens = new ArrayList<>();
         for (ASTNode child : this.getChildren()) {
             if (child instanceof ASTLeaf) {
@@ -230,14 +219,6 @@ public class ASTNode implements ASTNodeElement {
             child.getErrors(errStk);
         }
     }
-
-//    @Override
-//    public String toString() {
-//        return "ASTNode{" + "rawValue=" + getRawValue() +
-//                ", grammarType=" + grammarType +
-//                ", children=" + children +
-//                '}';
-//    }
 
 
     @Override

@@ -5,10 +5,13 @@ import middleEnd.llvm.RegisterAllocator;
 import middleEnd.symbols.FuncSymbol;
 import middleEnd.symbols.SymbolTable;
 import middleEnd.symbols.VarSymbol;
+import utils.LoggerUtil;
 
 import java.util.List;
+import java.util.logging.Logger;
 
 public class IrBuilder {
+    private static final Logger LOGGER = LoggerUtil.getLogger();
     private RegisterAllocator allocator;
 
     public IrBuilder() {
@@ -23,6 +26,7 @@ public class IrBuilder {
         String funcName = "@" + name;
         var func = new Function(IrType.create(type, IrType.IrTypeID.FunctionTyID), funcName, module);
         module.insertFunc(func);
+        LOGGER.fine("build function: " + funcName);
         return func;
     }
 
@@ -37,6 +41,19 @@ public class IrBuilder {
     public void buildBrInst(BasicBlock belonging, Variable cond, BasicBlock ifTrue, BasicBlock ifFalse) {
         var br = new BrInstruction(cond, ifTrue, ifFalse);
         belonging.addInstruction(br);
+        LOGGER.fine("build br instruction: " + br.toIrCode() + " at block: " + belonging.getName());
+    }
+
+    /**
+     * 直接跳转到dest，形如 br label [dest]
+     *
+     * @param belonging 所属基本块
+     * @param dest      目的块
+     */
+    public void buildBrInst(BasicBlock belonging, BasicBlock dest) {
+        var br = new BrInstruction(dest);
+        belonging.addInstruction(br);
+        LOGGER.fine("build br instruction: " + br.toIrCode() + " at block: " + belonging.getName());
     }
 
     /**
@@ -48,6 +65,7 @@ public class IrBuilder {
     public void buildArg(Function function, IrType type) {
         Argument argument = new Argument(type, allocator.allocate());
         function.insertArgument(argument);
+        LOGGER.fine("build argument: " + argument.getName() + " at function: " + function.getName());
     }
 
     /**
@@ -68,10 +86,14 @@ public class IrBuilder {
         bb.setFunction(predecessor.getFunction());
         bb.getFunction().addBlock(bb);
         bb.addPredecessor(predecessor);
+        LOGGER.fine("build basic block: " + bb.getName() + " in function: " + bb.getFunction().getName() + " " +
+                "predecessor: " + predecessor.getName());
         return bb;
     }
 
     public BasicBlock buildBasicBlock(BasicBlock predecessor, SymbolTable symbolTable) {
+        LOGGER.fine("build basic block: " + predecessor.getName() + " in function: " + predecessor.getFunction().getName() + " " +
+                "predecessor: " + predecessor.getName() + " and set symbol table");
         return buildBasicBlock(predecessor).setSymbolTable(symbolTable);
     }
 
@@ -101,6 +123,7 @@ public class IrBuilder {
             //还应该把这个指针存进符号表中
             argSymbol.setPointer(pointer);
         }
+        LOGGER.fine("build entry block: " + bb.getName() + " in function: " + bb.getFunction().getName());
         return bb;
     }
 
@@ -115,6 +138,7 @@ public class IrBuilder {
         var zeroConst = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), "0", true);
         assert zeroConst.getNumber().isEmpty();
         zeroConst.setNumber(0);
+        LOGGER.fine("build neg instruction: " + zeroConst.getName() + " in block: " + block.getName());
         return buildBinInstruction(block, zeroConst, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.SUB),
                 register);
     }
@@ -142,6 +166,7 @@ public class IrBuilder {
         var op1 = buildCmpInst(block, variable, IcmpInstruction.Cond.NE, zero);
         var trueVariable = new Variable(IrType.create(IrType.IrTypeID.BitTyID), "true", true);
         trueVariable.setNumber(1);
+        LOGGER.fine("build not instruction: " + trueVariable.getName() + " in block: " + block.getName());
         return buildBinInstruction(block, op1, Operator.create(IrType.create(IrType.IrTypeID.BitTyID), Operator.OpCode.XOR), trueVariable);
     }
 
@@ -159,7 +184,8 @@ public class IrBuilder {
      * @return 返回一个result的Variable，这个Variable是<font color='red'>寄存器</font>，里面存放了结果
      */
     public Variable buildLogicInst(BasicBlock block, Variable a, IcmpInstruction.Cond op, Variable b) {
-//        assert a.getType() == b.getType();
+        assert a.getType() == b.getType();
+        LOGGER.fine("build logic instruction: " + op + " in block: " + block.getName());
         return buildCmpInst(block, a, op, b);
     }
 
@@ -177,11 +203,48 @@ public class IrBuilder {
      * @return 返回一个result的Variable，这个Variable是<font color='red'>寄存器</font>，里面存放了结果
      */
     public Variable buildLogicInst(BasicBlock block, Variable a, Operator op, Variable b) {
+        LOGGER.fine(a.getType().toIrCode() + " " + a.getName() + ", " + b.getType().toIrCode() + " " + b.getName() + ", " + op.toIrCode());
         assert op.opCode == Operator.OpCode.AND || op.opCode == Operator.OpCode.OR;
-        Variable ares = buildCmpInst(block, a, IcmpInstruction.Cond.SGT, b);
-        Variable bres = buildCmpInst(block, b, IcmpInstruction.Cond.SGT, b);
-        return buildBinInstruction(block, ares, op, bres);
+        Variable aBit = a, bBit = b;
+        //第一层封装：
+        //如果a或者b是0/1的const常量，则需要先把它们转换成bit类型的变量
+        if (a instanceof ConstValue) {
+            assert a.getNumber().isPresent();
+            Integer num = a.getNumber().get();
+            aBit = num == 0 ? buildConstValue(0, IrType.IrTypeID.BitTyID) : buildConstValue(1, IrType.IrTypeID.BitTyID);
+        }
+
+        if (b instanceof ConstValue) {
+            assert b.getNumber().isPresent();
+            Integer num = b.getNumber().get();
+            bBit = num == 0 ? buildConstValue(0, IrType.IrTypeID.BitTyID) : buildConstValue(1, IrType.IrTypeID.BitTyID);
+        }
+
+        //第二层封装：
+        //如果a或者b已经是bit类型了，则不需要再进行与0的比较了
+        //否则，需要进行与0的比较，得到bit类型的变量
+        Variable zero = buildConstValue(0, IrType.IrTypeID.BitTyID);
+        if (aBit.getType().getBasicType() != IrType.IrTypeID.BitTyID) {
+            aBit = buildCmpInst(block, aBit, IcmpInstruction.Cond.NE, zero);
+        }
+        if (bBit.getType().getBasicType() != IrType.IrTypeID.BitTyID) {
+            bBit = buildCmpInst(block, bBit, IcmpInstruction.Cond.NE, zero);
+        }
+
+        //第三层封装：
+        //如果a和b都是constValue，则直接进行与或运算，不用buildBinInstruction
+        if (aBit instanceof ConstValue && bBit instanceof ConstValue) {
+            assert aBit.getNumber().isPresent() && bBit.getNumber().isPresent();
+            Integer num1 = aBit.getNumber().get();
+            Integer num2 = bBit.getNumber().get();
+            int result = op.opCode == Operator.OpCode.AND ? num1 & num2 : num1 | num2;
+            return buildConstValue(result, IrType.IrTypeID.BitTyID);
+        }
+
+        LOGGER.fine("build logic instruction: " + op.toIrCode() + " in block: " + block.getName());
+        return buildBinInstruction(block, aBit, op, bBit);
     }
+
 
     /**
      * 形如：  %4 = icmp slt i32 %3, 2      ; ===> if %3 < 2
@@ -190,13 +253,16 @@ public class IrBuilder {
      * @param a         左值
      * @param condition 比较条件
      * @param b         右值
-     * @return 结果variable
+     * @return 结果variable。是一个bit类型的变量
      */
     public Variable buildCmpInst(BasicBlock block, Variable a, IcmpInstruction.Cond condition, Variable b) {
+        LOGGER.fine("compare " + a.getType().toIrCode() + " " + a.toIrCode() + " " + condition.toIrCode() + " " + b.getType().toIrCode() + " " +
+                b.toIrCode());
 //        assert a.getType() == b.getType();
         Variable res = new Variable(IrType.create(IrType.IrTypeID.BitTyID), allocator.allocate());
         IcmpInstruction icmpInstruction = new IcmpInstruction(res, a, b, condition);
         block.addInstruction(icmpInstruction);
+        LOGGER.fine("build icmp instruction: " + icmpInstruction.toIrCode() + " in block: " + block.getName());
         return res;
     }
 
@@ -204,15 +270,24 @@ public class IrBuilder {
         Variable variable = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), String.valueOf(resultNumber), false);
         variable.setNumber(resultNumber);
         var ret = new RetInstruction(variable);
+        LOGGER.fine("build ret instruction: " + ret.toIrCode() + " in block: " + basicBlock.getName());
         basicBlock.addInstruction(ret);
     }
 
     public Variable buildConstIntNum(int number) {
-        return new IntConstValue(number);
+        LOGGER.fine("build const int number: " + number);
+        return new ConstValue(number, IrType.IrTypeID.Int32TyID);
+    }
+
+    public Variable buildConstValue(int number, IrType.IrTypeID typeID) {
+        assert number == 0 || number == 1;
+        LOGGER.fine("build const number: " + number + " of type: " + typeID.toIrCode());
+        return new ConstValue(number, typeID);
     }
 
     public void buildRetInstOfConst(BasicBlock basicBlock, Variable variable) {
         var ret = new RetInstruction(variable);
+        LOGGER.fine("build ret instruction: " + ret.toIrCode() + " in block: " + basicBlock.getName());
         basicBlock.addInstruction(ret);
     }
 
@@ -241,6 +316,7 @@ public class IrBuilder {
         var result = new Variable(a.getType(), allocator.allocate()); //新建一个result变量
         var bins = new BinInstruction(result, a, b, op);
         basicBlock.addInstruction(bins);
+        LOGGER.fine("build bin instruction: " + bins.toIrCode() + " in block: " + basicBlock.getName());
         return result;
     }
 
@@ -253,6 +329,7 @@ public class IrBuilder {
      */
     public PointerValue buildLocalVariable(BasicBlock basicBlock, IrType.IrTypeID varType) {
         //        buildStoreInst(basicBlock,,pointerValue); //无初值，则只分配一个指针
+        LOGGER.fine("build local variable: " + varType + " in block: " + basicBlock.getName());
         return buildAllocaInst(basicBlock, varType);
     }
 
@@ -277,8 +354,9 @@ public class IrBuilder {
      */
     public PointerValue buildLocalVariable(BasicBlock basicBlock, IrType.IrTypeID varType, int value) {
         var pointer = buildLocalVariable(basicBlock, varType);
-        IntConstValue intConstValue = new IntConstValue(value);
-        buildStoreInst(basicBlock, intConstValue, pointer);
+        ConstValue constValue = new ConstValue(value, varType);
+        buildStoreInst(basicBlock, constValue, pointer);
+        LOGGER.fine("build local variable: " + varType + " in block: " + basicBlock.getName() + " with initial value: " + value);
         return pointer;
     }
 
@@ -292,6 +370,7 @@ public class IrBuilder {
         PointerValue pointerValue = new PointerValue(IrType.create(varType, IrType.IrTypeID.PointerTyID), allocator.allocate());
         AllocaInstruction allocaInstruction = new AllocaInstruction(pointerValue);
         basicBlock.addInstruction(allocaInstruction);
+        LOGGER.fine("build alloca instruction: " + allocaInstruction.toIrCode() + " in block: " + basicBlock.getName());
         return pointerValue;
     }
 
@@ -313,6 +392,7 @@ public class IrBuilder {
         module.insertGlobal(globalVariable);
         var inst = new GlobalDeclInstruction(globalVariable, true);
         module.insertGlobalInst(inst);
+        LOGGER.fine("build global constant value: " + globalVariable.getName() + " in module: " + module.getName());
         return globalVariable;
     }
 
@@ -329,6 +409,7 @@ public class IrBuilder {
         var inst = new GlobalDeclInstruction(globalVariable, false);
         module.insertGlobalInst(inst);
         module.insertGlobal(globalVariable);
+        LOGGER.fine("build global variable: " + globalVariable.getName() + " in module: " + module.getName());
         return globalVariable;
     }
 
@@ -346,6 +427,7 @@ public class IrBuilder {
         var inst = new GlobalDeclInstruction(globalVariable, false);
         module.insertGlobalInst(inst);
         module.insertGlobal(globalVariable);
+        LOGGER.fine("build global variable: " + globalVariable.getName() + " in module: " + module.getName());
         return globalVariable;
     }
 
@@ -363,6 +445,7 @@ public class IrBuilder {
                 .insertFunc(new Function(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putint", module))
                 .insertFunc(new Function(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putch", module))
                 .insertFunc(new Function(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putstr", module));
+        LOGGER.fine("build module: " + module.getName());
         return module;
     }
 
@@ -377,11 +460,14 @@ public class IrBuilder {
         var result = new Variable(pointer.getType(), allocator.allocate());
         LoadInstruction loadInstruction = new LoadInstruction(result, pointer);
         block.addInstruction(loadInstruction);
+        LOGGER.fine("build load instruction: " + loadInstruction.toIrCode() + " in block: " + block.getName());
         return result;
     }
 
     public void buildVoidRetInst(BasicBlock block) {
-        block.addInstruction(new RetInstruction());
+        RetInstruction retInst = new RetInstruction();
+        block.addInstruction(retInst);
+        LOGGER.fine("build void ret instruction: " + retInst.toIrCode() + " in block: " + block.getName());
     }
 
     public Variable buildCallInst(BasicBlock block, String funName, Variable... paramVariables) {
@@ -395,6 +481,7 @@ public class IrBuilder {
         Variable variable = new Variable(func.getType(), allocator.allocate());
         CallInstruction callInstruction = new CallInstruction(func, variable, paramVariables);
         block.addInstruction(callInstruction);
+        LOGGER.fine("build call instruction: " + callInstruction.toIrCode() + " in block: " + block.getName());
         return variable;
     }
 
@@ -404,6 +491,7 @@ public class IrBuilder {
         Function func = module.getFunc("@" + funName);
         CallInstruction callInstruction = new CallInstruction(func, paramVariables);
         block.addInstruction(callInstruction);
+        LOGGER.fine("build void call instruction: " + callInstruction.toIrCode() + " in block: " + block.getName());
     }
 
     /**
@@ -416,6 +504,7 @@ public class IrBuilder {
     public void buildStoreInst(BasicBlock basicBlock, Variable variable, PointerValue pointerValue) {
         StoreInstruction storeInstruction = new StoreInstruction(variable, pointerValue);
         basicBlock.addInstruction(storeInstruction);
+        LOGGER.fine("build store instruction: " + storeInstruction.toIrCode() + " in block: " + basicBlock.getName());
     }
 
 }
