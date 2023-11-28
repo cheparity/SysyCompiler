@@ -27,6 +27,19 @@ public class IrBuilder {
     }
 
     /**
+     * 建立一个条件跳转指令，形如：br i1 %4, label %5, label %6
+     *
+     * @param belonging 所属基本块
+     * @param cond      条件
+     * @param ifTrue    如果条件为真，跳转到的块
+     * @param ifFalse   如果条件为假，跳转到的块
+     */
+    public void buildBrInst(BasicBlock belonging, Variable cond, BasicBlock ifTrue, BasicBlock ifFalse) {
+        var br = new BrInstruction(cond, ifTrue, ifFalse);
+        belonging.addInstruction(br);
+    }
+
+    /**
      * 负责把argument new出来，并添加到function中。
      *
      * @param function 所属函数
@@ -39,6 +52,12 @@ public class IrBuilder {
 
     /**
      * 建造基本块（区别于函数入口块）
+     * <p>
+     * 1. 新建基本块
+     * <p>
+     * 2. 设定基本块的前驱和后继
+     * <p>
+     * 3. 把基本块加入到函数的blockList中
      *
      * @param predecessor 前驱块
      * @return 返回新建立的基本块
@@ -46,8 +65,14 @@ public class IrBuilder {
     public BasicBlock buildBasicBlock(BasicBlock predecessor) {
         var bb = new BasicBlock(allocator.allocate());
         predecessor.addSuccessor(bb);
+        bb.setFunction(predecessor.getFunction());
+        bb.getFunction().addBlock(bb);
         bb.addPredecessor(predecessor);
         return bb;
+    }
+
+    public BasicBlock buildBasicBlock(BasicBlock predecessor, SymbolTable symbolTable) {
+        return buildBasicBlock(predecessor).setSymbolTable(symbolTable);
     }
 
 
@@ -61,6 +86,8 @@ public class IrBuilder {
         var bb = new BasicBlock(allocator.allocate()); //每个临时寄存器和基本块占用一个编号
         //entry block的前驱是没有的
         function.setEntryBlock(bb);
+        bb.setFunction(function);
+
         //为了从符号表中找到函数参数，并更新其指针。1.注意是从全局符号表查找function 2.注意function的name之前有个@，所以要substring(1)
         assert SymbolTable.getGlobal().getFuncSymbol(function.getName().substring(1)).isPresent();
         FuncSymbol funcSymbol = SymbolTable.getGlobal().getFuncSymbol(function.getName().substring(1)).get();
@@ -132,7 +159,7 @@ public class IrBuilder {
      * @return 返回一个result的Variable，这个Variable是<font color='red'>寄存器</font>，里面存放了结果
      */
     public Variable buildLogicInst(BasicBlock block, Variable a, IcmpInstruction.Cond op, Variable b) {
-        assert a.getType() == b.getType();
+//        assert a.getType() == b.getType();
         return buildCmpInst(block, a, op, b);
     }
 

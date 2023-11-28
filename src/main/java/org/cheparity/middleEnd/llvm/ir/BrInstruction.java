@@ -2,6 +2,7 @@ package middleEnd.llvm.ir;
 
 /**
  * br i1 [cond], label [iftrue], label [iffalse]
+ * <p>
  * br label [dest]          ; Unconditional branch
  */
 public final class BrInstruction extends Instruction {
@@ -46,10 +47,10 @@ public final class BrInstruction extends Instruction {
             assert cond != null;
             assert ifTrue != null;
             assert ifFalse != null;
-            return String.format("br i1 %s, label %%%s, label %%%s", cond.toIrCode(), ifTrue.getName(), ifFalse.getName());
+            return String.format("br i1 %s, label %s, label %s", cond.toIrCode(), ifTrue.getName(), ifFalse.getName());
         } else {
             assert dest != null;
-            return String.format("br label %%%s", dest.getName());
+            return String.format("br label %s", dest.getName());
         }
     }
 }

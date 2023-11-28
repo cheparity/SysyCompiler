@@ -4,8 +4,10 @@ import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
 import middleEnd.ASTNodeVisitor;
 import middleEnd.llvm.SSARegisterAllocator;
+import middleEnd.llvm.ir.Function;
+import middleEnd.llvm.ir.IrBuilder;
+import middleEnd.llvm.ir.IrType;
 import middleEnd.llvm.ir.Module;
-import middleEnd.llvm.ir.*;
 import middleEnd.symbols.FuncSymbol;
 import middleEnd.symbols.SymbolTable;
 
@@ -52,8 +54,7 @@ public final class FuncVisitor implements ASTNodeVisitor {
                     .forEach(node -> visitFuncParams(node, builder));
         }
         //这里应该新建一个块，然后把新建的块传递过去
-        BasicBlock entryBlock = builder.buildEntryBlock(function);
-        func.accept(new BlockVisitor(entryBlock, builder));
+        func.accept(new BlockVisitor(function, builder));
     }
 
     private void visitFuncParams(ASTNode funcFParam, IrBuilder builder) {

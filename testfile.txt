@@ -1,8 +1,9 @@
-int main()
+int foo(int a, int b)
 {
-    int a = 10;
+    if (a || b)
     {
-        int b = 10;
+        int c = 2;
+        c = c + 1;
     }
-    return 0;
+    int d = 3;
 }

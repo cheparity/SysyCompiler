@@ -6,4 +6,8 @@ abstract class Instruction extends User {
         super(IrType.create(IrType.IrTypeID.VoidTyID));
     }
 
+    @Override
+    public String toString() {
+        return this.toIrCode();
+    }
 }

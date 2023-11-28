@@ -12,9 +12,9 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
     private final IrBuilder builder;
     private final SymbolTable symbolTable;
 
-    public LocalVarVisitor(BasicBlock basicBlock, IrBuilder builder) {
-        this.basicBlock = basicBlock;
-        this.builder = builder;
+    public LocalVarVisitor(BlockVisitor callee) {
+        this.basicBlock = callee.getBasicBlock();
+        this.builder = callee.getBuilder();
         this.symbolTable = basicBlock.getSymbolTable();
     }
 

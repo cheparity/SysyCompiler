@@ -1,6 +1,7 @@
 package middleEnd;
 
 import frontEnd.parser.dataStruct.ASTNode;
+import middleEnd.llvm.ir.BasicBlock;
 
 /**
  * 可能需要：
@@ -14,5 +15,7 @@ import frontEnd.parser.dataStruct.ASTNode;
  * 4. BlockItemVisitor => BlockItem
  */
 public interface ASTNodeVisitor {
+    BasicBlock basicblock = null;
+
     void visit(ASTNode node);
 }

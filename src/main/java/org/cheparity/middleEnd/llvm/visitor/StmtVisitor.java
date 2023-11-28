@@ -4,7 +4,7 @@ import frontEnd.parser.dataStruct.ASTLeaf;
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
 import middleEnd.ASTNodeVisitor;
-import middleEnd.llvm.ir.EntryBlock;
+import middleEnd.llvm.ir.BasicBlock;
 import middleEnd.llvm.ir.IrBuilder;
 import middleEnd.llvm.ir.PointerValue;
 import middleEnd.llvm.ir.Variable;
@@ -15,28 +15,31 @@ import middleEnd.symbols.SymbolTable;
 import java.util.List;
 
 public final class StmtVisitor implements ASTNodeVisitor {
-    private final EntryBlock basicBlock;
-    private final IrBuilder builder;
-    private final SymbolTable symbolTable;
-
-    public StmtVisitor(EntryBlock basicBlock, IrBuilder builder) {
-        this.basicBlock = basicBlock;
-        this.builder = builder;
-        this.symbolTable = basicBlock.getSymbolTable();
-    }
+    final IrBuilder builder;
+    final SymbolTable symbolTable;
+    BlockVisitor callee;
+    BasicBlock basicBlock;
 
     /**
-     * 为了处理匿名块的情况，需要把<font color='red'>匿名块里的符号表</font>单独传递过来。
+     * 为了处理<font color='red'>匿名块</font>的情况，需要把<font color='red'>匿名块里的符号表</font>单独传递过来。
      *
      * @param basicBlock  基本块
      * @param builder     IrBuilder
      * @param symbolTable 匿名块里的符号表
      */
-    public StmtVisitor(BasicBlock basicBlock, IrBuilder builder, SymbolTable symbolTable) {
+    private StmtVisitor(BasicBlock basicBlock, IrBuilder builder, SymbolTable symbolTable) {
         this.basicBlock = basicBlock;
         this.builder = builder;
         this.symbolTable = symbolTable;
     }
+
+    public StmtVisitor(BlockVisitor callee) {
+        this.callee = callee;
+        this.basicBlock = callee.getBasicBlock();
+        this.builder = callee.getBuilder();
+        this.symbolTable = callee.getBasicBlock().getSymbolTable();
+    }
+
 
     /**
      * Stmt ->
@@ -94,16 +97,16 @@ public final class StmtVisitor implements ASTNodeVisitor {
         }
     }
 
-    private void visitBlock(ASTNode blockStmt) {
+    private BasicBlock visitBlock(ASTNode blockStmt) {
         //build嵌套块（非函数入口块）
         //此时有两种情况：1. 匿名块 2. 从控制流语句过来的块。特点:控制流过来的块，其兄弟必有if或者for
         GrammarType brotherGraTy = blockStmt.getFather().getChild(0).getGrammarType();
         if (brotherGraTy == GrammarType.IF || brotherGraTy == GrammarType.FOR) {
-            var newBlk = builder.buildBasicBlock(basicBlock);
-            blockStmt.accept(new BlockVisitor(newBlk, builder));
-            return;
+            BlockVisitor visitor = new BlockVisitor(basicBlock, builder);
+            blockStmt.accept(visitor);
+            return visitor.getBasicBlock();
         }
-        // 匿名块。注意调用的**构造函数**是不一样的
+        // 匿名块。注意调用的构造函数是不一样的
         for (var child : blockStmt.getChild(0).getChildren()) {
             if (child.getGrammarType() != GrammarType.BLOCK_ITEM) continue;
             SymbolTable blockST = blockStmt.getChild(0).getSymbolTable();
@@ -111,6 +114,7 @@ public final class StmtVisitor implements ASTNodeVisitor {
             child.accept(new LocalVarVisitor(basicBlock, builder, blockST));
             child.accept(new StmtVisitor(basicBlock, builder, blockST));
         }
+        return null;
     }
 
     private void visitLvalStmt(ASTNode lvalStmt) {
@@ -182,19 +186,34 @@ public final class StmtVisitor implements ASTNodeVisitor {
         //LAndExp -> EqExp | LAndExp '&&' EqExp
         //EqExp -> RelExp | EqExp ('==' | '!=') RelExp
         //RelExp -> AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
+        BasicBlock ifTrueBlk, finalBlk, elseBlk = null;
         ASTNode condNode = ifStmt.getChild(2);
-        ASTNode ifTrueNode = ifStmt.getChild(4);
-
+        ASTNode ifTrueNodeStmt = IrUtil.wrapStmtAsBlock(ifStmt.getChild(4), symbolTable);
+        //处理Cond
         NodeUnion union = new IrUtil(builder, basicBlock).calcLogicExp(condNode);
         if (union.isNum) {
             //todo 如果是数字，表明可以直接判断，就不用去建立if语句结构
             throw new RuntimeException("Not implement!");
         }
-        Variable variable = union.getVariable();
-        visit(ifTrueNode);
+        //处理各个block
+        Variable cond = union.getVariable();
+        //需要把stmt包装为block => 需要新建一个block
+        ifTrueBlk = visitBlock(ifTrueNodeStmt);
         if (ifStmt.deepDownFind(GrammarType.ELSE, 1).isPresent()) {
-            ASTNode elseStmt = ifStmt.getChild(-1);
-            visit(elseStmt);
+            ASTNode elseStmt = IrUtil.wrapStmtAsBlock(ifStmt.getChild(-1), symbolTable);
+            elseBlk = visitBlock(elseStmt);
         }
+        finalBlk = builder.buildBasicBlock(basicBlock, basicBlock.getSymbolTable());//新建一个基本块
+
+        if (elseBlk != null) {
+            builder.buildBrInst(basicBlock, cond, ifTrueBlk, elseBlk);
+        } else {
+            builder.buildBrInst(basicBlock, cond, ifTrueBlk, finalBlk);
+        }
+//        this.basicBlock = finalBlk; //这里应该是调用者的basicBlock = finalBlock？
+        // 其实可以通过传递callee的方式传递过来
+        callee.setBasicBlock(finalBlk);
     }
+
+
 }

@@ -8,6 +8,7 @@ public class Function extends GlobalValue implements GlobalObjects {
     private final IrType returnType;
     private final Module module; //所属module
     private final List<BasicBlock> blockList = new ArrayList<>();
+    private BasicBlock entryBlock;
 
     Function(IrType type, String name, Module module) {
         super(type, name);
@@ -24,11 +25,12 @@ public class Function extends GlobalValue implements GlobalObjects {
     }
 
     BasicBlock getEntryBlock() {
-        return getBlockList().get(0);
+        return this.entryBlock;
     }
 
     void setEntryBlock(BasicBlock entryBlock) {
         assert getBlockList().isEmpty();
+        this.entryBlock = entryBlock;
         addBlock(entryBlock);
     }
 
@@ -40,7 +42,7 @@ public class Function extends GlobalValue implements GlobalObjects {
         return getBlockList().get(getBlockList().size() - 1);
     }
 
-    void addBlock(BasicBlock block) {
+    public void addBlock(BasicBlock block) {
         this.getBlockList().add(block);
     }
 
@@ -67,14 +69,13 @@ public class Function extends GlobalValue implements GlobalObjects {
         sb.append(")").append(" {");
         sb.append("\n");
         //如果没有ret，则需要补上ret，否则过不了llvm的编译。那就默认ret void / ret i32 0
-        if (!(getLastBlock().getLastInstruction() instanceof RetInstruction)) {
+        if (getLastBlock().getLastInstruction() == null || !(getLastBlock().getLastInstruction() instanceof RetInstruction)) {
             if (returnType.getBasicType() == IrType.IrTypeID.VoidTyID) {
                 getLastBlock().addInstruction(new RetInstruction());
             } else {
                 getLastBlock().addInstruction(new RetInstruction(new IntConstValue(0)));
             }
         }
-        //打印blockList
         getBlockList().forEach(block -> sb.append(block.toIrCode()));
         //如果没有ret，则需要补上ret，否则过不了llvm的编译。那就默认ret void / ret i32 0
         sb.append("}");

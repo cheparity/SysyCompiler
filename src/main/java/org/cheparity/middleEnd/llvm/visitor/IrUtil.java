@@ -143,6 +143,22 @@ class IrUtil {
         return 0;
     }
 
+    public static ASTNode wrapStmtAsBlock(ASTNode stmt, SymbolTable symbolTable) {
+        assert stmt.getGrammarType() == GrammarType.STMT;
+        if (stmt.getChild(0).getGrammarType() == GrammarType.BLOCK) return stmt;
+        ASTNode blk = new ASTNode(GrammarType.BLOCK);
+        ASTNode blkItm = new ASTNode(GrammarType.BLOCK_ITEM);
+        blk
+                .setSymbolTable(symbolTable)
+                .addChild(blkItm)
+                .setFather(stmt.getFather());
+        blkItm
+                .addChild(stmt)
+                .setFather(blk);
+
+        return stmt.replaceItselfAs(blk);
+    }
+
     public NodeUnion calcAloExp(ASTNode node) {
         NodeUnion union = new NodeUnion(node, builder, block);
         switch (node.getGrammarType()) {

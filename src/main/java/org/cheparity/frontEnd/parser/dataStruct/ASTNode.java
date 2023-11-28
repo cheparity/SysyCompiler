@@ -26,9 +26,10 @@ public class ASTNode implements ASTNodeElement {
         this.grammarType = grammarType;
     }
 
-    public void addChild(ASTNode node) {
+    public ASTNode addChild(ASTNode node) {
         node.setFather(this);
         this.children.add(node);
+        return this;
     }
 
     public void removeLastChild() {
@@ -49,9 +50,29 @@ public class ASTNode implements ASTNodeElement {
         return this.father;
     }
 
-    private void setFather(ASTNode father) {
+    public ASTNode setFather(ASTNode father) {
         assert !(father instanceof ASTLeaf);
         this.father = father;
+        return this;
+    }
+
+    public ASTNode replaceItselfAs(ASTNode as) {
+        if (this.father == null) {
+            LOGGER.warning("Cannot find the father node");
+            return null;
+        }
+        this.father.replaceChildAs(this, as);
+        return as;
+    }
+
+    public void replaceChildAs(ASTNode child, ASTNode as) {
+        int index = this.children.indexOf(child);
+        if (index == -1) {
+            LOGGER.warning("Cannot find the child node");
+            return;
+        }
+        this.children.set(index, as);
+        as.setFather(this);
     }
 
     public List<ASTNode> getChildren() {
@@ -62,8 +83,9 @@ public class ASTNode implements ASTNodeElement {
         return symbolTable;
     }
 
-    public void setSymbolTable(SymbolTable symbolTable) {
+    public ASTNode setSymbolTable(SymbolTable symbolTable) {
         this.symbolTable = symbolTable;
+        return this;
     }
 
     /**
@@ -230,7 +252,7 @@ public class ASTNode implements ASTNodeElement {
             children.stream()
                     .filter(node -> node.getGrammarType() == GrammarType.FUNC_DEF | node.getGrammarType() == GrammarType.MAIN_FUNC_DEF)
                     .forEach(visitor::visit);
-        } else if (visitor instanceof EntryBlockVisitor) {
+        } else if (visitor instanceof BlockVisitor) {
             //过滤出函数体
             children.stream()
                     .filter(node -> node.getGrammarType() == GrammarType.BLOCK)
