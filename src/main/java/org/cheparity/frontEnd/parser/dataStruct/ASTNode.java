@@ -234,6 +234,10 @@ public class ASTNode implements ASTNodeElement {
                     .filter(node -> node.getGrammarType() == GrammarType.FUNC_DEF | node.getGrammarType() == GrammarType.MAIN_FUNC_DEF)
                     .forEach(visitor::visit);
         } else if (visitor instanceof BlockVisitor) {
+            if (getGrammarType() == GrammarType.BLOCK) {
+                visitor.visit(this);
+                return;
+            }
             //过滤出函数体
             children.stream()
                     .filter(node -> node.getGrammarType() == GrammarType.BLOCK)
@@ -251,7 +255,9 @@ public class ASTNode implements ASTNodeElement {
             }
         } else if (visitor instanceof StmtVisitor) {
             // BlockItem -> Decl | Stmt
-            if (getChild(0).getGrammarType() == GrammarType.STMT) {
+            if (getGrammarType() == GrammarType.STMT || getGrammarType() == GrammarType.FOR_STMT) {
+                visitor.visit(this);
+            } else if (getChild(0).getGrammarType() == GrammarType.STMT || getChild(0).getGrammarType() == GrammarType.FOR_STMT) {
                 visitor.visit(getChild(0));
             }
         } else {

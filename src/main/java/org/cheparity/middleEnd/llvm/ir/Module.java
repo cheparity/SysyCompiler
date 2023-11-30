@@ -5,7 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class Module extends Value {
-    List<Function> functions = new ArrayList<>();
+    List<IrFunction> irFunctions = new ArrayList<>();
     List<GlobalValue> globalValues = new ArrayList<>();
     List<Instruction> globalInstructions = new ArrayList<>();
 
@@ -22,13 +22,13 @@ public class Module extends Value {
         return this;
     }
 
-    Module insertFunc(Function function) {
-        functions.add(function);
+    Module insertFunc(IrFunction irFunction) {
+        irFunctions.add(irFunction);
         return this;
     }
 
-    Function getFunc(String name) {
-        for (var func : functions) {
+    IrFunction getFunc(String name) {
+        for (var func : irFunctions) {
             if (func.getName().equals(name)) {
                 return func;
             }
@@ -44,9 +44,9 @@ public class Module extends Value {
             sb.append(gloInst.toIrCode()).append("\n");
         }
         sb.append("\n");
-        for (Function function : functions) {
-            if (function.getEntryBlock() == null) continue; //decl的函数
-            sb.append(function.toIrCode()).append("\n");
+        for (IrFunction irFunction : irFunctions) {
+            if (irFunction.getEntryBlock() == null) continue; //decl的函数
+            sb.append(irFunction.toIrCode()).append("\n");
         }
         return sb.toString();
     }

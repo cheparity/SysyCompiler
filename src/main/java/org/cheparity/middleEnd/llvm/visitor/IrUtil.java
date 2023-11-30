@@ -151,7 +151,8 @@ class IrUtil {
      * @return 包装好的块
      */
     public static ASTNode wrapStmtAsBlock(ASTNode stmt, SymbolTable symbolTable) {
-        assert stmt.getGrammarType() == GrammarType.STMT;
+        GrammarType grammarType = stmt.getGrammarType();
+        assert grammarType == GrammarType.STMT || grammarType == GrammarType.FOR_STMT;
         //如果本身的第一个child就是块，就不用包装了
         if (stmt.getChild(0).getGrammarType() == GrammarType.BLOCK) return stmt;
         //由：stmt(old)

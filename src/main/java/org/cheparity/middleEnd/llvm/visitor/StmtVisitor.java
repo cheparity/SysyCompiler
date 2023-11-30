@@ -20,8 +20,8 @@ public final class StmtVisitor implements ASTNodeVisitor {
     private static final Logger LOGGER = LoggerUtil.getLogger();
     final IrBuilder builder;
     final SymbolTable symbolTable;
-    BlockVisitor callee;
-    BasicBlock basicBlock;
+    private final BasicBlock basicBlock;
+    private BlockVisitor callee;
 
     public StmtVisitor(BlockVisitor callee) {
         this.callee = callee;
@@ -30,36 +30,13 @@ public final class StmtVisitor implements ASTNodeVisitor {
         this.symbolTable = callee.getBasicBlock().getSymbolTable();
     }
 
-    public StmtVisitor(BasicBlock basicBlock, IrBuilder builder) {
+    private StmtVisitor(BasicBlock basicBlock, IrBuilder builder) {
         this.basicBlock = basicBlock;
         this.builder = builder;
         this.symbolTable = basicBlock.getSymbolTable();
     }
 
 
-    /**
-     * Stmt ->
-     * <p>
-     * LVal '=' Exp ';'
-     * <p>
-     * | LVal '=' 'getint''('')'';'
-     * <p>
-     * | [Exp] ';'
-     * <p>
-     * | Block
-     * <p>
-     * | 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
-     * <p>
-     * | 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
-     * <p>
-     * | 'break' ';'
-     * <p>
-     * | 'continue' ';'
-     * <p>
-     * | 'return' [Exp] ';'
-     * <p>
-     * | 'printf''('FormatString{','Exp}')'';'
-     */
     @Override
     public void visit(ASTNode stmt) {
         //stmt -> 'return' Exp ';'
@@ -86,30 +63,46 @@ public final class StmtVisitor implements ASTNodeVisitor {
         else if (stmt.getChild(0).getGrammarType() == GrammarType.IF) {
             visitIfStmt(stmt);
         }
+        //Stmt -> 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
+        else if (stmt.getChild(0).getGrammarType() == GrammarType.FOR) {
+            visitForStmt(stmt);
+        }
         //Stmt -> Block
         else if (stmt.getChild(0).getGrammarType() == GrammarType.BLOCK) {
-            //这里只处理匿名块的情况
-            GrammarType brotherGraTy = stmt.getFather().getChild(0).getGrammarType();
-            if (brotherGraTy != GrammarType.IF && brotherGraTy != GrammarType.FOR) {
-                visitAnonymousBlock(stmt);
-            } else {
-                throw new RuntimeException("Shouldn't visit anonymous block here! Please check if IF or FOR error.");
-            }
+            stmt.accept(new BlockVisitor(basicBlock, builder)); //这自动就处理匿名内部类的问题了
+        }
+        //Stmt -> 'break' ';'
+        else if (stmt.getChild(0).getGrammarType() == GrammarType.BREAK) {
+            visitBreakStmt(stmt);
+        }
+        //Stmt -> 'continue' ';'
+        else if (stmt.getChild(0).getGrammarType() == GrammarType.CONTINUE) {
+            visitContinueStmt(stmt);
         }
     }
 
+    private void visitBreakStmt(ASTNode breakStmt) {
+        //breakStmt所在块肯定是loopStmt，loopStmt的前驱是Cond
+        //break就是要跳到Cond的后继--finalBlk
+        // todo 但是此时finalBlk还没有建立！
+        /*
+         * 我希望：
+         * pauseUntilNotified();
+         * 然后再执行下面的语句
+         */
+        var finalBlk = basicBlock.findPreWithTag("cond").findSucWithTag("forEnd");
+        assert finalBlk != null;
+        builder.buildBrInst(basicBlock, finalBlk);
 
-    private void visitAnonymousBlock(ASTNode blockStmt) {
-        // 匿名块。
-        ASTNode anonymousBlk = blockStmt.getChild(0).getGrammarType() == GrammarType.BLOCK ? blockStmt.getChild(0) : blockStmt;
-        assert anonymousBlk.getGrammarType() == GrammarType.BLOCK;
-        anonymousBlk.getChildren().stream().filter(child -> child.getGrammarType() == GrammarType.BLOCK_ITEM).forEach(blkItm -> {
-            SymbolTable blockST = anonymousBlk.getSymbolTable();
-            assert blockST != null;
-            // 注意调用的构造函数是不一样的
-            blkItm.accept(new LocalVarVisitor(basicBlock.setSymbolTable(blockST), builder));
-            blkItm.accept(new StmtVisitor(basicBlock.setSymbolTable(blockST), builder));
-        });
+    }
+
+
+    private void visitContinueStmt(ASTNode continueStmt) {
+        //continueStmt所在块肯定是loopStmt，loopStmt的后继就是forStmt2
+        //continue就是要跳到Cond的后继--forStmt2Blk
+        BasicBlock forStmt2Blk = basicBlock.findPreWithTag("forBody").findSucWithTag("forStmt2");
+        assert forStmt2Blk != null;
+        builder.buildBrInst(basicBlock, forStmt2Blk);
     }
 
     private void visitLvalStmt(ASTNode lvalStmt) {
@@ -184,33 +177,39 @@ public final class StmtVisitor implements ASTNodeVisitor {
         BasicBlock ifTrueBlk, finalBlk, elseBlk = null;
         final boolean hasElseStmt = ifStmt.deepDownFind(GrammarType.ELSE, 1).isPresent();
         final ASTNode condNode = ifStmt.getChild(2);
-        final ASTNode ifTrueNodeStmt = IrUtil.wrapStmtAsBlock(ifStmt.getChild(4), symbolTable);
-        //处理Cond
-        NodeUnion union = new IrUtil(builder, basicBlock).calcLogicExp(condNode);
-        if (union.isNum) {
-            int number = union.getNumber();
+        final ASTNode ifTrueNodeStmt = ifStmt.getChild(4);
+
+        //如果cond可以直接判断，则没必要构建if的结构
+        NodeUnion condUnion = new IrUtil(builder, basicBlock).calcLogicExp(condNode);
+        if (condUnion.isNum) {
+            int number = condUnion.getNumber();
             LOGGER.fine("Meet [ " + number + " ]. Jump to ifTrueBlk or elseBlk directly!");
             //如果是1，则直接接着解析ifTrueBlk里的东西；如果是0且有else，直接建立ElseBlk，如果是0且无else，直接跳过（return）
+            //这里wrap与否应该差不多
             if (number == 1) {
-                visitAnonymousBlock(ifTrueNodeStmt);
+                ifTrueNodeStmt.accept(new StmtVisitor(basicBlock, builder));
                 return;
             }
             if (hasElseStmt) {
                 var elseStmt = ifStmt.getChild(-1);
-                visitAnonymousBlock(elseStmt);
+                elseStmt.accept(new StmtVisitor(basicBlock, builder));
             }
             return;
         }
+        //如果cond判断不了，则构建if的结构
         //处理各个block
-        Variable cond = union.getVariable();
+        Variable cond = condUnion.getVariable();
         //需要把stmt包装为block => 需要新建一个block
-        ifTrueBlk = visitControlFlowBlock(ifTrueNodeStmt);
+        ifTrueBlk = builder.buildBasicBlock(basicBlock).setTag("ifTrue");
+        ifTrueNodeStmt.accept(new StmtVisitor(ifTrueBlk, builder));
         if (hasElseStmt) {
-            ASTNode elseStmt = IrUtil.wrapStmtAsBlock(ifStmt.getChild(-1), symbolTable);
-            elseBlk = visitControlFlowBlock(elseStmt);
+//            ASTNode elseStmt = IrUtil.wrapStmtAsBlock(ifStmt.getChild(-1), symbolTable);
+            var elseStmt = ifStmt.getChild(-1);
+            elseBlk = builder.buildBasicBlock(basicBlock).setTag("else");
+            elseStmt.accept(new StmtVisitor(elseBlk, builder));
             //需要给elseBlk增加br语句
         }
-        finalBlk = builder.buildBasicBlock(basicBlock, basicBlock.getSymbolTable());//新建一个基本块
+        finalBlk = builder.buildBasicBlock(basicBlock, basicBlock.getSymbolTable()).setTag("ifEnd");//新建一个基本块
 
         //在全部解析完ifTrueBlk, finalBlk, elseBlk之后，才可以buildBrInst
         if (elseBlk != null) {
@@ -218,25 +217,81 @@ public final class StmtVisitor implements ASTNodeVisitor {
             builder.buildBrInst(elseBlk, finalBlk); //elseBlk -> finalBlk
         } else {
             builder.buildBrInst(basicBlock, cond, ifTrueBlk, finalBlk); //entryBlock 根据 条件 -> ifTrueBlk | finalBlk
-            assert ifTrueBlk != null;
             builder.buildBrInst(ifTrueBlk, finalBlk); //ifTrueBlk -> finalBlk
         }
         //这里应该是调用者的basicBlock = finalBlock？
         // 其实可以通过传递callee的方式传递过来
-        callee.setBasicBlock(finalBlk);
+        callee.updateVisitingBlock(finalBlk);
     }
 
-    /**
-     * 确保只被visitIfStmt调用！
-     *
-     * @param blockStmt 控制流块
-     * @return 匿名块对应的基本块
-     */
-    private BasicBlock visitControlFlowBlock(ASTNode blockStmt) {
-        BlockVisitor visitor = new BlockVisitor(basicBlock, builder);
-        blockStmt.accept(visitor);
-        return visitor.getBasicBlock();
-    }
+    //Stmt -> 'for' '(' [ForStmt1] ';' [Cond] ';' [ForStmt2] ')' Stmt
+    private void visitForStmt(ASTNode forStmt) {
+        //找到两个;的位置，根据;的位置来判断是否有ForStmt
+        int semi1 = 0, semi2 = 0;
+        for (int i = 2; i < forStmt.getChildren().size(); i++) {
+            var child = forStmt.getChild(i);
+            if (child.getGrammarType() != GrammarType.SEMICOLON) continue;
+            if (semi1 == 0) semi1 = i;
+            else semi2 = i;
+        }
+        var forStmt1 = semi1 == 2 ? null : forStmt.getChild(2);
+        var cond = semi2 - semi1 == 1 ? null : forStmt.getChild(semi1 + 1);
+        var forStmt2 = semi2 == forStmt.getChildren().size() - 2 ? null : forStmt.getChild(semi2 + 1);
+        var loopStmt = forStmt.getChild(-1);
+        LOGGER.info("get forStmt1: " + forStmt1 + " cond: " + cond + " forStmt2: " + forStmt2);
 
+        //我们需要建立的块有：forStmt1，Cond，ForStmt2，Stmt，Stmt之后的语句。
+        //1.执行初始化表达式ForStmt1 => 可以放在if所处的block内
+        if (forStmt1 != null) {
+            // ForStmt -> LVal '=' Exp，是Stmt的一种特殊情况
+            forStmt1.accept(new StmtVisitor(basicBlock, builder));
+        }
+
+        BasicBlock condBlk = builder.buildBasicBlock(basicBlock).setTag("cond");
+        NodeUnion condUnion;
+        if (cond == null) {
+            condUnion = new NodeUnion(null, builder, condBlk.setSymbolTable(symbolTable))
+                    .setNumber(1);
+        } else {
+            condUnion = new IrUtil(builder, condBlk.setSymbolTable(symbolTable)).calcLogicExp(cond);
+        }
+        if (condUnion.isNum && condUnion.getNumber() == 0) {
+            //如果恒为0则啥也不用干。需要把condBlk drop掉
+            basicBlock.dropBlock(condBlk);
+            return;
+        }
+
+        //处理loop循环体
+        var loopBlk = builder.buildBasicBlock(condBlk, symbolTable).setTag("forBody");
+        //todo 为什么要单独拿出来呢？因为后续可能会回填continue和break语句
+        StmtVisitor loopStmtVisitor = new StmtVisitor(loopBlk, builder);
+        loopStmt.accept(loopStmtVisitor);
+        BasicBlock forStmt2Blk = null;
+        if (forStmt2 != null) {
+            forStmt2Blk = builder.buildBasicBlock(loopBlk, symbolTable).setTag("forStmt2");
+            forStmt2.accept(new StmtVisitor(forStmt2Blk, builder));
+        }
+
+        var finalBlk = builder.buildBasicBlock(condBlk, basicBlock.getSymbolTable()).setTag("forEnd");
+        //新建一个基本块
+
+        //开始build br inst
+        if (condUnion.isNum && condUnion.getNumber() == 1) {
+            //如果恒为1，则直接跳转到loopBlk
+            builder.buildBrInst(condBlk, loopBlk);
+        } else {
+            builder.buildBrInst(condBlk, condUnion.getVariable(), loopBlk, finalBlk);
+        }
+        builder.buildBrInst(basicBlock, condBlk);
+        //从loop跳转到forStmt2Blk
+        if (forStmt2Blk != null) {
+            builder.buildBrInst(loopBlk, forStmt2Blk);
+            builder.buildBrInst(forStmt2Blk, condBlk);
+        } else {
+            builder.buildBrInst(loopBlk, condBlk);
+        }
+        //最后把callee的basicBlock设为finalBlk
+        callee.updateVisitingBlock(finalBlk);
+    }
 
 }

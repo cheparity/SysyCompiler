@@ -1,7 +1,7 @@
 package middleEnd.symbols;
 
 import frontEnd.lexer.dataStruct.Token;
-import middleEnd.llvm.ir.Function;
+import middleEnd.llvm.ir.IrFunction;
 
 import java.util.List;
 
@@ -9,7 +9,7 @@ public final class FuncSymbol extends Symbol {
     private final FuncType funcType; //void int
     private List<VarSymbol> params;
     private int dim;
-    private Function function;
+    private IrFunction irFunction;
 
     public FuncSymbol(SymbolTable table, Token token, FuncType funcType) {
         super(table, SymbolType.FUNC, token);
@@ -46,11 +46,11 @@ public final class FuncSymbol extends Symbol {
         this.params = fparams;
     }
 
-    public Function getFunction() {
-        return function;
+    public IrFunction getFunction() {
+        return irFunction;
     }
 
-    public void setFunction(Function function) {
-        this.function = function;
+    public void setFunction(IrFunction irFunction) {
+        this.irFunction = irFunction;
     }
 }

@@ -52,7 +52,7 @@ public class RecursiveDescentParser {
 
 
     /**
-     * Note that this function can ONLY JUDGE TERMINAL tokens!
+     * Note that this irFunction can ONLY JUDGE TERMINAL tokens!
      *
      * @param number pre-read how many tokens.
      * @param type   the expected type of pre-reading token.

@@ -4,10 +4,8 @@ import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
 import middleEnd.ASTNodeVisitor;
 import middleEnd.llvm.SSARegisterAllocator;
-import middleEnd.llvm.ir.Function;
-import middleEnd.llvm.ir.IrBuilder;
-import middleEnd.llvm.ir.IrType;
 import middleEnd.llvm.ir.Module;
+import middleEnd.llvm.ir.*;
 import middleEnd.symbols.FuncSymbol;
 import middleEnd.symbols.SymbolTable;
 
@@ -15,7 +13,7 @@ import java.util.Optional;
 
 public final class FuncVisitor implements ASTNodeVisitor {
     private final Module module;
-    private Function function;
+    private IrFunction irFunction;
     private SymbolTable table;
 
     public FuncVisitor(Module module) {
@@ -39,11 +37,11 @@ public final class FuncVisitor implements ASTNodeVisitor {
                     IrType.IrTypeID.Int32TyID;
         }
         String funcName = func.getChild(1).getRawValue();
-        function = builder.buildFunction(funcType, funcName, module);
+        irFunction = builder.buildFunction(funcType, funcName, module);
         //在全局符号表中注册这个函数
         assert SymbolTable.getGlobal().getFuncSymbol(funcName).isPresent();
         FuncSymbol funcSymbol = SymbolTable.getGlobal().getFuncSymbol(funcName).get();
-        funcSymbol.setFunction(function);
+        funcSymbol.setFunction(irFunction);
         //解析参数
         Optional<ASTNode> paramOpt = func.deepDownFind(GrammarType.FUNC_FPARAMS, 1);
         if (paramOpt.isPresent()) {
@@ -54,7 +52,8 @@ public final class FuncVisitor implements ASTNodeVisitor {
                     .forEach(node -> visitFuncParams(node, builder));
         }
         //这里应该新建一个块，然后把新建的块传递过去
-        func.accept(new BlockVisitor(function, builder));
+        BasicBlock entryBlock = builder.buildEntryBlock(irFunction);
+        func.accept(new BlockVisitor(entryBlock, builder));
     }
 
     private void visitFuncParams(ASTNode funcFParam, IrBuilder builder) {
@@ -66,7 +65,7 @@ public final class FuncVisitor implements ASTNodeVisitor {
         assert table.getSymbol(name).isPresent();
         var symbol = table.getSymbol(name).get();
 
-        builder.buildArg(function, IrType.create(IrType.IrTypeID.Int32TyID)); //todo 后续考虑数组的情况
+        builder.buildArg(irFunction, IrType.create(IrType.IrTypeID.Int32TyID)); //todo 后续考虑数组的情况
         //不光要build，还要把形参store进对应的block里。。这一块儿由builder.buildEntryBlock来做
     }
 }

@@ -26,7 +26,7 @@ public class IrContext implements IrPrintable {
     }
 
     public IrPrintable[] getFunctions() {
-        return this.irModule.functions.toArray(new IrPrintable[0]);
+        return this.irModule.irFunctions.toArray(new IrPrintable[0]);
     }
 
     @Override

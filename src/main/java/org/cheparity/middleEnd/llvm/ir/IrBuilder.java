@@ -22,9 +22,9 @@ public class IrBuilder {
         this.allocator = allocator;
     }
 
-    public Function buildFunction(IrType.IrTypeID type, String name, Module module) {
+    public IrFunction buildFunction(IrType.IrTypeID type, String name, Module module) {
         String funcName = "@" + name;
-        var func = new Function(IrType.create(type, IrType.IrTypeID.FunctionTyID), funcName, module);
+        var func = new IrFunction(IrType.create(type, IrType.IrTypeID.FunctionTyID), funcName, module);
         module.insertFunc(func);
         LOGGER.fine("build function: " + funcName);
         return func;
@@ -59,13 +59,13 @@ public class IrBuilder {
     /**
      * 负责把argument new出来，并添加到function中。
      *
-     * @param function 所属函数
-     * @param type     参数类型
+     * @param irFunction 所属函数
+     * @param type       参数类型
      */
-    public void buildArg(Function function, IrType type) {
+    public void buildArg(IrFunction irFunction, IrType type) {
         Argument argument = new Argument(type, allocator.allocate());
-        function.insertArgument(argument);
-        LOGGER.fine("build argument: " + argument.getName() + " at function: " + function.getName());
+        irFunction.insertArgument(argument);
+        LOGGER.fine("build argument: " + argument.getName() + " at irFunction: " + irFunction.getName());
     }
 
     /**
@@ -94,6 +94,7 @@ public class IrBuilder {
     public BasicBlock buildBasicBlock(BasicBlock predecessor, SymbolTable symbolTable) {
         LOGGER.fine("build basic block: " + predecessor.getName() + " in function: " + predecessor.getFunction().getName() + " " +
                 "predecessor: " + predecessor.getName() + " and set symbol table");
+
         return buildBasicBlock(predecessor).setSymbolTable(symbolTable);
     }
 
@@ -101,29 +102,29 @@ public class IrBuilder {
     /**
      * 建立函数入口块。与buildBasicBlock的区别是，还需要把函数的参数存进符号表中。
      *
-     * @param function 函数
+     * @param irFunction 函数
      * @return 返回一个函数入口块
      */
-    public BasicBlock buildEntryBlock(Function function) {
+    public BasicBlock buildEntryBlock(IrFunction irFunction) {
         var bb = new BasicBlock(allocator.allocate()); //每个临时寄存器和基本块占用一个编号
         //entry block的前驱是没有的
-        function.setEntryBlock(bb);
-        bb.setFunction(function);
+        irFunction.setEntryBlock(bb);
+        bb.setFunction(irFunction);
 
         //为了从符号表中找到函数参数，并更新其指针。1.注意是从全局符号表查找function 2.注意function的name之前有个@，所以要substring(1)
-        assert SymbolTable.getGlobal().getFuncSymbol(function.getName().substring(1)).isPresent();
-        FuncSymbol funcSymbol = SymbolTable.getGlobal().getFuncSymbol(function.getName().substring(1)).get();
+        assert SymbolTable.getGlobal().getFuncSymbol(irFunction.getName().substring(1)).isPresent();
+        FuncSymbol funcSymbol = SymbolTable.getGlobal().getFuncSymbol(irFunction.getName().substring(1)).get();
         List<VarSymbol> params = funcSymbol.getParams();
         //将function的所有arguments，先alloca一个新pointer，再将arg里的寄存器store进point中
-        for (int i = 0; i < function.getArguments().size(); i++) {
-            Argument arg = function.getArguments().get(i);
+        for (int i = 0; i < irFunction.getArguments().size(); i++) {
+            Argument arg = irFunction.getArguments().get(i);
             VarSymbol argSymbol = params.get(i);
             PointerValue pointer = buildAllocaInst(bb, arg.getType().getBasicType());
             buildStoreInst(bb, new Variable(IrType.create(IrType.IrTypeID.Int32TyID), arg.getName()), pointer);
             //还应该把这个指针存进符号表中
             argSymbol.setPointer(pointer);
         }
-        LOGGER.fine("build entry block: " + bb.getName() + " in function: " + bb.getFunction().getName());
+        LOGGER.fine("build entry block: " + bb.getName() + " in irFunction: " + bb.getFunction().getName());
         return bb;
     }
 
@@ -441,10 +442,10 @@ public class IrBuilder {
                 .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putch").addArg(new Argument(IrType.create(IrType.IrTypeID.Int32TyID), "a")))
                 .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putstr").addArg(new Argument(IrType.create(IrType.IrTypeID.ByteTyID, IrType.IrTypeID.PointerTyID), "a")));
         module
-                .insertFunc(new Function(IrType.create(IrType.IrTypeID.Int32TyID, IrType.IrTypeID.FunctionTyID), "@getint", module))
-                .insertFunc(new Function(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putint", module))
-                .insertFunc(new Function(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putch", module))
-                .insertFunc(new Function(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putstr", module));
+                .insertFunc(new IrFunction(IrType.create(IrType.IrTypeID.Int32TyID, IrType.IrTypeID.FunctionTyID), "@getint", module))
+                .insertFunc(new IrFunction(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putint", module))
+                .insertFunc(new IrFunction(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putch", module))
+                .insertFunc(new IrFunction(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putstr", module));
         LOGGER.fine("build module: " + module.getName());
         return module;
     }
@@ -473,7 +474,7 @@ public class IrBuilder {
     public Variable buildCallInst(BasicBlock block, String funName, Variable... paramVariables) {
         IrContext context = IrTranslator.context;
         Module module = context.getIrModule();
-        Function func = module.getFunc("@" + funName);
+        IrFunction func = module.getFunc("@" + funName);
         if (func.getReturnType().getBasicType() == IrType.IrTypeID.VoidTyID) {
             buildVoidCallInst(block, funName, paramVariables);
             return null;
@@ -488,7 +489,7 @@ public class IrBuilder {
     public void buildVoidCallInst(BasicBlock block, String funName, Variable... paramVariables) {
         IrContext context = IrTranslator.context;
         Module module = context.getIrModule();
-        Function func = module.getFunc("@" + funName);
+        IrFunction func = module.getFunc("@" + funName);
         CallInstruction callInstruction = new CallInstruction(func, paramVariables);
         block.addInstruction(callInstruction);
         LOGGER.fine("build void call instruction: " + callInstruction.toIrCode() + " in block: " + block.getName());
