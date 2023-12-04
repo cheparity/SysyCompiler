@@ -1,19 +1,14 @@
 package utils;
 
 public final class Message<T> {
+    public final String request;
     public T data;
 
-    private Message(T data) {
+    public Message(T data, String request) {
         this.data = data;
+        this.request = request;
     }
 
-    public static <T> Message<T> of(T data) {
-        return new Message<>(data);
-    }
-
-    public static <T> Message<T> empty() {
-        return new Message<>(null);
-    }
 
     public boolean isEmpty() {
         return data == null;
@@ -23,7 +18,4 @@ public final class Message<T> {
         return data;
     }
 
-    public void set(T data) {
-        this.data = data;
-    }
 }

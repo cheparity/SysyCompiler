@@ -6,8 +6,8 @@ import frontEnd.parser.SysYParser;
 import frontEnd.parser.dataStruct.ASTLeaf;
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
-import frontEnd.parser.dataStruct.utils.ParserUtil;
 import middleEnd.symbols.*;
+import utils.GrammarUtil;
 import utils.LoggerUtil;
 
 import java.util.ArrayList;
@@ -210,7 +210,7 @@ public class RecursiveDescentParser implements SysYParser {
         for (ASTNode node : constDefList) {
             // ConstDef -> Ident { '[' ConstExp ']' } '=' ConstInitVal
             ASTLeaf ident = (ASTLeaf) node.getChildren().get(0);
-            int dim = ParserUtil.getDim4Def(node);
+            int dim = GrammarUtil.getDim4Def(node);
             var symbol = new ConstSymbol(this.nowSymbolTable, ident.getToken(), dim);
             this.nowSymbolTable.addSymbol(symbol, constDecl.getErrorHandler());
         }
@@ -374,7 +374,7 @@ public class RecursiveDescentParser implements SysYParser {
         for (ASTNode node : varDefList) {
             // VarDef -> Ident { '[' ConstExp ']' } ['=' InitVal]
             ASTLeaf ident = (ASTLeaf) node.getChildren().get(0);
-            int dim = ParserUtil.getDim4Def(node);
+            int dim = GrammarUtil.getDim4Def(node);
             var symbol = new VarSymbol(this.nowSymbolTable, ident.getToken(), dim);
             this.nowSymbolTable.addSymbol(symbol, varDecl.getErrorHandler());
         }
@@ -679,7 +679,7 @@ public class RecursiveDescentParser implements SysYParser {
                         new RBracketMissedError(funcFParam.lastToken())));
             }
         }
-        var dim = ParserUtil.getDim4Def(funcFParam);
+        var dim = GrammarUtil.getDim4Def(funcFParam);
         VarSymbol symbol = new VarSymbol(this.nowSymbolTable, ident.get().getToken(), dim);
         funcParams.add(symbol);
 //        this.nowSymbolTable.addSymbol(symbol, funcFParam.getErrorHandler()); 修改：把symbol传递出去，在block里添加
@@ -732,17 +732,17 @@ public class RecursiveDescentParser implements SysYParser {
      */
     private Optional<ASTNode> parseBlockItem() {
         int initIndex = nowIndex;
-        var BlockItem = begin(GrammarType.BLOCK_ITEM);
+        var blockItem = begin(GrammarType.BLOCK_ITEM);
         Optional<ASTNode> decl = parseDecl();
         if (decl.isPresent()) {
-            BlockItem.addChild(decl.get());
-            return done(BlockItem);
+            blockItem.addChild(decl.get());
+            return done(blockItem);
         }
 
         Optional<ASTNode> stmt = parseStmt();
         if (stmt.isPresent()) {
-            BlockItem.addChild(stmt.get());
-            return done(BlockItem);
+            blockItem.addChild(stmt.get());
+            return done(blockItem);
         }
 
         return failed(initIndex);
@@ -895,8 +895,9 @@ public class RecursiveDescentParser implements SysYParser {
             else if (grammarType.equals(GrammarType.BREAK) || grammarType.equals(GrammarType.CONTINUE)) {
                 stmt.addChild(keyword.get());
                 semicolon = parseTerminal(GrammarType.SEMICOLON);
-                Optional<ASTNode> forStmt = keyword.get().deepUpFind(GrammarType.FOR_STMT);
-                if (forStmt.isEmpty()) error(stmt, new NotLoopStmtError(keyword.get().getToken()));
+                if (!GrammarUtil.isInForBlk(keyword.get().getToken(), tokens)) {
+                    error(stmt, new NotLoopStmtError(keyword.get().getToken()));
+                }
                 if (semicolon.isPresent()) {
                     stmt.addChild(semicolon.get());
                     return done(stmt);
@@ -1257,7 +1258,7 @@ public class RecursiveDescentParser implements SysYParser {
         } else {
             for (int i = 0; i < expectParamsNum; i++) {
                 var e = nodeList.get(i);
-                var actualDim = ParserUtil.getExpDim(e, nowSymbolTable);
+                var actualDim = GrammarUtil.getExpDim(e, nowSymbolTable);
                 var expectDim = expectParams.get(i).getDim();
                 if (actualDim == expectDim) break;
                 error(funcRParams, new FuncParamTypeNotMatchedError("dim " + expectDim, "dim " + actualDim, funcCallTk));

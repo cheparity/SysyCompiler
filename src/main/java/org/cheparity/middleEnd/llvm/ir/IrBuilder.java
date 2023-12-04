@@ -40,6 +40,9 @@ public class IrBuilder {
      */
     public void buildBrInst(BasicBlock belonging, Variable cond, BasicBlock ifTrue, BasicBlock ifFalse) {
         var br = new BrInstruction(cond, ifTrue, ifFalse);
+        if (belonging.endWithBr()) {
+            belonging.getInstructionList().removeLast();
+        }
         belonging.addInstruction(br);
         LOGGER.fine("build br instruction: " + br.toIrCode() + " at block: " + belonging.getName());
     }
@@ -52,6 +55,9 @@ public class IrBuilder {
      */
     public void buildBrInst(BasicBlock belonging, BasicBlock dest) {
         var br = new BrInstruction(dest);
+        if (belonging.endWithBr()) {
+            belonging.getInstructionList().removeLast();
+        }
         belonging.addInstruction(br);
         LOGGER.fine("build br instruction: " + br.toIrCode() + " at block: " + belonging.getName());
     }

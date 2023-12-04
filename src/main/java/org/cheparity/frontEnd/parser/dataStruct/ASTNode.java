@@ -153,6 +153,19 @@ public class ASTNode implements ASTNodeElement {
         return Optional.empty();
     }
 
+    public Optional<ASTNode> deepDownFind(GrammarType type) {
+        if (this.getGrammarType() == type) {
+            return Optional.of(this);
+        }
+        for (ASTNode child : this.getChildren()) {
+            Optional<ASTNode> res = child.deepDownFind(type);
+            if (res.isPresent()) {
+                return res;
+            }
+        }
+        return Optional.empty();
+    }
+
     public Optional<ASTNode> deepUpFind(GrammarType type, int layer) {
         if (layer < 0) {
             return Optional.empty();

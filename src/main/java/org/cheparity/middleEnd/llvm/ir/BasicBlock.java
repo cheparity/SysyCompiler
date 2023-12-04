@@ -3,16 +3,16 @@ package middleEnd.llvm.ir;
 import middleEnd.symbols.SymbolTable;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedList;
 
 public class BasicBlock extends Value {
-    private final List<BasicBlock> predecessors = new ArrayList<>();
-    private final List<BasicBlock> successors = new ArrayList<>();
-    private final List<Instruction> instructionList = new ArrayList<>();
+    private final LinkedList<BasicBlock> predecessors = new LinkedList<>();
+    private final LinkedList<BasicBlock> successors = new LinkedList<>();
+    private final LinkedList<Instruction> instructionList = new LinkedList<>();
     /**
      * tag是为了方便查找某些块。比如，在for循环里需要查找forStmt2块等
      */
-    private final List<String> tags = new ArrayList<>();
+    private final ArrayList<String> tags = new ArrayList<>();
     /**
      * block所属的function。如果不是entry block，则为null
      */
@@ -98,11 +98,11 @@ public class BasicBlock extends Value {
         return this;
     }
 
-    public List<BasicBlock> getPredecessors() {
+    public LinkedList<BasicBlock> getPredecessors() {
         return predecessors;
     }
 
-    public List<BasicBlock> getSuccessors() {
+    public LinkedList<BasicBlock> getSuccessors() {
         return successors;
     }
 
@@ -119,7 +119,7 @@ public class BasicBlock extends Value {
     }
 
 
-    List<Instruction> getInstructionList() {
+    LinkedList<Instruction> getInstructionList() {
         return this.instructionList;
     }
 
@@ -147,5 +147,10 @@ public class BasicBlock extends Value {
     public void dropBlock(BasicBlock blk2drop) {
         getFunction().getBlockList().remove(blk2drop);
         successors.remove(blk2drop);
+    }
+
+    public boolean endWithBr() {
+        if (this.getInstructionList().isEmpty()) return false;
+        return this.getInstructionList().getLast() instanceof BrInstruction;
     }
 }

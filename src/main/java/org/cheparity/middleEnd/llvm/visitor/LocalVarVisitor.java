@@ -6,6 +6,7 @@ import middleEnd.ASTNodeVisitor;
 import middleEnd.llvm.ir.*;
 import middleEnd.symbols.Symbol;
 import middleEnd.symbols.SymbolTable;
+import utils.Message;
 
 public final class LocalVarVisitor implements ASTNodeVisitor {
     private final BasicBlock basicBlock;
@@ -18,12 +19,6 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
         this.symbolTable = basicBlock.getSymbolTable();
     }
 
-    public LocalVarVisitor(BasicBlock basicBlock, IrBuilder builder) {
-        this.basicBlock = basicBlock;
-        this.builder = builder;
-        this.symbolTable = basicBlock.getSymbolTable();
-    }
-
     @Override
     public void visit(ASTNode node) {
         assert node.getGrammarType() == GrammarType.VAR_DECL || node.getGrammarType() == GrammarType.CONST_DECL;
@@ -32,6 +27,16 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
             case CONST_DECL -> visitConstDecl(node);
             case VAR_DECL -> visitVarDecl(node);
         }
+    }
+
+    @Override
+    public IrBuilder getBuilder() {
+        return this.builder;
+    }
+
+    @Override
+    public void emit(Message message, ASTNodeVisitor sender) {
+        //do nothing
     }
 
     private void visitConstDecl(ASTNode constDecl) {

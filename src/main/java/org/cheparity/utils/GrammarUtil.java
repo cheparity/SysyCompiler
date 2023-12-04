@@ -1,13 +1,15 @@
-package frontEnd.parser.dataStruct.utils;
+package utils;
 
+import frontEnd.lexer.dataStruct.Token;
 import frontEnd.parser.dataStruct.ASTLeaf;
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
 import middleEnd.symbols.*;
 
+import java.util.List;
 import java.util.Optional;
 
-public class ParserUtil {
+public final class GrammarUtil {
 
     //Exp → AddExp
     public static int getExpDim(ASTNode exp, SymbolTable table) {
@@ -106,5 +108,39 @@ public class ParserUtil {
         }
         return dim;
     }
+
+    /**
+     * 判断一个节点是否在for循环中：递归在父节点中查找，找到一个 child[0]是for的blockItem
+     *
+     * @param token 节点的token
+     * @return 是否在for循环中
+     */
+    public static boolean isInForBlk(Token token, List<Token> tokens) {
+        //毁灭吧！通过文本判断
+        int cnt = 0;
+        //右进左出，空则不判断
+        for (var i = tokens.indexOf(token); i > 0; i--) {
+            var nowTk = tokens.get(i);
+            switch (nowTk.getLexType()) {
+                case RBRACE -> cnt++;
+                case LBRACE -> cnt--;
+                case FORTK -> {
+                    if (cnt != 0) return true; //括号都匹配则什么都不做
+                }
+            }
+        }
+        return false;
+    }
+//    public static boolean isInForBlk(ASTNode node) {
+//        if (node.getGrammarType() == GrammarType.STMT &&
+//                node.getChild(0) != null &&
+//                node.getChild(0).getGrammarType() == GrammarType.FOR) {
+//            return true;
+//        }
+//        if (node.getFather() == null) {
+//            return false;
+//        }
+//        return isInForBlk(node.getFather());
+//    }
 
 }

@@ -8,6 +8,7 @@ import middleEnd.llvm.ir.Module;
 import middleEnd.llvm.ir.*;
 import middleEnd.symbols.FuncSymbol;
 import middleEnd.symbols.SymbolTable;
+import utils.Message;
 
 import java.util.Optional;
 
@@ -15,6 +16,7 @@ public final class FuncVisitor implements ASTNodeVisitor {
     private final Module module;
     private IrFunction irFunction;
     private SymbolTable table;
+    private IrBuilder builder;
 
     public FuncVisitor(Module module) {
         this.module = module;
@@ -22,7 +24,7 @@ public final class FuncVisitor implements ASTNodeVisitor {
 
     @Override
     public void visit(ASTNode func) {
-        IrBuilder builder = new IrBuilder(new SSARegisterAllocator());
+        builder = new IrBuilder(new SSARegisterAllocator());
         //所有的node都是FuncDef. FuncDef -> FuncType Ident '(' [FuncFParams] ')' Block
         //FuncType -> 'void' | 'int'
         assert func.getGrammarType() == GrammarType.FUNC_DEF
@@ -53,7 +55,17 @@ public final class FuncVisitor implements ASTNodeVisitor {
         }
         //这里应该新建一个块，然后把新建的块传递过去
         BasicBlock entryBlock = builder.buildEntryBlock(irFunction);
-        func.accept(new BlockVisitor(entryBlock, builder));
+        func.accept(new BlockVisitor(entryBlock, this));
+    }
+
+    @Override
+    public IrBuilder getBuilder() {
+        return this.builder;
+    }
+
+    @Override
+    public void emit(Message message, ASTNodeVisitor sender) {
+        //do nothing
     }
 
     private void visitFuncParams(ASTNode funcFParam, IrBuilder builder) {

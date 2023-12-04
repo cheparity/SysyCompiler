@@ -1,4 +1,4 @@
-package frontEnd.parser.dataStruct.utils;
+package utils;
 
 public class RegUtil {
     public static final String NUM_REG = "^-?[1-9]\\d*|0$";

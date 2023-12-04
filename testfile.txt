@@ -1,10 +1,32 @@
-int main(){
-    int i;
-    for(i=0;i<10;i=i+1){
-        if(i==5){
+/*int main() {
+    int i,a;
+    for(i=1;;i=i+1) {
+        if (i==10) {
             break;
         }
-        printf("%d\n",i);
+        a=2;
+    }
+
+    return 0;
+}*/
+
+int main(){
+    int a1=1,a2;
+    a2=a1;
+    int temp;
+    int n,i;
+    n=getint(); //n=10
+    for(i=a1*a1;i<n+1;i=i+1){
+        temp=a2;
+        a2=a1+a2;
+        a1=temp;
+        if(i%2==1){
+            continue;
+        }
+        printf("round %d: %d\n",i,a1);
+        if(i>19){
+            break;
+        }
     }
     return 0;
 }

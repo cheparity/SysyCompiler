@@ -8,6 +8,7 @@ import middleEnd.llvm.ir.IrType;
 import middleEnd.llvm.ir.Module;
 import middleEnd.symbols.Symbol;
 import middleEnd.symbols.SymbolTable;
+import utils.Message;
 
 public final class GlobalVarVisitor implements ASTNodeVisitor {
     private final Module module;
@@ -27,6 +28,16 @@ public final class GlobalVarVisitor implements ASTNodeVisitor {
         } else {
             visitVarDecl(node.getChild(0));
         }
+    }
+
+    @Override
+    public IrBuilder getBuilder() {
+        return this.builder;
+    }
+
+    @Override
+    public void emit(Message message, ASTNodeVisitor sender) {
+        //do nothing
     }
 
     private void visitVarDecl(ASTNode varDecl) {
