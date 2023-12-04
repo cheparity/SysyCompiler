@@ -52,45 +52,62 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
 
     @Override
     public void visit(ASTNode stmt) {
+        String type;
         //stmt -> 'return' Exp ';'
         if (stmt.getChild(0).getGrammarType() == GrammarType.RETURN) {
+            LOGGER.info("visit returnStmt: " + stmt);
             visitRetStmt(stmt);
         }
         //Stmt -> LVal '=' 'getint''('')'';'
         else if (stmt.deepDownFind(GrammarType.GETINT, 1).isPresent()) {
+            LOGGER.info("visit getintStmt: " + stmt);
             visitGetintStmt(stmt);
         }
         //stmt -> 'printf''('FormatString{','Exp}')'';'
         else if (stmt.getChild(0).getGrammarType() == GrammarType.PRINTF) {
+            LOGGER.info("visit printfStmt: " + stmt);
             visitPrintfStmt(stmt);
         }
         //Stmt -> LVal '=' Exp ';'
         else if (stmt.getChild(0).getGrammarType() == GrammarType.LVAL) {
+            LOGGER.info("visit lvalStmt: " + stmt);
             visitLvalStmt(stmt);
         }
         //Stmt -> Exp ';'
         else if (stmt.getChild(0).getGrammarType() == GrammarType.EXP) {
+            LOGGER.info("visit expStmt: " + stmt);
             new IrUtil(builder, basicBlock).calcAloExp(stmt.getChild(0));
         }
         //Stmt -> 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
         else if (stmt.getChild(0).getGrammarType() == GrammarType.IF) {
+            LOGGER.info("visit ifStmt: " + stmt);
             visitIfStmt(stmt);
         }
         //Stmt -> 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
         else if (stmt.getChild(0).getGrammarType() == GrammarType.FOR) {
+            LOGGER.info("visit forStmt: " + stmt);
             visitForStmt(stmt);
         }
         //Stmt -> Block
         else if (stmt.getChild(0).getGrammarType() == GrammarType.BLOCK) {
+            LOGGER.info("visit blockStmt: " + stmt);
             stmt.accept(new BlockVisitor(basicBlock, this)); //这自动就处理匿名内部类的问题了
         }
         //Stmt -> 'break' ';'
         else if (stmt.getChild(0).getGrammarType() == GrammarType.BREAK) {
+            LOGGER.info("visit breakStmt: " + stmt);
             visitBreakStmt();
         }
         //Stmt -> 'continue' ';'
         else if (stmt.getChild(0).getGrammarType() == GrammarType.CONTINUE) {
+            LOGGER.info("visit continueStmt: " + stmt);
             visitContinueStmt();
+        }
+        if (!this.messages.isEmpty()) {
+            //如果有未能处理的消息，发给caller继续处理
+            LOGGER.info(this + " has " + this.messages.size() + " messages to send to caller.");
+            this.messages.forEach(message -> caller.emit(message, this));
+            this.messages.clear();
         }
     }
 
@@ -119,10 +136,8 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         AtomicBoolean isCaught = new AtomicBoolean(false);
         Arrays.stream(requests).toList().forEach(request -> {
             if (message.request.equals(request)) {
-                LOGGER.info(this + " catches message " + message.request + " , and continue" +
-                        " to broadcast.");
+                LOGGER.info(this + " catches message " + message.request + " , and stop broadcasting.");
                 this.messages.add(message);
-                caller.emit(message, this);
                 isCaught.set(true);
             }
         });
@@ -340,9 +355,9 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         }
 
         finalBlk = builder.buildBasicBlock(condBlk, beforeForBlk.getSymbolTable()).setTag("forEnd");
-        LOGGER.info(this + " ready to handle [getFinalBlkCallBackList]");
         //新建一个基本块
         if (!this.messages.isEmpty()) {
+            LOGGER.info("handle message list of " + this.messages.size() + " messages");
             messages.stream().filter(message -> message.request.equals("breakReq")).toList().forEach(message -> {
                 ((CallBack<BasicBlock>) message.data).run(finalBlk);
                 messages.remove(message);
