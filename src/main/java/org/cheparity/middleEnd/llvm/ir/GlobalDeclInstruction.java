@@ -10,7 +10,7 @@ public final class GlobalDeclInstruction extends Instruction {
     /**
      * 分配指令的值（包含了类型）
      */
-    private final GlobalVariable variable;
+    private final GlobalValue variable;
 
     /**
      * const or global
@@ -23,7 +23,7 @@ public final class GlobalDeclInstruction extends Instruction {
      * @param variable 要声明的变量。一般，在全局声明的变量以原名命名
      * @param constant bool，是否是全局常量（决定了dec语句的modifier是constant/global）
      */
-    GlobalDeclInstruction(GlobalVariable variable, Boolean constant) {
+    GlobalDeclInstruction(GlobalValue variable, Boolean constant) {
         super();
         //type is useless for store instruction
         this.variable = variable;
@@ -34,7 +34,36 @@ public final class GlobalDeclInstruction extends Instruction {
     //<name> = dso_local <op Code> <type value>
     @Override
     public String toIrCode() {
-        return String.format("%s = dso_local %s %s %s", variable.getName(), modifier, variable.getType().toIrCode(),
-                variable.getNumber());
+        if (!variable.getType().isArray()) {
+            return String.format("%s = dso_local %s %s %s", variable.getName(), modifier, variable.getType().toIrCode(),
+                    variable.getNumber()[0]);
+        }
+        //@b = dso_local global [100 x i32]] zeroinitializer
+        //@a = dso_local global [10 x i32] [i32 1, i32 2, i32 3, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0]
+        StringBuilder sb = new StringBuilder();
+        var type = variable.getType();
+        var basicType = type.getBasicType();
+        sb.append(variable.getName()).append(" = dso_local ").append(modifier).append(" ").append(type.toIrCode()).append(" ");
+        boolean isAllZero = true;
+        for (Integer num : variable.getNumber()) {
+            if (!num.equals(0)) {
+                isAllZero = false;
+                break;
+            }
+        }
+        if (isAllZero) {
+            //如果初值全是0，那么就用zeroinitializer
+            sb.append("zeroinitializer");
+        } else {
+            sb.append("[");
+            for (int i = 0; i < variable.getNumber().length; i++) {
+                if (i != 0) {
+                    sb.append(", ");
+                }
+                sb.append(basicType.toIrCode()).append(" ").append(variable.getNumber()[i]);
+            }
+            sb.append("]");
+        }
+        return sb.toString();
     }
 }

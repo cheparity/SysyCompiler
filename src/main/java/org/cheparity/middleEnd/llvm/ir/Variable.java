@@ -7,7 +7,7 @@ import java.util.Optional;
  */
 public class Variable extends Value implements Countable {
     final boolean readonly;
-    private PointerValue pointer;
+    private final PointerValue pointer;
     private int number;
     private boolean valued = false;
 

@@ -5,6 +5,7 @@ import middleEnd.os.IrPrintable;
 public final class IrType implements IrPrintable {
     private final IrTypeID basicType;
     private final IrTypeID derivedType;
+    private int size; //如果是数组的话则有size
 
     private IrType(IrTypeID basicType, IrTypeID derivedType) {
         this.basicType = basicType;
@@ -30,6 +31,21 @@ public final class IrType implements IrPrintable {
     @Override
     public String toIrCode() {
         return this.basicType.toIrCode();
+    }
+
+    public int getSize() {
+        assert this.derivedType != null && this.derivedType.equals(IrTypeID.PointerTyID);
+        return size;
+    }
+
+    public IrType setSize(int size) {
+        this.size = size;
+        return this;
+    }
+
+    public boolean isArray() {
+        if (this.getDerivedType() == null) return false;
+        return this.getDerivedType() == IrTypeID.ArrayTyID;
     }
 
     public enum IrTypeID implements IrPrintable {

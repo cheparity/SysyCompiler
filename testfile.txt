@@ -1,14 +1,27 @@
-int main() {
-    int i,a;
-    for(i=1;i<10;i=i+1) {
-        int j;
-        for(j=1;j<9;j=j+1) {
-            if(j==5) {
-                break;
-            }
-            printf("%d",j);
-        }
-        printf("%d",i);
+int a[3+3];
+int aaaaaa=10;
+const int b[3][3]={{3,6+2,5},{1,2,0},{0,0,0}};
+void a1(int x){
+    if(x>1){
+        a1(x-1);
     }
+    return;
+}
+int a2(int x,int y[]){
+    return x+y[2];
+}
+int a3(int x,int y[],int z[][3]){
+    return x*y[1]-z[2][1];
+}
+int a4(int x) {
+    int y[x];
+}
+
+int main(){
+    int c[2][3]={{1,2,3},{0,0,0}};
+    a1(c[0][2]-c[0][1]);
+    int x=a2(a[4],a);
+    int y=a3(b[0][1],b[1],b);
+    printf("%d",x+y);
     return 0;
 }

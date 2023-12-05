@@ -1,11 +1,13 @@
 package middleEnd.llvm.ir;
 
+import java.util.Arrays;
+
 /**
  * GlobalValue下有Global Constant和Global Variable。与局部变量行为不同
  */
-public abstract class GlobalValue extends PointerValue implements GlobalObjects {
+public class GlobalValue extends PointerValue implements GlobalObjects {
     boolean readonly;
-    int number = 0; //初始化为0；
+    Integer[] number; //初始化为0；
 
     GlobalValue(IrType type, String name) {
         super(type, name);
@@ -16,16 +18,19 @@ public abstract class GlobalValue extends PointerValue implements GlobalObjects 
         this.readonly = readonly;
     }
 
-    int getNumber() {
+    Integer[] getNumber() {
         return number;
     }
 
-    void setNumber(int number) {
+    void setNumber(Integer... number) {
         this.number = number;
     }
 
     @Override
     public String toIrCode() {
-        return this.getType().toIrCode() + " " + this.number;
+        if (this.getType().getDerivedType() == IrType.IrTypeID.ArrayTyID) {
+            return this.getType().toIrCode() + " " + Arrays.toString(this.number);
+        }
+        return this.getType().toIrCode() + " " + this.number[0];
     }
 }

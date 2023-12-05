@@ -25,21 +25,40 @@ class IrUtil {
         this.builder = builder;
     }
 
+    public static void unwrapArrayInitVal4Global(ASTNode node, ArrayList<Integer> inits) {
+        //ConstInitVal → ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
+        //InitVal -> Exp | '{' [ InitVal { ',' InitVal } ] '}'
+        //递归解析
+        switch (node.getChild(0).getGrammarType()) {
+            case CONST_EXP, EXP -> {
+                inits.add(calculateConst4Global(node.getChild(0)));
+            }
+            case LEFT_BRACE -> {
+                node.getChildren().stream()
+                        .filter(child ->
+                                child.getGrammarType().equals(GrammarType.CONST_INIT_VAL) ||
+                                        child.getGrammarType().equals(GrammarType.INIT_VAL)
+                        )
+                        .forEach(v -> unwrapArrayInitVal4Global(v, inits));
+            }
+        }
+    }
+
     /**
      * @param node 节点
      * @return 整数数值
      */
-    public static int CalculateConst4Global(ASTNode node) {
+    public static int calculateConst4Global(ASTNode node) {
         switch (node.getGrammarType()) {
             case CONST_INIT_VAL -> {
                 //ConstInitVal -> ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
                 if (node.getChildren().size() == 1) {
-                    return CalculateConst4Global(node.getChild(0));
+                    return calculateConst4Global(node.getChild(0));
                 }
                 throw new RuntimeException("Not implement array!");
             }
             case CONST_EXP, EXP, NUMBER -> {
-                return CalculateConst4Global(node.getChild(0));
+                return calculateConst4Global(node.getChild(0));
             }
             // Exp -> AddExp
             case INT_CONST -> {
@@ -49,12 +68,12 @@ class IrUtil {
                 // AddExp -> MulExp | AddExp '+' MulExp | AddExp '-' MulExp
                 // AddExp -> MulExp {('+'|'-') MulExp}
                 if (node.getChildren().size() == 1) {
-                    return CalculateConst4Global(node.getChild(0));
+                    return calculateConst4Global(node.getChild(0));
                 }
-                var addRes = CalculateConst4Global(node.getChild(0));
+                var addRes = calculateConst4Global(node.getChild(0));
                 for (int i = 1; i < node.getChildren().size(); i += 2) {
                     var plusOrMinus = node.getChild(i).getGrammarType();
-                    var mulRes = CalculateConst4Global(node.getChild(i + 1));
+                    var mulRes = calculateConst4Global(node.getChild(i + 1));
                     addRes = (plusOrMinus == GrammarType.PLUS) ? (addRes + mulRes) : (addRes - mulRes);
                 }
                 return addRes;
@@ -63,12 +82,12 @@ class IrUtil {
                 // MulExp -> UnaryExp | MulExp ('*' | '/' | '%') UnaryExp
                 // MulExp -> UnaryExp { ('*' | '/' | '%') UnaryExp }
                 if (node.getChildren().size() == 1) {
-                    return CalculateConst4Global(node.getChild(0));
+                    return calculateConst4Global(node.getChild(0));
                 }
-                var mulRes = CalculateConst4Global(node.getChild(0));
+                var mulRes = calculateConst4Global(node.getChild(0));
                 for (int i = 1; i < node.getChildren().size(); i += 2) {
                     var mulOrDivOrMod = node.getChild(i).getGrammarType();
-                    var unaryRes = CalculateConst4Global(node.getChild(i + 1));
+                    var unaryRes = calculateConst4Global(node.getChild(i + 1));
                     switch (mulOrDivOrMod) {
                         case MULTIPLY -> {
                             mulRes *= unaryRes;
@@ -87,13 +106,13 @@ class IrUtil {
             case UNARY_EXP -> {
                 //UnaryExp -> PrimaryExp | UnaryOp UnaryExp | Ident '(' [FuncRParams] ')'
                 if (node.getChildren().size() == 1) {
-                    return CalculateConst4Global(node.getChild(0));
+                    return calculateConst4Global(node.getChild(0));
                 }
                 if (node.getChildren().size() == 2) {
 //                    UnaryOp -> '+' | '−' | '!'
                     var unaryOp = node.getChild(0).getChild(0).getGrammarType();
                     var unaryExp = node.getChild(1);
-                    var unaryExpRes = CalculateConst4Global(unaryExp);
+                    var unaryExpRes = calculateConst4Global(unaryExp);
                     switch (unaryOp) {
                         case PLUS -> {
                             return unaryExpRes;
@@ -117,10 +136,10 @@ class IrUtil {
             case PRIMARY_EXP -> {
 //                PrimaryExp ->  LVal | Number | '(' Exp ')'
                 if (node.getChildren().size() == 1) {
-                    return CalculateConst4Global(node.getChild(0));
+                    return calculateConst4Global(node.getChild(0));
                 }
                 if (node.getChildren().size() == 3) {
-                    return CalculateConst4Global(node.getChild(1));
+                    return calculateConst4Global(node.getChild(1));
                 }
             }
             case LVAL -> {

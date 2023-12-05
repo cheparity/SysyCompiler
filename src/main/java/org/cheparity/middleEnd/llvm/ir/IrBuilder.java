@@ -7,6 +7,7 @@ import middleEnd.symbols.SymbolTable;
 import middleEnd.symbols.VarSymbol;
 import utils.LoggerUtil;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -393,14 +394,47 @@ public class IrBuilder {
      * @param number 常量值，如1
      * @return 返回的不是指令，而是<font color='red'>Build出的GlobalVariable</font>
      */
-    public GlobalVariable buildGlobalConstantValue(Module module, IrType.IrTypeID type, String name, int number) {
-        var globalVariable = new GlobalVariable(IrType.create(type), "@" + name, true);
+    public GlobalValue buildGlobalConstantValue(Module module, IrType.IrTypeID type, String name, int number) {
+        var globalVariable = new GlobalValue(IrType.create(type), "@" + name, true);
         globalVariable.setNumber(number);
         module.insertGlobal(globalVariable);
         var inst = new GlobalDeclInstruction(globalVariable, true);
         module.insertGlobalInst(inst);
         LOGGER.fine("build global constant value: " + globalVariable.getName() + " in module: " + module.getName());
         return globalVariable;
+    }
+
+    /**
+     * 形如 int b[10][20]; => @b = dso_local global [200 i32] zeroinitializer
+     * <p>
+     * int a[1+2+3+4]={1,1+1,1+3-1,0,0,0,0,0,0,0};
+     * <p>
+     * => @a = dso_local global [10 x i32] [i32 1, i32 2, i32 3, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0]
+     * <p>
+     * 我们全部按照<font color=red>一维数组</font>处理，所以不用dim，默认为1
+     *
+     * @param module   所属模块
+     * @param irTypeID 类型，如i32
+     * @param arrSize  数组大小
+     * @param name     变量名，如@a。这里需要name，是因为此name不是由allocator分配的
+     * @return 返回的不是指令，而是<font color='red'>Build出的GlobalVariable</font>
+     */
+    public GlobalValue buildGlobalArray(Module module, IrType.IrTypeID irTypeID, boolean isConst, int arrSize,
+                                        String name, Integer... initNums) {
+        var globalArr = new GlobalValue(IrType.create(irTypeID, IrType.IrTypeID.ArrayTyID).setSize(arrSize), "@" + name, true);
+        if (initNums == null || initNums.length == 0) {
+            Integer[] zeros = new Integer[arrSize];
+            Arrays.fill(zeros, 0);
+            globalArr.setNumber(zeros);
+        } else {
+            globalArr.setNumber(initNums);
+        }
+
+        module.insertGlobal(globalArr);
+        var inst = new GlobalDeclInstruction(globalArr, isConst);
+        module.insertGlobalInst(inst);
+        LOGGER.fine("build global array: " + globalArr.getName() + " in module: " + module.getName());
+        return globalArr;
     }
 
     /**
@@ -411,8 +445,8 @@ public class IrBuilder {
      * @param name   变量名，如@a。这里需要name，是因为此name不是由allocator分配的 number – 常量值，如1
      * @return 返回的不是指令，而是<font color='red'>Build出的GlobalVariable</font>
      */
-    public GlobalVariable buildGlobalVariable(Module module, IrType.IrTypeID type, String name) {
-        var globalVariable = new GlobalVariable(IrType.create(type), "@" + name, false);
+    public GlobalValue buildGlobalVariable(Module module, IrType.IrTypeID type, String name) {
+        var globalVariable = new GlobalValue(IrType.create(type), "@" + name, false);
         var inst = new GlobalDeclInstruction(globalVariable, false);
         module.insertGlobalInst(inst);
         module.insertGlobal(globalVariable);
@@ -428,8 +462,8 @@ public class IrBuilder {
      * @param name     变量名，如@a。这里需要name，是因为此name不是由allocator分配的 number – 常量值，如1
      * @return 返回的不是指令，而是<font color='red'>Build出的GlobalVariable</font>
      */
-    public GlobalVariable buildGlobalVariable(Module module, IrType.IrTypeID irTypeID, String name, int number) {
-        var globalVariable = new GlobalVariable(IrType.create(irTypeID), "@" + name, false);
+    public GlobalValue buildGlobalVariable(Module module, IrType.IrTypeID irTypeID, String name, int number) {
+        var globalVariable = new GlobalValue(IrType.create(irTypeID), "@" + name, false);
         globalVariable.setNumber(number); //设置number
         var inst = new GlobalDeclInstruction(globalVariable, false);
         module.insertGlobalInst(inst);
@@ -513,5 +547,6 @@ public class IrBuilder {
         basicBlock.addInstruction(storeInstruction);
         LOGGER.fine("build store instruction: " + storeInstruction.toIrCode() + " in block: " + basicBlock.getName());
     }
+
 
 }

@@ -28,7 +28,6 @@ public class IrTranslator {
 
     public IrContext translate2LlvmIr(ASTNode node) {
         var errors = node.getErrors();
-        //如果有错误，则不会执行
         if (!errors.isEmpty()) {
             var sb = new StringBuilder();
             sb.append("There are ").append(errors.size()).append(" error(s) in the source code:");
