@@ -1257,8 +1257,11 @@ public class RecursiveDescentParser implements SysYParser {
             error(funcRParams, new FuncParamCntNotMatchedError(expectParamsNum, actualParamsNum, funcCallTk));
         } else {
             for (int i = 0; i < expectParamsNum; i++) {
-                var e = nodeList.get(i);
-                var actualDim = GrammarUtil.getExpDim(e, nowSymbolTable);
+                var rParamExp = nodeList.get(i);
+//                var symbol = nowSymbolTable.getSymbol(rParamExp.getChild(0).getRawValue());
+//                assert symbol.isPresent();
+//                symbol.get().getDim();
+                var actualDim = GrammarUtil.getExpDim(rParamExp, nowSymbolTable);
                 var expectDim = expectParams.get(i).getDim();
                 if (actualDim == expectDim) break;
                 error(funcRParams, new FuncParamTypeNotMatchedError("dim " + expectDim, "dim " + actualDim, funcCallTk));

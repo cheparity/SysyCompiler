@@ -25,6 +25,7 @@ public final class GrammarUtil {
     private static int getAddExpDim(ASTNode addExp, SymbolTable table) {
         assert addExp.getGrammarType().equals(GrammarType.ADD_EXP);
         ASTNode child = addExp.getChildren().get(0);
+        //没有考虑addExp和mulExp dim不一样的问题！
         if (child.getGrammarType().equals(GrammarType.MUL_EXP)) {
             return getMulExpDim(child, table);
         } else if (child.getGrammarType().equals(GrammarType.ADD_EXP)) {
@@ -82,17 +83,25 @@ public final class GrammarUtil {
     private static int getLValDim(ASTNode lval, SymbolTable table) {
         assert lval.getGrammarType().equals(GrammarType.LVAL);
         ASTLeaf ident = (ASTLeaf) lval.getChildren().get(0);
-        boolean isArr = lval.getChildren().size() > 1;
         assert ident.getGrammarType().equals(GrammarType.IDENT);
         Optional<Symbol> symbol = table.getSymbol(ident.getToken().getRawValue());
-        if (symbol.isPresent() && symbol.get().getType().equals(SymbolType.VAR)) {
-            if (isArr) return ((VarSymbol) symbol.get()).getDim() - 1;
-            else return ((VarSymbol) symbol.get()).getDim();
-        } else if (symbol.isPresent() && symbol.get().getType().equals(SymbolType.CONST)) {
-            if (isArr) return ((ConstSymbol) symbol.get()).getDim() - 1;
-            else return ((ConstSymbol) symbol.get()).getDim();
-        }
-        return -1;
+        if (symbol.isEmpty()) return -1;
+
+        int symbolDim = symbol.get().getDim();
+        int actualDim = lval.getChildren().stream().filter(child -> child.getGrammarType() == GrammarType.EXP).toList().size();
+        return symbolDim - actualDim;
+
+//        if (symbol.get().getType().equals(SymbolType.VAR)) {
+//            if (isArr) ret = symbol.get().getDim() - 1;
+//            else ret = symbol.get().getDim();
+//        } else if (symbol.get().getType().equals(SymbolType.CONST)) {
+//            if (isArr) ret = symbol.get().getDim() - 1;
+//            else ret = symbol.get().getDim();
+//        }
+        //如果symbol的dim本身是要>0的，说明symbol是个数组，那么返回的应该是symbolDim - ret
+//        if (symbol.get().getDim() > 0) ret = symbol.get().getDim() - ret;
+        //但如果symbolDim本身就是0，即symbol不是数组，那么返回的应该是ret
+//        return -1;
     }
 
     // VarDef → Ident { '[' ConstExp ']' } ['=' InitVal]

@@ -7,7 +7,7 @@ public class FuncParamCntNotMatchedError extends GrammarError {
     private final int actual;
 
     public FuncParamCntNotMatchedError(int expect, int actual, Token token) {
-        super("Mismatch parameter count, expect " + expect + ", actual " + actual,
+        super("Mismatch parameter count, expect " + expect + ", actual " + actual + " at line " + token.getLineNum() + ", column " + token.getColNum() + ".",
                 ErrorCode.PARAM_NUM_UNMATCHED,
                 token);
         this.expect = expect;

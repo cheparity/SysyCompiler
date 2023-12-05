@@ -19,6 +19,7 @@ public abstract class Symbol {
      * The token that this symbol represents.
      */
     private final Token token;
+    private int dim;
     /**
      * 局部变量<font color='red'>load进寄存器</font>时，或者<font color='red'>全局变量初始化</font>时，初始化irVariable。
      */
@@ -32,6 +33,14 @@ public abstract class Symbol {
         this.symbolTable = table;
         this.type = type;
         this.token = token;
+    }
+
+    public int getDim() {
+        return dim;
+    }
+
+    protected void setDim(int dim) {
+        this.dim = dim;
     }
 
     public Optional<Variable> getIrVariable() {

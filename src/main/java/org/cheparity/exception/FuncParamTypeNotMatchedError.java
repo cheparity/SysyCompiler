@@ -7,7 +7,7 @@ public class FuncParamTypeNotMatchedError extends GrammarError {
     private final String actual;
 
     public FuncParamTypeNotMatchedError(String expect, String actual, Token token) {
-        super("Mismatch parameter type, expect " + expect + ", actual " + actual,
+        super("Mismatch parameter type, expect " + expect + ", actual " + actual + " at line " + token.getLineNum() + ", column " + token.getColNum() + ".",
                 ErrorCode.PARAM_TYPE_UNMATCHED,
                 token);
         this.expect = expect;
