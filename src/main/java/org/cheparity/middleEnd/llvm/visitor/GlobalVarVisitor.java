@@ -52,7 +52,7 @@ public final class GlobalVarVisitor implements ASTNodeVisitor {
             Symbol symbol = globalSymbolTable.getSymbol(name).get();
 
             //首先判断一下是不是数组
-            boolean isArr = varDef.deepDownFind(GrammarType.LEFT_BRACKET).isPresent();
+            boolean isArr = varDef.deepDownFind(GrammarType.LEFT_BRACKET, 1).isPresent();
             if (!isArr) {
                 if (varDef.getChildren().size() == 1) {
                     //VarDef -> Ident
@@ -79,6 +79,7 @@ public final class GlobalVarVisitor implements ASTNodeVisitor {
                 //constExp 出现于 2,5,8...，即 2+3i
                 var constExp = varDef.getChild(2 + 3 * i);
                 var num = IrUtil.calculateConst4Global(constExp);
+                symbol.setDimSize(i + 1, num);
                 arrSize = (arrSize == 0) ? num : num * arrSize;
             }
 
@@ -132,6 +133,7 @@ public final class GlobalVarVisitor implements ASTNodeVisitor {
                 //constExp 出现于 2,5,8...，即 2+3i
                 var constExp = constDef.getChild(2 + 3 * i);
                 var num = IrUtil.calculateConst4Global(constExp);
+                symbol.setDimSize(i + 1, num);
                 arrSize = (arrSize == 0) ? num : num * arrSize;
             }
             //一层一层，解析constInitVal？ => 如果是一维数组，就可以单个解析

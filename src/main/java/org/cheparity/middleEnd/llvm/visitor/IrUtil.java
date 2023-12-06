@@ -4,17 +4,24 @@ import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
 import middleEnd.llvm.ir.BasicBlock;
 import middleEnd.llvm.ir.IrBuilder;
+import middleEnd.llvm.ir.PointerValue;
 import middleEnd.llvm.ir.Variable;
 import middleEnd.llvm.utils.NodeUnion;
 import middleEnd.symbols.FuncType;
 import middleEnd.symbols.Symbol;
 import middleEnd.symbols.SymbolTable;
 import middleEnd.symbols.VarSymbol;
+import utils.LoggerUtil;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Logger;
 
 class IrUtil {
+    private final static Logger LOGGER = LoggerUtil.getLogger();
     private final SymbolTable table;
     private final IrBuilder builder;
     private final BasicBlock block;
@@ -127,10 +134,45 @@ class IrUtil {
                     }
                 }
                 if (node.getChildren().size() == 3) {
+                    //应该不用考虑？
+                    throw new RuntimeException("Not considering call func in the global decl!");
+                    /*
                     //Ident '(' [FuncRParams] ')'
                     var funcName = node.getChild(0).getRawValue();
                     var funcRParams = node.getChild(2);
-                    //todo 查表找到函数，计算参数，返回结果
+                    //FuncRParams -> Exp { ',' Exp }
+                    //1.符号表里查函数，函数里获得参数符号 2.获取符号pointer 3.将pointer load进具体的variable里 4.将寄存器variable存进symbol
+
+                    assert SymbolTable.getGlobal().getFuncSymbol(funcName).isPresent();
+                    List<VarSymbol> fparams = SymbolTable.getGlobal().getFuncSymbol(funcName).get().getParams();
+                    ArrayList<Variable> paramVariables = new ArrayList<>(); //新建一个variable列表，用于存放实参
+
+                    //for循环是在构建实参列表paramVariables
+                    for (int i = 0; i < fparams.size(); i++) {
+//                    var pSymbol = fparams.get(i);
+                        var pNode = node.getChild(2).getChild(2 * i); //0->0, 1->2, 2->4, .. i->2*i
+                        NodeUnion calc = calcAloExp(pNode);
+                        //如果传参是数字：%2 = call i32 @foo(i32 1) 直接call
+                        if (calc.isNum) {
+                            paramVariables.add(builder.buildConstIntNum(calc.getNumber()));
+                            continue;
+                        }
+                        //如果传参是变量
+//                    PointerValue pointer = pSymbol.getPointer();
+//                    Variable register = builder.buildLoadInst(block, pointer); //此时variable为load出的寄存器
+                        paramVariables.add(calc.getVariable()); //将寄存器存入列表
+//                    pSymbol.setIrVariable(calc.getVariable()); //将寄存器存入符号表
+                    }
+                    //5.build call inst
+                    //如果是void，直接call
+                    if (SymbolTable.getGlobal().getFuncSymbol(funcName).get().getFuncType() == FuncType.VOID) {
+                        builder.buildCallInst(block, funcName, paramVariables.toArray(new Variable[0]));
+                        return union.setNumber(0);
+                    }
+                    //如果是int，call后再load
+                    Variable variable = builder.buildCallInst(block, funcName, paramVariables.toArray(new Variable[0]));
+                    return union.setVariable(variable);
+                    */
                 }
             }
             case PRIMARY_EXP -> {
@@ -146,21 +188,56 @@ class IrUtil {
                 //Ident {'[' Exp ']'}
                 //查表找到变量，计算偏移量，返回结果。要考虑到Ident无值的情况，此时需要分配空间，返回寄存器
                 var name = node.getChild(0).getRawValue();
-//                assert table.getSymbol(name).isPresent();
                 var table = SymbolTable.getGlobal();
                 assert table.getSymbol(name).isPresent();
                 Symbol symbol = table.getSymbol(name).get();
-                //todo 没有考虑数组的情况
-                //如果可以获得值，那就返回
-                var num = symbol.getNumber();
-                if (num.isPresent()) return num.get();
-                //todo 如果没有赋初值，寄！要分配新的寄存器进行相加
-                throw new RuntimeException("Should alloca register");
+                int dim = symbol.getDim();
+                if (dim == 0) {
+                    var num = symbol.getNumber();
+                    assert num.isPresent(); //全局变量一定有确定的num
+                    return num.get();
+                }
+                AtomicBoolean actualDimSame = new AtomicBoolean();
+                var offset = calcOffset(node, symbol, actualDimSame);
+                //数组，dim至少为1维
+                //应该可以直接load
+                Optional<Integer> number = symbol.getNumber(offset);
+                assert number.isPresent();
+                return number.get();
             }
             default -> throw new RuntimeException("Unexpected grammar type: " + node.getGrammarType());
         }
         return 0;
     }
+
+    private static int calcOffset(ASTNode node, Symbol symbol, AtomicBoolean actualDimEqualsDefinedDim) throws NoSuchElementException {
+        //否则的话，形如a[] 或者 a[][]
+        //先拿最后一个dim的数值。calculateConst4Global(node.getChild(3*dim-1)) 能获取到dim对应的ASTNode值
+        //计算两个值，一个是symbol的dim（已经传递过来了），另一个是node的实际dim
+        var dim = symbol.getDim();
+        int nodeDim = node.getChildren().stream().filter(child ->
+                child.getGrammarType().equals(GrammarType.LEFT_BRACKET)).toList().size();
+
+        int offset = 0;
+        actualDimEqualsDefinedDim.set(false);
+        if (nodeDim == dim) {
+            //如果实际dim!=nodeDim，就是a[5][6]这种数组，取了a[2]这种情况，或者a[8]这种数组取了a这种情况，不可以常规计算，要计算地址
+            //那么按照上面的例子，a[2] => a[2][0]，a => a[0]，即自动补0 => 只有offset的初始值有不同
+            offset = calculateConst4Global(node.getChild(3 * dim - 1));
+            actualDimEqualsDefinedDim.set(true);
+        }
+
+        for (int nowDim = dim - 1; nowDim > 0; nowDim--) {
+            int num = calculateConst4Global(node.getChild(3 * nowDim - 1));
+            int expand = 1;
+            for (int i = 1; i < symbol.getDim(); i++) {
+                expand *= symbol.getDimSize(nowDim + i);
+            }
+            offset += num * expand;
+        }
+        return offset;
+    }
+
 
     /**
      * 如果stmt本身就是一个块了，就不用包；如果是单语句的形式，就包装成块，并把<font color='red'>原来所属块的符号表</font>传递给新块
@@ -262,32 +339,29 @@ class IrUtil {
                 //1.符号表里查函数，函数里获得参数符号 2.获取符号pointer 3.将pointer load进具体的variable里 4.将寄存器variable存进symbol
                 assert SymbolTable.getGlobal().getFuncSymbol(funcName).isPresent();
                 List<VarSymbol> fparams = SymbolTable.getGlobal().getFuncSymbol(funcName).get().getParams();
-                ArrayList<Variable> paramVariables = new ArrayList<>(); //新建一个variable列表，用于存放实参
+                List<Variable> rparams = new ArrayList<>(); //新建一个variable列表，用于存放实参
 
                 //for循环是在构建实参列表paramVariables
                 for (int i = 0; i < fparams.size(); i++) {
-//                    var pSymbol = fparams.get(i);
+                    VarSymbol symbol = fparams.get(i);
                     var pNode = node.getChild(2).getChild(2 * i); //0->0, 1->2, 2->4, .. i->2*i
                     NodeUnion calc = calcAloExp(pNode);
                     //如果传参是数字：%2 = call i32 @foo(i32 1) 直接call
                     if (calc.isNum) {
-                        paramVariables.add(builder.buildConstIntNum(calc.getNumber()));
+                        rparams.add(builder.buildConstIntNum(calc.getNumber()));
                         continue;
                     }
                     //如果传参是变量
-//                    PointerValue pointer = pSymbol.getPointer();
-//                    Variable register = builder.buildLoadInst(block, pointer); //此时variable为load出的寄存器
-                    paramVariables.add(calc.getVariable()); //将寄存器存入列表
-//                    pSymbol.setIrVariable(calc.getVariable()); //将寄存器存入符号表 todo 想清楚
+                    rparams.add(calc.getVariable()); //将寄存器存入列表
                 }
                 //5.build call inst
                 //如果是void，直接call
                 if (SymbolTable.getGlobal().getFuncSymbol(funcName).get().getFuncType() == FuncType.VOID) {
-                    builder.buildCallInst(block, funcName, paramVariables.toArray(new Variable[0]));
+                    builder.buildCallInst(block, funcName, rparams.toArray(new Variable[0]));
                     return union.setNumber(0);
                 }
                 //如果是int，call后再load
-                Variable variable = builder.buildCallInst(block, funcName, paramVariables.toArray(new Variable[0]));
+                Variable variable = builder.buildCallInst(block, funcName, rparams.toArray(new Variable[0]));
                 return union.setVariable(variable);
             }
             case PRIMARY_EXP -> {
@@ -305,13 +379,38 @@ class IrUtil {
                 var name = node.getChild(0).getRawValue();
                 assert table.getSymbol(name).isPresent();
                 Symbol symbol = table.getSymbol(name).get();
-                //todo 没有考虑数组的情况
-                //如果可以获得值，那就返回
-                var num = symbol.getNumber();
-                if (num.isPresent()) return union.setNumber(num.get());
-                //如果没有赋初值
-                assert symbol.getPointer() != null;//这里symbol有可能只是分配了寄存器，没有load。则需要把指针load为一个寄存器，再赋值给union
-                Variable variable = builder.buildLoadInst(block, symbol.getPointer()); //此时variable为load出的寄存器
+
+                int dim = symbol.getDim();
+                if (dim == 0) {
+                    //如果可以获得值，那就返回
+                    var num = symbol.getNumber();
+                    if (num.isPresent()) return union.setNumber(num.get());
+                    //如果没有赋初值
+                    assert symbol.getPointer() != null;//这里symbol有可能只是分配了寄存器，没有load。则需要把指针load为一个寄存器，再赋值给union
+                    Variable variable = builder.buildLoadInst(block, symbol.getPointer()); //此时variable为load出的寄存器
+                    symbol.setIrVariable(variable);
+                    return union.setVariable(variable);
+                }
+                //todo
+                //先要计算偏移量，用getelementptr取出来偏移指针；再将偏移指针内的值load出来
+                //数组是a[5][6], 取a[2][3] => a[3+2*6] => 关键是第二维的dim2
+                //数组是a[5][6][7]，取a[2][3][4] => 4 + 3*7 + 2*6*7
+                AtomicBoolean actualDimSame = new AtomicBoolean();
+                int offset = calcOffset(node, symbol, actualDimSame);
+                if (!actualDimSame.get()) {
+                    //但如果实际dim!=nodeDim，就是a[5][6]这种数组，取了a[2]这种情况，或者a[8]这种数组取了a这种情况，不可以常规计算，要计算地址
+                    PointerValue loadPointer = builder.buildElementPointer(block, symbol.getPointer(), offset);
+                    
+                }
+
+
+                Optional<Integer> number = symbol.getNumber(offset);
+                if (number.isPresent()) {
+                    return union.setNumber(number.get());
+                }
+
+                //否则需要load出来
+                Variable variable = builder.buildLoadArrayInsts(block, symbol.getPointer(), offset);
                 return union.setVariable(variable);
             }
             case CONST_INIT_VAL -> {

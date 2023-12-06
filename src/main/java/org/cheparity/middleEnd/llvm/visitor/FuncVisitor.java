@@ -76,8 +76,28 @@ public final class FuncVisitor implements ASTNodeVisitor {
         String name = funcFParam.getChild(1).getRawValue();
         assert table.getSymbol(name).isPresent();
         var symbol = table.getSymbol(name).get();
-
-        builder.buildArg(irFunction, IrType.create(IrType.IrTypeID.Int32TyID)); //todo 后续考虑数组的情况
-        //不光要build，还要把形参store进对应的block里。。这一块儿由builder.buildEntryBlock来做
+        int dim = symbol.getDim();
+        if (dim == 0) {
+            builder.buildArg(irFunction, IrType.create(IrType.IrTypeID.Int32TyID)); //todo 后续考虑数组的情况
+            //不光要build，还要把形参store进对应的block里。。这一块儿由builder.buildEntryBlock来做
+            return;
+        }
+        if (dim == 1) {
+            //1维数组
+            builder.buildArg(
+                    irFunction,
+                    IrType.create(IrType.IrTypeID.Int32TyID, IrType.IrTypeID.ArrayTyID).setDim(1)
+            );
+            return;
+        }
+        //2维数组的情况
+        Optional<ASTNode> constExpOpt = funcFParam.deepDownFind(GrammarType.CONST_EXP, 1);
+        assert constExpOpt.isPresent();
+        int secondDimSize = IrUtil.calculateConst4Global(constExpOpt.get());
+        symbol.setDimSize(2, secondDimSize);
+        builder.buildArg(
+                irFunction,
+                IrType.create(IrType.IrTypeID.Int32TyID, IrType.IrTypeID.ArrayTyID).setDim(2)
+        );
     }
 }

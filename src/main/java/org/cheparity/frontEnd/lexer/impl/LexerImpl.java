@@ -45,13 +45,6 @@ public class LexerImpl implements SysYLexer {
         return LEXER_INSTANCE;
     }
 
-    private static String removeComment(String s) {
-        /*todo not consider line number*/
-        return s
-                .replaceAll(RegUtil.REGION_COMMENT_REG, "")
-                .replaceAll(RegUtil.SINGLE_LINE_COMMENT_REG, "");
-    }
-
     /**
      * Handle the next word.
      *

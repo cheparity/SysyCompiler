@@ -16,7 +16,7 @@ public final class IrType implements IrPrintable {
         return new IrType(basicType, null);
     }
 
-    static IrType create(IrTypeID basicType, IrTypeID derivedType) {
+    public static IrType create(IrTypeID basicType, IrTypeID derivedType) {
         return new IrType(basicType, derivedType);
     }
 
@@ -30,15 +30,18 @@ public final class IrType implements IrPrintable {
 
     @Override
     public String toIrCode() {
-        return this.basicType.toIrCode();
+        if (this.isArray()) {
+            return "[" + this.getSize() + " x " + this.getBasicType().toIrCode() + "]";
+        }
+        return this.getBasicType().toIrCode();
     }
 
     public int getSize() {
-        assert this.derivedType != null && this.derivedType.equals(IrTypeID.PointerTyID);
+        assert this.derivedType != null && this.derivedType.equals(IrTypeID.ArrayTyID);
         return size;
     }
 
-    public IrType setSize(int size) {
+    public IrType setDim(int size) {
         this.size = size;
         return this;
     }
@@ -62,7 +65,6 @@ public final class IrType implements IrPrintable {
         FunctionTyID(""),    ///< 12: Functions
         StructTyID(""),      ///< 13: Structures(no use in SysY)
         ArrayTyID(""),       ///< 14: Arrays
-        PointerTyID(""),     ///< 15: Pointers
         VectorTyID(""); ///< 16: SIMD 'packed' format, or other vector type(no use in SysY)
         private final String value;
 

@@ -10,6 +10,7 @@ public class PointerValue extends Value {
      * 所指对象。<font color='red'>可以为空</font>
      */
     Variable pointAt;
+    Integer[] number; //初始化为0；
 
     /**
      * 指针。默认可变。
@@ -24,6 +25,14 @@ public class PointerValue extends Value {
     PointerValue(IrType type, String name, Variable pointAt) {
         super(type, name);
         this.pointAt = pointAt;
+    }
+
+    public Integer[] getNumber() {
+        return number;
+    }
+
+    public void setNumber(Integer... number) {
+        this.number = number;
     }
 
     @Override

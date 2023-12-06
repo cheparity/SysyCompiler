@@ -126,8 +126,8 @@ public class IrBuilder {
         for (int i = 0; i < irFunction.getArguments().size(); i++) {
             Argument arg = irFunction.getArguments().get(i);
             VarSymbol argSymbol = params.get(i);
-            PointerValue pointer = buildAllocaInst(bb, arg.getType().getBasicType());
-            buildStoreInst(bb, new Variable(IrType.create(IrType.IrTypeID.Int32TyID), arg.getName()), pointer);
+            PointerValue pointer = buildAllocaInst(bb, arg.getType());
+            buildStoreInst(bb, new Variable(pointer.getType(), arg.getName()), pointer);
             //还应该把这个指针存进符号表中
             argSymbol.setPointer(pointer);
         }
@@ -338,7 +338,51 @@ public class IrBuilder {
     public PointerValue buildLocalVariable(BasicBlock basicBlock, IrType.IrTypeID varType) {
         //        buildStoreInst(basicBlock,,pointerValue); //无初值，则只分配一个指针
         LOGGER.fine("build local variable: " + varType + " in block: " + basicBlock.getName());
-        return buildAllocaInst(basicBlock, varType);
+        return buildAllocaInst(basicBlock, IrType.create(IrType.IrTypeID.ArrayTyID)); //它的basicVarType就是array
+    }
+
+
+    public PointerValue buildLocalArray(BasicBlock basicBlock, IrType.IrTypeID basicType, int arrSize) {
+        LOGGER.fine("build local array: " + basicType + " in block: " + basicBlock.getName());
+        return buildAllocaInst(basicBlock,
+                IrType.create(IrType.IrTypeID.Int32TyID, IrType.IrTypeID.ArrayTyID).setDim(arrSize));
+    }
+
+    //是要从pointer里取出偏移
+    public PointerValue buildElementPointer(BasicBlock basicBlock, PointerValue arrayPointer, Variable offIndex) {
+        LOGGER.fine("build element arrayPointer: " + arrayPointer.getName() + " in block: " + basicBlock.getName());
+        PointerValue result = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
+        ConstValue off0 = new ConstValue(0, IrType.IrTypeID.Int32TyID);
+        var inst = new GetElementPtrInstruction(result, arrayPointer, off0, offIndex);
+        basicBlock.addInstruction(inst);
+        return result;
+    }
+
+    public PointerValue buildElementPointer(BasicBlock basicBlock, PointerValue arrayPointer, int offIndex) {
+        ConstValue constValue = new ConstValue(offIndex, IrType.IrTypeID.Int32TyID);
+        return buildElementPointer(basicBlock, arrayPointer, constValue);
+    }
+
+    public Variable buildLoadArrayInsts(BasicBlock basicBlock, PointerValue arrayPointer, int offset) {
+        ConstValue offIndex = new ConstValue(offset, IrType.IrTypeID.Int32TyID);
+        ConstValue off0 = new ConstValue(0, IrType.IrTypeID.Int32TyID);
+        PointerValue elePtr = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
+        GetElementPtrInstruction getElementPtrInstruction = new GetElementPtrInstruction(elePtr, arrayPointer, off0, offIndex);
+        basicBlock.addInstruction(getElementPtrInstruction);
+
+        Variable loadResult = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate(), false);
+        LoadInstruction loadInstruction = new LoadInstruction(loadResult, elePtr);
+        basicBlock.addInstruction(loadInstruction);
+        return loadResult;
+    }
+
+    public void buildArrayStoreInsts(BasicBlock basicBlock, PointerValue arrayPointer, Integer... inits) {
+        //先从pointer里取出偏移，然后再build store inst
+        for (var i = 0; i < inits.length; i++) {
+            ConstValue constValue = new ConstValue(i, IrType.IrTypeID.Int32TyID);
+            PointerValue pointerValue = buildElementPointer(basicBlock, arrayPointer, constValue);
+            buildStoreInst(basicBlock, new ConstValue(inits[i], IrType.IrTypeID.Int32TyID), pointerValue);
+        }
     }
 
     /**
@@ -374,8 +418,8 @@ public class IrBuilder {
      *
      * @param basicBlock 指令所属的块
      */
-    private PointerValue buildAllocaInst(BasicBlock basicBlock, IrType.IrTypeID varType) {
-        PointerValue pointerValue = new PointerValue(IrType.create(varType, IrType.IrTypeID.PointerTyID), allocator.allocate());
+    private PointerValue buildAllocaInst(BasicBlock basicBlock, IrType varType) {
+        PointerValue pointerValue = new PointerValue(varType, allocator.allocate());
         AllocaInstruction allocaInstruction = new AllocaInstruction(pointerValue);
         basicBlock.addInstruction(allocaInstruction);
         LOGGER.fine("build alloca instruction: " + allocaInstruction.toIrCode() + " in block: " + basicBlock.getName());
@@ -421,7 +465,7 @@ public class IrBuilder {
      */
     public GlobalValue buildGlobalArray(Module module, IrType.IrTypeID irTypeID, boolean isConst, int arrSize,
                                         String name, Integer... initNums) {
-        var globalArr = new GlobalValue(IrType.create(irTypeID, IrType.IrTypeID.ArrayTyID).setSize(arrSize), "@" + name, true);
+        var globalArr = new GlobalValue(IrType.create(irTypeID, IrType.IrTypeID.ArrayTyID).setDim(arrSize), "@" + name, true);
         if (initNums == null || initNums.length == 0) {
             Integer[] zeros = new Integer[arrSize];
             Arrays.fill(zeros, 0);
@@ -480,7 +524,7 @@ public class IrBuilder {
                 .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.Int32TyID), "@getint").addArg(new Argument(IrType.create(IrType.IrTypeID.VoidTyID), "a")))
                 .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putint").addArg(new Argument(IrType.create(IrType.IrTypeID.Int32TyID), "a")))
                 .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putch").addArg(new Argument(IrType.create(IrType.IrTypeID.Int32TyID), "a")))
-                .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putstr").addArg(new Argument(IrType.create(IrType.IrTypeID.ByteTyID, IrType.IrTypeID.PointerTyID), "a")));
+                .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putstr").addArg(new Argument(IrType.create(IrType.IrTypeID.ByteTyID), "a")));
         module
                 .insertFunc(new IrFunction(IrType.create(IrType.IrTypeID.Int32TyID, IrType.IrTypeID.FunctionTyID), "@getint", module))
                 .insertFunc(new IrFunction(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putint", module))

@@ -3,7 +3,7 @@ package middleEnd.llvm.ir;
 import java.util.ArrayList;
 import java.util.List;
 
-public class IrFunction extends GlobalValue implements GlobalObjects {
+public final class IrFunction extends GlobalValue implements GlobalObjects {
     private final List<Argument> arguments = new ArrayList<>();
     private final IrType returnType;
     private final Module module; //所属module

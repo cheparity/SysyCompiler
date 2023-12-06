@@ -7,7 +7,6 @@ import java.util.Arrays;
  */
 public class GlobalValue extends PointerValue implements GlobalObjects {
     boolean readonly;
-    Integer[] number; //初始化为0；
 
     GlobalValue(IrType type, String name) {
         super(type, name);
@@ -17,15 +16,7 @@ public class GlobalValue extends PointerValue implements GlobalObjects {
         super(type, name);
         this.readonly = readonly;
     }
-
-    Integer[] getNumber() {
-        return number;
-    }
-
-    void setNumber(Integer... number) {
-        this.number = number;
-    }
-
+    
     @Override
     public String toIrCode() {
         if (this.getType().getDerivedType() == IrType.IrTypeID.ArrayTyID) {

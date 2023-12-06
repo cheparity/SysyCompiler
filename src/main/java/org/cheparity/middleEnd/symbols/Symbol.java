@@ -19,6 +19,7 @@ public abstract class Symbol {
      * The token that this symbol represents.
      */
     private final Token token;
+    private int[] dimSize;
     private int dim;
     /**
      * 局部变量<font color='red'>load进寄存器</font>时，或者<font color='red'>全局变量初始化</font>时，初始化irVariable。
@@ -35,12 +36,25 @@ public abstract class Symbol {
         this.token = token;
     }
 
+    public void setDimSize(int dim, int size) {
+        assert dimSize != null && this.dim > 0; //是数组，且大于0维
+        dimSize[dim - 1] = size;
+    }
+
+    public int getDimSize(int dim) {
+        return this.dimSize[dim - 1];
+    }
+
     public int getDim() {
         return dim;
     }
 
     protected void setDim(int dim) {
         this.dim = dim;
+        if (dim == -1) return;
+        if (this.dimSize == null) {
+            dimSize = new int[dim];
+        }
     }
 
     public Optional<Variable> getIrVariable() {
@@ -63,8 +77,18 @@ public abstract class Symbol {
      * @return 变量寄存器中的值
      */
     public Optional<Integer> getNumber() {
-        if (irVariable != null) {
-            return irVariable.getNumber();
+        return getNumber(0);
+    }
+
+    public Optional<Integer> getNumber(int offset) {
+        if (getPointer() != null) {
+            Integer[] number = getPointer().getNumber();
+            if (number == null) return Optional.empty();
+            return Optional.of(number[offset]);
+        }
+
+        if (getIrVariable().isPresent()) {
+            return getIrVariable().get().getNumber();
         }
         return Optional.empty();
     }
