@@ -33,7 +33,17 @@ public final class IrType implements IrPrintable {
         if (this.isArray()) {
             return "[" + this.getSize() + " x " + this.getBasicType().toIrCode() + "]";
         }
+        if (this.isPointer()) {
+            return this.getBasicType().toIrCode() + "*";
+        }
         return this.getBasicType().toIrCode();
+    }
+
+    public boolean isPointer() {
+        if (this.getDerivedType() == null) {
+            return false;
+        }
+        return this.getDerivedType() == IrTypeID.PointerTyID;
     }
 
     public int getSize() {
@@ -59,7 +69,7 @@ public final class IrType implements IrPrintable {
         Int32TyID("i32"),       //2: 32-bit int type
         LabelTyID(""),       //7: Labels
         TokenTyID(""),       // 10: Tokens
-
+        PointerTyID(""),
         // Derived types... see DerivedTypes file.
         // Make sure FirstDerivedTyID stays up to date!
         FunctionTyID(""),    ///< 12: Functions

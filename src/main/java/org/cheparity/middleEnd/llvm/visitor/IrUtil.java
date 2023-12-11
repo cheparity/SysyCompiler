@@ -343,7 +343,6 @@ class IrUtil {
 
                 //for循环是在构建实参列表paramVariables
                 for (int i = 0; i < fparams.size(); i++) {
-                    VarSymbol symbol = fparams.get(i);
                     var pNode = node.getChild(2).getChild(2 * i); //0->0, 1->2, 2->4, .. i->2*i
                     NodeUnion calc = calcAloExp(pNode);
                     //如果传参是数字：%2 = call i32 @foo(i32 1) 直接call
@@ -400,7 +399,7 @@ class IrUtil {
                 if (!actualDimSame.get()) {
                     //但如果实际dim!=nodeDim，就是a[5][6]这种数组，取了a[2]这种情况，或者a[8]这种数组取了a这种情况，不可以常规计算，要计算地址
                     PointerValue loadPointer = builder.buildElementPointer(block, symbol.getPointer(), offset);
-                    
+                    return union.setVariable(builder.pointerToVariable(loadPointer));
                 }
 
 

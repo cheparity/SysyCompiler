@@ -336,9 +336,8 @@ public class IrBuilder {
      * @return 一个指针（pointerValue）
      */
     public PointerValue buildLocalVariable(BasicBlock basicBlock, IrType.IrTypeID varType) {
-        //        buildStoreInst(basicBlock,,pointerValue); //无初值，则只分配一个指针
         LOGGER.fine("build local variable: " + varType + " in block: " + basicBlock.getName());
-        return buildAllocaInst(basicBlock, IrType.create(IrType.IrTypeID.ArrayTyID)); //它的basicVarType就是array
+        return buildAllocaInst(basicBlock, IrType.create(varType));
     }
 
 
@@ -363,17 +362,22 @@ public class IrBuilder {
         return buildElementPointer(basicBlock, arrayPointer, constValue);
     }
 
+    // todo 这里的类型很混乱，后续请重构一下
     public Variable buildLoadArrayInsts(BasicBlock basicBlock, PointerValue arrayPointer, int offset) {
+        var loadResult1 = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
+        var loadInstruction1 = new LoadInstruction(pointerToVariable(loadResult1), arrayPointer);
+        basicBlock.addInstruction(loadInstruction1);
+
         ConstValue offIndex = new ConstValue(offset, IrType.IrTypeID.Int32TyID);
-        ConstValue off0 = new ConstValue(0, IrType.IrTypeID.Int32TyID);
         PointerValue elePtr = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
-        GetElementPtrInstruction getElementPtrInstruction = new GetElementPtrInstruction(elePtr, arrayPointer, off0, offIndex);
+
+        GetElementPtrInstruction getElementPtrInstruction = new GetElementPtrInstruction(elePtr, loadResult1, offIndex);
         basicBlock.addInstruction(getElementPtrInstruction);
 
-        Variable loadResult = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate(), false);
-        LoadInstruction loadInstruction = new LoadInstruction(loadResult, elePtr);
-        basicBlock.addInstruction(loadInstruction);
-        return loadResult;
+        Variable loadResult2 = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate(), false);
+        LoadInstruction loadInstruction2 = new LoadInstruction(loadResult2, elePtr);
+        basicBlock.addInstruction(loadInstruction2);
+        return loadResult2;
     }
 
     public void buildArrayStoreInsts(BasicBlock basicBlock, PointerValue arrayPointer, Integer... inits) {
@@ -592,5 +596,11 @@ public class IrBuilder {
         LOGGER.fine("build store instruction: " + storeInstruction.toIrCode() + " in block: " + basicBlock.getName());
     }
 
+    public Variable pointerToVariable(PointerValue pointer) {
+        return new Variable(
+                IrType.create(pointer.getType().getBasicType(), IrType.IrTypeID.PointerTyID),
+                pointer.getName(),
+                false);
+    }
 
 }

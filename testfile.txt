@@ -8,8 +8,21 @@ int a2(int y[]){
 int main(){
     int c[2][3]={{1,2,3},{0,0,0}};
     int a[3+3]={1,2,3,4,5,6};
-    int x=a2(a); //todo 有问题
+    int x=a2(c[1]); //todo 有问题
     //int y=a3(b[0][1],b[1],b);
     printf("x%d",x);
     return 0;
 }
+
+/*
+define dso_local i32 @a2(i32* %0) {
+	%2 = alloca i32*
+	store i32* %0, i32** %2
+	%3 = load i32*, i32** %2
+	; %4 = getelementptr i32, i32* %3, i32 0, i32 2
+	%4 = getelementptr i32, i32* %3, i32 2
+	%5 = load i32, i32* %4
+	ret i32 %5
+
+}
+*/

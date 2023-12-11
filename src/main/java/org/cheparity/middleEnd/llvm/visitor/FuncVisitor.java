@@ -51,7 +51,7 @@ public final class FuncVisitor implements ASTNodeVisitor {
             ASTNode params = paramOpt.get();
             params.getChildren().stream()
                     .filter(node -> node.getGrammarType() == GrammarType.FUNC_FPARAM)
-                    .forEach(node -> visitFuncParams(node, builder));
+                    .forEach(node -> visitFuncFParam(node, builder));
         }
         //这里应该新建一个块，然后把新建的块传递过去
         BasicBlock entryBlock = builder.buildEntryBlock(irFunction);
@@ -68,7 +68,7 @@ public final class FuncVisitor implements ASTNodeVisitor {
         //do nothing
     }
 
-    private void visitFuncParams(ASTNode funcFParam, IrBuilder builder) {
+    private void visitFuncFParam(ASTNode funcFParam, IrBuilder builder) {
         //FuncFParam -> BType Ident ['[' ']' { '[' ConstExp ']' }]
         //function是没有symbolTable的，symbolTable在其block里
         assert table != null;
@@ -83,10 +83,10 @@ public final class FuncVisitor implements ASTNodeVisitor {
             return;
         }
         if (dim == 1) {
-            //1维数组
+            //1维数组 todo 可能有点问题，因为指针的指针可能不应该是Int32TyID
             builder.buildArg(
                     irFunction,
-                    IrType.create(IrType.IrTypeID.Int32TyID, IrType.IrTypeID.ArrayTyID).setDim(1)
+                    IrType.create(IrType.IrTypeID.Int32TyID, IrType.IrTypeID.PointerTyID).setDim(1)
             );
             return;
         }
@@ -97,7 +97,7 @@ public final class FuncVisitor implements ASTNodeVisitor {
         symbol.setDimSize(2, secondDimSize);
         builder.buildArg(
                 irFunction,
-                IrType.create(IrType.IrTypeID.Int32TyID, IrType.IrTypeID.ArrayTyID).setDim(2)
+                IrType.create(IrType.IrTypeID.Int32TyID, IrType.IrTypeID.PointerTyID).setDim(2)
         );
     }
 }

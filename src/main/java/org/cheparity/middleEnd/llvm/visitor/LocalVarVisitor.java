@@ -108,13 +108,12 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
                 //如果有初值，建立的也是指针
                 var nodeUnion = new IrUtil(builder, basicBlock).calcAloExp(varDef.getChild(2).getChild(0));
                 if (nodeUnion.isNum) {
-                    PointerValue pointer = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID,
-                            nodeUnion.getNumber());
+                    PointerValue pointer = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID, nodeUnion.getNumber());
                     symbol.setPointer(pointer);
                     continue;
                 }
                 Variable variable = nodeUnion.getVariable();
-                PointerValue pointerValue = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID);
+                PointerValue pointerValue = builder.buildLocalVariable(basicBlock, variable.getType().getBasicType());
                 builder.buildStoreInst(basicBlock, variable, pointerValue);
                 symbol.setPointer(pointerValue);
                 continue;

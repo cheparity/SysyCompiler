@@ -7,7 +7,6 @@ import java.util.Optional;
  */
 public class Variable extends Value implements Countable {
     final boolean readonly;
-    private final PointerValue pointer;
     private int number;
     private boolean valued = false;
 
@@ -21,8 +20,6 @@ public class Variable extends Value implements Countable {
     Variable(IrType type, String name) {
         super(type, name);
         readonly = false;
-        this.pointer = new PointerValue(type, name, this);
-        this.pointer.pointAt = this; //将指针变量指向自己
     }
 
 
@@ -36,7 +33,6 @@ public class Variable extends Value implements Countable {
     Variable(IrType type, String name, boolean readonly) {
         super(type, name);
         this.readonly = readonly;
-        this.pointer = new PointerValue(type, name, this);
     }
 
     /**
@@ -60,9 +56,6 @@ public class Variable extends Value implements Countable {
         this.number = number;
     }
 
-    public PointerValue toPointer() {
-        return pointer;
-    }
 
     /**
      * 修改：只输出了变量名。可能会导致某些指令（如ret指令）出bug。
