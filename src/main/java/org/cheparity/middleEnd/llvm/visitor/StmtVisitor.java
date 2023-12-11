@@ -52,55 +52,54 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
 
     @Override
     public void visit(ASTNode stmt) {
-        String type;
         //stmt -> 'return' Exp ';'
         if (stmt.getChild(0).getGrammarType() == GrammarType.RETURN) {
-            LOGGER.info("visit returnStmt: " + stmt);
+            LOGGER.info("visit returnStmt: " + stmt.getRawValue());
             visitRetStmt(stmt);
         }
         //Stmt -> LVal '=' 'getint''('')'';'
         else if (stmt.deepDownFind(GrammarType.GETINT, 1).isPresent()) {
-            LOGGER.info("visit getintStmt: " + stmt);
+            LOGGER.info("visit getintStmt: " + stmt.getRawValue());
             visitGetintStmt(stmt);
         }
         //stmt -> 'printf''('FormatString{','Exp}')'';'
         else if (stmt.getChild(0).getGrammarType() == GrammarType.PRINTF) {
-            LOGGER.info("visit printfStmt: " + stmt);
+            LOGGER.info("visit printfStmt: " + stmt.getRawValue());
             visitPrintfStmt(stmt);
         }
         //Stmt -> LVal '=' Exp ';'
         else if (stmt.getChild(0).getGrammarType() == GrammarType.LVAL) {
-            LOGGER.info("visit lvalStmt: " + stmt);
+            LOGGER.info("visit lvalStmt: " + stmt.getRawValue());
             visitLvalStmt(stmt);
         }
         //Stmt -> Exp ';'
         else if (stmt.getChild(0).getGrammarType() == GrammarType.EXP) {
-            LOGGER.info("visit expStmt: " + stmt);
+            LOGGER.info("visit expStmt: " + stmt.getRawValue());
             new IrUtil(builder, basicBlock).calcAloExp(stmt.getChild(0));
         }
         //Stmt -> 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
         else if (stmt.getChild(0).getGrammarType() == GrammarType.IF) {
-            LOGGER.info("visit ifStmt: " + stmt);
+            LOGGER.info("visit ifStmt: " + stmt.getRawValue());
             visitIfStmt(stmt);
         }
         //Stmt -> 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
         else if (stmt.getChild(0).getGrammarType() == GrammarType.FOR) {
-            LOGGER.info("visit forStmt: " + stmt);
+            LOGGER.info("visit forStmt: " + stmt.getRawValue());
             visitForStmt(stmt);
         }
         //Stmt -> Block
         else if (stmt.getChild(0).getGrammarType() == GrammarType.BLOCK) {
-            LOGGER.info("visit blockStmt: " + stmt);
+            LOGGER.info("visit blockStmt: " + stmt.getRawValue());
             stmt.accept(new BlockVisitor(basicBlock, this)); //这自动就处理匿名内部类的问题了
         }
         //Stmt -> 'break' ';'
         else if (stmt.getChild(0).getGrammarType() == GrammarType.BREAK) {
-            LOGGER.info("visit breakStmt: " + stmt);
+            LOGGER.info("visit breakStmt: " + stmt.getRawValue());
             visitBreakStmt();
         }
         //Stmt -> 'continue' ';'
         else if (stmt.getChild(0).getGrammarType() == GrammarType.CONTINUE) {
-            LOGGER.info("visit continueStmt: " + stmt);
+            LOGGER.info("visit continueStmt: " + stmt.getRawValue());
             visitContinueStmt();
         }
         if (!this.messages.isEmpty()) {
@@ -178,9 +177,11 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
 
     private void visitLvalStmt(ASTNode lvalStmt) {
         //LVal -> Ident {'[' Exp ']'}
-        assert symbolTable.getSymbol(lvalStmt.getChild(0).getRawValue()).isPresent();
-        Symbol symbol = symbolTable.getSymbol(lvalStmt.getChild(0).getRawValue()).get();
-        PointerValue pointer = symbol.getPointer(); //a:%1
+        String ident = lvalStmt.getChild(0).getIdent();
+        assert ident != null;
+        var symbolOptional = symbolTable.getSymbol(ident);
+        assert symbolOptional.isPresent();
+        PointerValue pointer = symbolOptional.get().getPointer(); //a:%1
         assert pointer != null;
         NodeUnion result = new IrUtil(builder, basicBlock).calcAloExp(lvalStmt.getChild(2));
         if (result.isNum) {

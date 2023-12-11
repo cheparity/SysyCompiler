@@ -72,7 +72,7 @@ public final class NodeUnion {
 
     public NodeUnion sub(NodeUnion other) {
         if (this.isNum && other.isNum) { //二者都是数字
-            return this.setNumber(this.number + other.number);
+            return this.setNumber(this.number - other.number);
         }
 
         if (!this.isNum && !other.isNum) { //二者都不是数字

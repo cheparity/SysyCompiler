@@ -185,9 +185,9 @@ class IrUtil {
                 }
             }
             case LVAL -> {
-                //Ident {'[' Exp ']'}
+                //Ident {'[' Exp ']'} todo
                 //查表找到变量，计算偏移量，返回结果。要考虑到Ident无值的情况，此时需要分配空间，返回寄存器
-                var name = node.getChild(0).getRawValue();
+                var name = node.getChild(0).getIdent();
                 var table = SymbolTable.getGlobal();
                 assert table.getSymbol(name).isPresent();
                 Symbol symbol = table.getSymbol(name).get();
@@ -198,7 +198,7 @@ class IrUtil {
                     return num.get();
                 }
                 AtomicBoolean actualDimSame = new AtomicBoolean();
-                var offset = calcOffset(node, symbol, actualDimSame);
+                var offset = calcOffsetForGlobal(node, symbol, actualDimSame);
                 //数组，dim至少为1维
                 //应该可以直接load
                 Optional<Integer> number = symbol.getNumber(offset);
@@ -210,7 +210,7 @@ class IrUtil {
         return 0;
     }
 
-    private static int calcOffset(ASTNode node, Symbol symbol, AtomicBoolean actualDimEqualsDefinedDim) throws NoSuchElementException {
+    private static int calcOffsetForGlobal(ASTNode node, Symbol symbol, AtomicBoolean actualDimEqualsDefinedDim) throws NoSuchElementException {
         //否则的话，形如a[] 或者 a[][]
         //先拿最后一个dim的数值。calculateConst4Global(node.getChild(3*dim-1)) 能获取到dim对应的ASTNode值
         //计算两个值，一个是symbol的dim（已经传递过来了），另一个是node的实际dim
@@ -240,7 +240,6 @@ class IrUtil {
         }
         return offset;
     }
-
 
     /**
      * 如果stmt本身就是一个块了，就不用包；如果是单语句的形式，就包装成块，并把<font color='red'>原来所属块的符号表</font>传递给新块
@@ -393,12 +392,11 @@ class IrUtil {
                     symbol.setIrVariable(variable);
                     return union.setVariable(variable);
                 }
-                //todo
                 //先要计算偏移量，用getelementptr取出来偏移指针；再将偏移指针内的值load出来
                 //数组是a[5][6], 取a[2][3] => a[3+2*6] => 关键是第二维的dim2
                 //数组是a[5][6][7]，取a[2][3][4] => 4 + 3*7 + 2*6*7
                 AtomicBoolean actualDimSame = new AtomicBoolean();
-                int offset = calcOffset(node, symbol, actualDimSame);
+                int offset = this.calcOffset(node, symbol, actualDimSame); //不应该调用global的！！
                 if (!actualDimSame.get()) {
                     //但如果实际dim!=nodeDim，就是a[5][6]这种数组，取了a[2]这种情况，或者a[8]这种数组取了a这种情况，不可以常规计算，要计算地址
                     PointerValue loadPointer = builder.buildElementPointer(block, symbol.getPointer(), offset);
@@ -425,6 +423,38 @@ class IrUtil {
             default -> throw new RuntimeException("Unexpected grammar type: " + node.getGrammarType());
         }
         throw new RuntimeException("You shouldn't walk this");
+    }
+
+    public int calcOffset(ASTNode node, Symbol symbol, AtomicBoolean actualDimEqualsDefinedDim) throws NoSuchElementException {
+        //否则的话，形如a[] 或者 a[][]
+        //先拿最后一个dim的数值。calculateConst4Global(node.getChild(3*dim-1)) 能获取到dim对应的ASTNode值
+        //计算两个值，一个是symbol的dim（已经传递过来了），另一个是node的实际dim
+        var dim = symbol.getDim();
+        int nodeDim = node.getChildren().stream().filter(child ->
+                child.getGrammarType().equals(GrammarType.LEFT_BRACKET)).toList().size();
+
+        int offset = 0;
+        actualDimEqualsDefinedDim.set(false);
+        if (nodeDim == dim) {
+            //如果实际dim!=nodeDim，就是a[5][6]这种数组，取了a[2]这种情况，或者a[8]这种数组取了a这种情况，不可以常规计算，要计算地址
+            //那么按照上面的例子，a[2] => a[2][0]，a => a[0]，即自动补0 => 只有offset的初始值有不同
+            var offsetNodeUnion = calcAloExp(node.getChild(3 * dim - 1)); //如果是a[i]这种，就要计算表达式了
+            assert offsetNodeUnion.isNum; //不对！重构！
+            offset = offsetNodeUnion.getNumber();
+            actualDimEqualsDefinedDim.set(true);
+        } else if (nodeDim == 0) {
+            return offset;
+        }
+
+        for (int nowDim = dim - 1; nowDim > 0; nowDim--) {
+            int num = calculateConst4Global(node.getChild(3 * nowDim - 1));
+            int expand = 1;
+            for (int i = 1; i < symbol.getDim(); i++) {
+                expand *= symbol.getDimSize(nowDim + i);
+            }
+            offset += num * expand;
+        }
+        return offset;
     }
 
     public NodeUnion calcLogicExp(ASTNode node) {

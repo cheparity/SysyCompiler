@@ -206,6 +206,19 @@ public class ASTNode implements ASTNodeElement {
         return tokens;
     }
 
+    public String getIdent() {
+        if (this.getGrammarType() == GrammarType.IDENT) {
+            return this.getRawValue();
+        }
+        for (var child : children) {
+            String res = child.getIdent();
+            if (res != null) {
+                return res;
+            }
+        }
+        return null;
+    }
+
     public String getRawValue() {
         if (this.getGrammarType().isTerminal()) {
             return ((ASTLeaf) this).getToken().getRawValue();
