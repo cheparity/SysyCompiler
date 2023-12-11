@@ -95,7 +95,7 @@ public final class NodeUnion {
 
     public NodeUnion mul(NodeUnion other) {
         if (this.isNum && other.isNum) { //二者都是数字
-            return this.setNumber(this.number + other.number);
+            return this.setNumber(this.number * other.number);
         }
 
         if (!this.isNum && !other.isNum) { //二者都不是数字
@@ -118,7 +118,7 @@ public final class NodeUnion {
 
     public NodeUnion div(NodeUnion other) {
         if (this.isNum && other.isNum) { //二者都是数字
-            return this.setNumber(this.number + other.number);
+            return this.setNumber(this.number / other.number);
         }
 
         if (!this.isNum && !other.isNum) { //二者都不是数字
@@ -141,7 +141,7 @@ public final class NodeUnion {
 
     public NodeUnion mod(NodeUnion other) {
         if (this.isNum && other.isNum) { //二者都是数字
-            return this.setNumber(this.number + other.number);
+            return this.setNumber(this.number % other.number);
         }
 
         if (!this.isNum && !other.isNum) { //二者都不是数字
@@ -497,4 +497,12 @@ public final class NodeUnion {
     }
 
     /// ======================== end 位运算，逻辑运算 ================================
+
+    @Override
+    public String toString() {
+        if (this.isNum) {
+            return String.valueOf(this.getNumber());
+        }
+        return this.getVariable().getName();
+    }
 }

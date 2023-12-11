@@ -226,7 +226,7 @@ public class ASTNode implements ASTNodeElement {
         List<Token> leaves = getLeaves();
         StringBuilder sb = new StringBuilder();
         for (Token leaf : leaves) {
-            sb.append(leaf.getRawValue());
+            sb.append(leaf.getRawValue()).append(" ");
         }
         return sb.toString();
     }

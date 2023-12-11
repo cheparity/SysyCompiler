@@ -2,6 +2,7 @@ package middleEnd.llvm.ir;
 
 import middleEnd.llvm.IrTranslator;
 import middleEnd.llvm.RegisterAllocator;
+import middleEnd.llvm.utils.NodeUnion;
 import middleEnd.symbols.FuncSymbol;
 import middleEnd.symbols.SymbolTable;
 import middleEnd.symbols.VarSymbol;
@@ -88,7 +89,7 @@ public class IrBuilder {
      * @return 返回新建立的基本块
      */
     public BasicBlock buildBasicBlock(BasicBlock predecessor) {
-        var bb = new BasicBlock(allocator.allocate());
+        var bb = new BasicBlock(allocator.allocate()).setSymbolTable(predecessor.getSymbolTable());
         predecessor.addSuccessor(bb);
         bb.setFunction(predecessor.getFunction());
         bb.getFunction().addBlock(bb);
@@ -343,16 +344,23 @@ public class IrBuilder {
 
     public PointerValue buildLocalArray(BasicBlock basicBlock, IrType.IrTypeID basicType, int arrSize) {
         LOGGER.fine("build local array: " + basicType + " in block: " + basicBlock.getName());
-        return buildAllocaInst(basicBlock,
-                IrType.create(IrType.IrTypeID.Int32TyID, IrType.IrTypeID.ArrayTyID).setDim(arrSize));
+        return buildAllocaInst(basicBlock, IrType.create(IrType.IrTypeID.Int32TyID, IrType.IrTypeID.ArrayTyID).setDim(arrSize));
+    }
+
+    public PointerValue buildElementPointer(BasicBlock basicBlock, PointerValue arrayPointer, NodeUnion nodeUnion) {
+        if (nodeUnion.isNum) {
+            return buildElementPointer(basicBlock, arrayPointer, nodeUnion.getNumber());
+        } else {
+            return buildElementPointer(basicBlock, arrayPointer, nodeUnion.getVariable());
+        }
     }
 
     //是要从pointer里取出偏移
     public PointerValue buildElementPointer(BasicBlock basicBlock, PointerValue arrayPointer, Variable offIndex) {
         LOGGER.fine("build element arrayPointer: " + arrayPointer.getName() + " in block: " + basicBlock.getName());
         PointerValue result = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
-        ConstValue off0 = new ConstValue(0, IrType.IrTypeID.Int32TyID);
-        var inst = new GetElementPtrInstruction(result, arrayPointer, off0, offIndex);
+//        ConstValue off0 = new ConstValue(0, IrType.IrTypeID.Int32TyID);
+        var inst = new GetElementPtrInstruction(result, arrayPointer, offIndex);
         basicBlock.addInstruction(inst);
         LOGGER.fine("build get element ptr: " + inst.toIrCode());
         return result;
@@ -363,7 +371,30 @@ public class IrBuilder {
         return buildElementPointer(basicBlock, arrayPointer, constValue);
     }
 
-    // todo 这里的类型很混乱，后续请重构一下
+    public Variable buildLoadArrayInsts(BasicBlock basicBlock, PointerValue arrayPointer, NodeUnion offset) {
+        if (offset.isNum) {
+            return buildLoadArrayInsts(basicBlock, arrayPointer, offset.getNumber());
+        } else {
+            return buildLoadArrayInsts(basicBlock, arrayPointer, offset.getVariable());
+        }
+    }
+
+    public Variable buildLoadArrayInsts(BasicBlock basicBlock, PointerValue arrayPointer, Variable offset) {
+        var loadResult1 = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
+        var loadInstruction1 = new LoadInstruction(pointerToVariable(loadResult1), arrayPointer);
+        basicBlock.addInstruction(loadInstruction1);
+
+        PointerValue elePtr = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
+
+        GetElementPtrInstruction getElementPtrInstruction = new GetElementPtrInstruction(elePtr, loadResult1, offset);
+        basicBlock.addInstruction(getElementPtrInstruction);
+
+        Variable loadResult2 = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate(), false);
+        LoadInstruction loadInstruction2 = new LoadInstruction(loadResult2, elePtr);
+        basicBlock.addInstruction(loadInstruction2);
+        return loadResult2;
+    }
+
     public Variable buildLoadArrayInsts(BasicBlock basicBlock, PointerValue arrayPointer, int offset) {
         var loadResult1 = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
         var loadInstruction1 = new LoadInstruction(pointerToVariable(loadResult1), arrayPointer);
@@ -381,12 +412,19 @@ public class IrBuilder {
         return loadResult2;
     }
 
-    public void buildArrayStoreInsts(BasicBlock basicBlock, PointerValue arrayPointer, Integer... inits) {
+    public void buildArrayStoreInsts(BasicBlock basicBlock, PointerValue arrayPointer, NodeUnion... inits) {
         //先从pointer里取出偏移，然后再build store inst
         for (var i = 0; i < inits.length; i++) {
             ConstValue constValue = new ConstValue(i, IrType.IrTypeID.Int32TyID);
             PointerValue pointerValue = buildElementPointer(basicBlock, arrayPointer, constValue);
-            buildStoreInst(basicBlock, new ConstValue(inits[i], IrType.IrTypeID.Int32TyID), pointerValue);
+            Variable variable;
+            if (inits[i].isNum) {
+                variable = new ConstValue(inits[i].getNumber(), IrType.IrTypeID.Int32TyID);
+                arrayPointer.setNumber(inits.length, i, inits[i].getNumber());
+            } else {
+                variable = inits[i].getVariable();
+            }
+            buildStoreInst(basicBlock, variable, pointerValue);
         }
     }
 

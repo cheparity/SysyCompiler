@@ -132,8 +132,16 @@ public class BasicBlock extends Value {
     public String toIrCode() {
         var sb = new StringBuilder();
         //如果不是entryBlock，则需要打印label
-        if (!isEntryBlock())
-            sb.append(getName().substring(1)).append(":\n");
+        if (!isEntryBlock()) {
+            sb.append(getName().substring(1)).append(":");
+            if (!tags.isEmpty()) {
+                sb.append("\t; ");
+                for (String tag : this.tags) {
+                    sb.append(tag).append(" ");
+                }
+            }
+            sb.append("\n");
+        }
         getInstructionList().forEach(inst -> sb.append('\t').append(inst.toIrCode()).append("\n"));
         sb.append("\n");
         return sb.toString();

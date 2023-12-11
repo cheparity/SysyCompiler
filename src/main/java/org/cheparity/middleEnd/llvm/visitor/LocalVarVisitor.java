@@ -4,13 +4,17 @@ import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
 import middleEnd.ASTNodeVisitor;
 import middleEnd.llvm.ir.*;
+import middleEnd.llvm.utils.NodeUnion;
 import middleEnd.symbols.Symbol;
 import middleEnd.symbols.SymbolTable;
+import utils.LoggerUtil;
 import utils.Message;
 
 import java.util.ArrayList;
+import java.util.logging.Logger;
 
 public final class LocalVarVisitor implements ASTNodeVisitor {
+    private final static Logger LOGGER = LoggerUtil.getLogger();
     private final BasicBlock basicBlock;
     private final IrBuilder builder;
     private final SymbolTable symbolTable;
@@ -42,6 +46,7 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
     }
 
     private void visitConstDecl(ASTNode constDecl) {
+        LOGGER.info("visit const decl: " + constDecl.getRawValue());
         for (var constDef : constDecl.getChildren()) { //ConstDef -> Ident { '[' ConstExp ']' } '=' ConstInitVal
             if (constDef.getGrammarType() != GrammarType.CONST_DEF) continue;
             //查表获得符号 -> 添加到符号表
@@ -80,14 +85,14 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
             var pointer = builder.buildLocalArray(basicBlock, IrType.IrTypeID.Int32TyID, arrSize);
             symbol.setPointer(pointer);
             //必有initVal ConstInitVal -> ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
-            var inits = new ArrayList<Integer>();
-            IrUtil.unwrapArrayInitVal4Global(constDef.getChild(-1), inits); //这里好像不能用，因为可能会出现变量值？
-            builder.buildArrayStoreInsts(basicBlock, pointer, inits.toArray(new Integer[0]));
-            pointer.setNumber(inits.toArray(new Integer[0]));
+            var inits = new ArrayList<NodeUnion>();
+            new IrUtil(builder, basicBlock).unwrapArrayInitVal(constDef.getChild(-1), inits); //这里好像不能用，因为可能会出现变量值？
+            builder.buildArrayStoreInsts(basicBlock, pointer, inits.toArray(new NodeUnion[0]));
         }
     }
 
     private void visitVarDecl(ASTNode varDecl) {
+        LOGGER.info("visit var decl: " + varDecl.getRawValue());
         //VarDecl -> BType VarDef { ',' VarDef } ';'
         //VarDef -> Ident { '[' ConstExp ']' } ['=' InitVal]
         for (var varDef : varDecl.getChildren()) {
@@ -138,11 +143,10 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
             boolean hasInitVal = varDef.getChild(-1).getGrammarType() == GrammarType.INIT_VAL;
             if (!hasInitVal) continue;
 
-            //如果还有initVal
-            var inits = new ArrayList<Integer>();
-            IrUtil.unwrapArrayInitVal4Global(varDef.getChild(-1), inits); //这里好像不能用，因为可能会出现变量值？但是如果都是数字就没关系
-            builder.buildArrayStoreInsts(basicBlock, pointer, inits.toArray(new Integer[0]));
-            pointer.setNumber(inits.toArray(new Integer[0]));
+            //如果还有initVal，那就是有初值的数组
+            var inits = new ArrayList<NodeUnion>();
+            new IrUtil(builder, basicBlock).unwrapArrayInitVal(varDef.getChild(-1), inits); //不能用4Global！
+            builder.buildArrayStoreInsts(basicBlock, pointer, inits.toArray(new NodeUnion[0])); //todo
         }
     }
 }

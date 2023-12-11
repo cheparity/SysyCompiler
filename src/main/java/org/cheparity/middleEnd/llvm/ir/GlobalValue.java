@@ -17,7 +17,7 @@ public class GlobalValue extends PointerValue implements GlobalObjects {
 
     @Override
     public String toIrCode() {
-        if (this.getType().getDerivedType() == IrType.IrTypeID.ArrayTyID) {
+        if (this.getType().isArray()) {
             return this.getType().toIrCode() + "* " + this.getName();
         }
         return this.getType().toIrCode() + " " + this.number[0];

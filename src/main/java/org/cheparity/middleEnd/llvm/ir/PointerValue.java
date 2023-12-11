@@ -27,6 +27,13 @@ public class PointerValue extends Value {
         this.number = number;
     }
 
+    public void setNumber(int size, Integer position, Integer number) {
+        if (this.number == null) {
+            this.number = new Integer[size];
+        }
+        this.number[position] = number;
+    }
+
     @Override
     public String toIrCode() {
         return getType().toIrCode() + "* " + getName();

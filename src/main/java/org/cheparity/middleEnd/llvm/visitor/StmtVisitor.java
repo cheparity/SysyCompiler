@@ -176,13 +176,24 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
     }
 
     private void visitLvalStmt(ASTNode lvalStmt) {
+        //Stmt -> LVal '=' Exp ';'
+
+        //visit LVal
         //LVal -> Ident {'[' Exp ']'}
-        String ident = lvalStmt.getChild(0).getIdent();
+        ASTNode lval = lvalStmt.getChild(0);
+        String ident = lval.getIdent();
         assert ident != null;
         var symbolOptional = symbolTable.getSymbol(ident);
         assert symbolOptional.isPresent();
-        PointerValue pointer = symbolOptional.get().getPointer(); //a:%1
+        var symbol = symbolOptional.get();
+        PointerValue pointer = symbol.getPointer();
         assert pointer != null;
+        if (pointer.getType().isArray() || pointer.getType().isPointer()) {
+            //比如a[1][2] = 3，a[2] = 5这种，得先getelementptr出来才能store
+            NodeUnion offset = new IrUtil(builder, basicBlock).calcOffset(lval, symbol);
+            pointer = builder.buildElementPointer(basicBlock, pointer, offset);
+        }
+        //visit Exp
         NodeUnion result = new IrUtil(builder, basicBlock).calcAloExp(lvalStmt.getChild(2));
         if (result.isNum) {
             builder.buildStoreInst(basicBlock, builder.buildConstIntNum(result.getNumber()), pointer);
@@ -375,7 +386,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         }
 
         builder.buildBrInst(beforeForBlk, condBlk); //cond处理完了，basicBlock直接跳，因为后面basicBlock可能会更改
-        if (condUnion.isNum && condUnion.getNumber() == 1) {
+        if (condUnion.isNum && condUnion.getNumber() != 0) {
             //如果恒为1，则直接跳转到loopBlk
             builder.buildBrInst(condBlk, loopStartBlk);
         } else {
@@ -395,6 +406,8 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
 
     @Override
     public void updateVisitingBlk(BasicBlock basicBlock) {
+        LOGGER.info("Update visiting block to " + basicBlock.getName());
+        assert basicBlock.getSymbolTable() != null;
         this.basicBlock = basicBlock;
         if (caller != null && caller instanceof BlockController) {
             ((BlockController) caller).updateVisitingBlk(basicBlock);

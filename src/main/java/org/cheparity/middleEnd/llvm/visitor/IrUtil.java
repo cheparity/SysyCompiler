@@ -396,21 +396,22 @@ class IrUtil {
                 //数组是a[5][6], 取a[2][3] => a[3+2*6] => 关键是第二维的dim2
                 //数组是a[5][6][7]，取a[2][3][4] => 4 + 3*7 + 2*6*7
                 AtomicBoolean actualDimSame = new AtomicBoolean();
-                int offset = this.calcOffset(node, symbol, actualDimSame); //不应该调用global的！！
+                NodeUnion offsetUnion = this.calcOffset(node, symbol, actualDimSame); //不应该调用global的！！
                 if (!actualDimSame.get()) {
                     //但如果实际dim!=nodeDim，就是a[5][6]这种数组，取了a[2]这种情况，或者a[8]这种数组取了a这种情况，不可以常规计算，要计算地址
-                    PointerValue loadPointer = builder.buildElementPointer(block, symbol.getPointer(), offset);
+                    PointerValue loadPointer = builder.buildElementPointer(block, symbol.getPointer(), offsetUnion);
                     return union.setVariable(builder.pointerToVariable(loadPointer));
                 }
-
-
-                Optional<Integer> number = symbol.getNumber(offset);
-                if (number.isPresent()) {
-                    return union.setNumber(number.get());
+                //如果是a[2][3]这种，就可以直接load
+                if (offsetUnion.isNum) {
+                    Optional<Integer> number = symbol.getNumber(offsetUnion.getNumber());
+                    if (number.isPresent()) {
+                        return union.setNumber(number.get());
+                    }
                 }
 
                 //否则需要load出来
-                Variable variable = builder.buildLoadArrayInsts(block, symbol.getPointer(), offset);
+                Variable variable = builder.buildLoadArrayInsts(block, symbol.getPointer(), offsetUnion);
                 return union.setVariable(variable);
             }
             case CONST_INIT_VAL -> {
@@ -425,36 +426,45 @@ class IrUtil {
         throw new RuntimeException("You shouldn't walk this");
     }
 
-    public int calcOffset(ASTNode node, Symbol symbol, AtomicBoolean actualDimEqualsDefinedDim) throws NoSuchElementException {
+    public NodeUnion calcOffset(ASTNode node, Symbol symbol) {
+        AtomicBoolean atomicBoolean = new AtomicBoolean();
+        NodeUnion nodeUnion = calcOffset(node, symbol, atomicBoolean);
+        assert atomicBoolean.get();
+        return nodeUnion;
+    }
+
+    public NodeUnion calcOffset(ASTNode node, Symbol symbol, AtomicBoolean actualDimEqualsDefinedDim) throws NoSuchElementException {
         //否则的话，形如a[] 或者 a[][]
         //先拿最后一个dim的数值。calculateConst4Global(node.getChild(3*dim-1)) 能获取到dim对应的ASTNode值
         //计算两个值，一个是symbol的dim（已经传递过来了），另一个是node的实际dim
+        NodeUnion offsetUnion = new NodeUnion(node, builder, block);
         var dim = symbol.getDim();
         int nodeDim = node.getChildren().stream().filter(child ->
                 child.getGrammarType().equals(GrammarType.LEFT_BRACKET)).toList().size();
 
-        int offset = 0;
-        actualDimEqualsDefinedDim.set(false);
+        actualDimEqualsDefinedDim.set(dim == nodeDim);
         if (nodeDim == dim) {
             //如果实际dim!=nodeDim，就是a[5][6]这种数组，取了a[2]这种情况，或者a[8]这种数组取了a这种情况，不可以常规计算，要计算地址
             //那么按照上面的例子，a[2] => a[2][0]，a => a[0]，即自动补0 => 只有offset的初始值有不同
-            var offsetNodeUnion = calcAloExp(node.getChild(3 * dim - 1)); //如果是a[i]这种，就要计算表达式了
-            assert offsetNodeUnion.isNum; //不对！重构！
-            offset = offsetNodeUnion.getNumber();
-            actualDimEqualsDefinedDim.set(true);
+            offsetUnion = calcAloExp(node.getChild(3 * dim - 1)); //如果是a[i]这种，就要计算表达式了
         } else if (nodeDim == 0) {
-            return offset;
+            //如果nodeDim为0，就是b[2][3]传递了b这种情况，直接返回offset=0即可
+            return offsetUnion.setNumber(0);
+        } else {
+            offsetUnion.setNumber(0);
         }
-
+        // a[2][2] => a[1][1] => 1*2+1=3
         for (int nowDim = dim - 1; nowDim > 0; nowDim--) {
-            int num = calculateConst4Global(node.getChild(3 * nowDim - 1));
-            int expand = 1;
+            NodeUnion num = calcAloExp(node.getChild(3 * nowDim - 1));
+            NodeUnion expand = new NodeUnion(node, builder, block).setNumber(1);
             for (int i = 1; i < symbol.getDim(); i++) {
-                expand *= symbol.getDimSize(nowDim + i);
+                NodeUnion dimSize = new NodeUnion(node, builder, block).setNumber(symbol.getDimSize(nowDim + i));
+                expand = expand.mul(dimSize);
             }
-            offset += num * expand;
+//            offset += num * expand;
+            offsetUnion = offsetUnion.add(num.mul(expand));
         }
-        return offset;
+        return offsetUnion;
     }
 
     public NodeUnion calcLogicExp(ASTNode node) {
@@ -534,6 +544,26 @@ class IrUtil {
             }
             default -> {
                 return calcAloExp(node); //剩余的情况就是算术表达式
+            }
+        }
+    }
+
+    public void unwrapArrayInitVal(ASTNode node, ArrayList<NodeUnion> inits) {
+        //ConstInitVal -> ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
+        //InitVal -> Exp | '{' [ InitVal { ',' InitVal } ] '}'
+        //递归解析
+        switch (node.getChild(0).getGrammarType()) {
+            case CONST_EXP, EXP -> {
+                inits.add(calcAloExp(node.getChild(0)));
+            }
+            case LEFT_BRACE -> {
+                node.getChildren()
+                        .stream()
+                        .filter(child ->
+                                child.getGrammarType().equals(GrammarType.CONST_INIT_VAL) ||
+                                        child.getGrammarType().equals(GrammarType.INIT_VAL)
+                        )
+                        .forEach(v -> unwrapArrayInitVal(v, inits));
             }
         }
     }

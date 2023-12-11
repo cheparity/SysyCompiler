@@ -1,11 +1,16 @@
 package middleEnd.llvm.ir;
 
+import utils.LoggerUtil;
+
+import java.util.logging.Logger;
+
 /**
  * 形如： @a = dso_local constant i32 5
  * <p></p>
  * <font color='red'>全局定义指令并不作为一个User！这个指令后面肯定是要重构的</font>
  */
 public final class GlobalDeclInstruction extends Instruction {
+    private final static Logger LOGGER = LoggerUtil.getLogger();
 
     /**
      * 分配指令的值（包含了类型）
@@ -35,6 +40,11 @@ public final class GlobalDeclInstruction extends Instruction {
     @Override
     public String toIrCode() {
         if (!variable.getType().isArray()) {
+            if (variable.getNumber() == null) {
+                //就没有用过
+                LOGGER.warning("Unused variable. Skip its declaration.");
+                return "";
+            }
             return String.format("%s = dso_local %s %s %s", variable.getName(), modifier, variable.getType().toIrCode(),
                     variable.getNumber()[0]);
         }
