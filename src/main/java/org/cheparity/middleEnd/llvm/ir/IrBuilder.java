@@ -354,6 +354,7 @@ public class IrBuilder {
         ConstValue off0 = new ConstValue(0, IrType.IrTypeID.Int32TyID);
         var inst = new GetElementPtrInstruction(result, arrayPointer, off0, offIndex);
         basicBlock.addInstruction(inst);
+        LOGGER.fine("build get element ptr: " + inst.toIrCode());
         return result;
     }
 

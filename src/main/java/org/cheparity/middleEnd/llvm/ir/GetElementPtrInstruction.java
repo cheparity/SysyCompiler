@@ -17,7 +17,8 @@ public final class GetElementPtrInstruction extends Instruction {
 
     @Override
     public String toIrCode() {
-        var str1 = String.format("%s = getelementptr %s, %s", resultPointer.getName(),
+        var str1 = String.format("%s = getelementptr %s, %s",
+                resultPointer.getName(),
                 ptrVal.getType().toIrCode(),
                 ptrVal.toIrCode());
         StringBuilder str2 = new StringBuilder();

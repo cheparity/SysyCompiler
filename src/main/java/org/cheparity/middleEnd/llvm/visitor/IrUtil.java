@@ -225,6 +225,9 @@ class IrUtil {
             //那么按照上面的例子，a[2] => a[2][0]，a => a[0]，即自动补0 => 只有offset的初始值有不同
             offset = calculateConst4Global(node.getChild(3 * dim - 1));
             actualDimEqualsDefinedDim.set(true);
+        } else if (nodeDim == 0) {
+            //如果nodeDim为0，就是b[2][3]传递了b这种情况，直接返回offset（也就是0）即可
+            return offset;
         }
 
         for (int nowDim = dim - 1; nowDim > 0; nowDim--) {

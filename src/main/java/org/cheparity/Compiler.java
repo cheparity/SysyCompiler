@@ -19,26 +19,16 @@ public class Compiler {
     private static final SysYLexer lexer = LexerImpl.getInstance();
     private static final SysYParser parser = RecursiveDescentParser.getInstance();
     private static final IrTranslator irTranslator = IrTranslator.getInstance();
-    private static final FileOutputStream fos;
-
-    static {
-        File f = new File("llvm_ir.txt");
-        if (f.exists()) f.delete();
-        try {
-            fos = new FileOutputStream("llvm_ir.txt");
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
     public static void main(String[] args) {
 //        printLexAnswer();
-        printGrammarAnswer();
+//        printGrammarAnswer();
 //        printErrorAnswer();
-//        printLlvmIrAnswer();
+        printLlvmIrAnswer();
     }
 
     private static void printLexAnswer() {
+        var fos = getFos("lex.txt");
         lexer.getAllTokens().forEach(token -> {
             try {
                 fos.write((token.getLexType() + " " + token.getRawValue() + "\n").getBytes());
@@ -55,6 +45,7 @@ public class Compiler {
     }
 
     private static void ast2String(ASTNode tree) {
+        var fos = getFos("ast.txt");
         PrintStream ps = new PrintStream(fos);
 //        if (tree.getChildren().isEmpty()) return;
 
@@ -73,6 +64,7 @@ public class Compiler {
     }
 
     private static void printErrorAnswer() {
+        var fos = getFos("error.txt");
         RecursiveDescentParser parser = RecursiveDescentParser.getInstance();
         TreeSet<GrammarError> errors = parser.getAST().getErrors();
         PrintStream ps = new PrintStream(fos);
@@ -80,12 +72,27 @@ public class Compiler {
     }
 
     private static void printLlvmIrAnswer() {
+        var fos = getFos("llvm_ir.txt");
         parser.setTokens(LexerImpl.getInstance().getAllTokens());
         ASTNode ast = parser.getAST();
         IrContext irContext = irTranslator.translate2LlvmIr(ast);
 //        System.out.println(irContext.toIrCode());
         PrintStream ps = new PrintStream(fos);
         ps.println(irContext.toIrCode());
+    }
+
+    private static OutputStream getFos(String pathname) {
+        File f = new File(pathname);
+        FileOutputStream fos;
+        if (f.exists() && !f.delete()) {
+            throw new RuntimeException("delete file error");
+        }
+        try {
+            fos = new FileOutputStream(pathname);
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        return fos;
     }
 
 }

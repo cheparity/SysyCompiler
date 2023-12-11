@@ -7,7 +7,6 @@ public class PointerValue extends Value {
     /**
      * 所指对象。<font color='red'>可以为空</font>
      */
-    Variable pointAt;
     Integer[] number; //初始化为0；
 
     /**
