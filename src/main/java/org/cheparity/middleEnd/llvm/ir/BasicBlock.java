@@ -161,4 +161,9 @@ public class BasicBlock extends Value {
         if (this.getInstructionList().isEmpty()) return false;
         return this.getInstructionList().getLast() instanceof BrInstruction;
     }
+
+    public boolean endWithRet() {
+        if (this.getInstructionList().isEmpty()) return false;
+        return this.getInstructionList().getLast() instanceof RetInstruction;
+    }
 }

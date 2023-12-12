@@ -5,11 +5,11 @@ import java.util.Optional;
 /**
  * 确保Variable和pointer是伴生的关系
  */
-public class Variable extends Value implements Countable {
+public class Variable extends Value implements TokenContainer {
     final boolean readonly;
     private int number;
     private boolean valued = false;
-
+    private String token = "";
 
     /**
      * 变量。默认可变
@@ -65,5 +65,16 @@ public class Variable extends Value implements Countable {
     @Override
     public String toIrCode() {
         return getNumber().isEmpty() ? getName() : getNumber().get().toString();
+    }
+
+    @Override
+    public String getToken() {
+        return this.token;
+    }
+
+    @Override
+    public Variable setToken(String token) {
+        this.token = token;
+        return this;
     }
 }

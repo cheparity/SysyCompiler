@@ -8,10 +8,7 @@ import middleEnd.llvm.visitor.*;
 import middleEnd.symbols.SymbolTable;
 import utils.LoggerUtil;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.logging.Logger;
 
 public class ASTNode implements ASTNodeElement {
@@ -206,6 +203,11 @@ public class ASTNode implements ASTNodeElement {
         return tokens;
     }
 
+    public int getLineNumber() {
+        Token fstLeaveTk = getLeaves().get(0);
+        return fstLeaveTk.getLineNum();
+    }
+
     public String getIdent() {
         if (this.getGrammarType() == GrammarType.IDENT) {
             return this.getRawValue();
@@ -217,6 +219,17 @@ public class ASTNode implements ASTNodeElement {
             }
         }
         return null;
+    }
+
+    public Set<String> getIdents() {
+        if (this.getGrammarType() == GrammarType.IDENT) {
+            return Set.of(this.getRawValue());
+        }
+        Set<String> res = new HashSet<>();
+        for (var child : children) {
+            res.addAll(child.getIdents());
+        }
+        return res;
     }
 
     public String getRawValue() {

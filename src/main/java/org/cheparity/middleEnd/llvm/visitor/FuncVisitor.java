@@ -74,8 +74,7 @@ public final class FuncVisitor implements ASTNodeVisitor {
         assert table != null;
         //Symbol是abstract的，实际是varSymbol。varSymbol里记载了维度信息（但是我们这里暂不考虑数组，故一概认为是i32）
         String name = funcFParam.getChild(1).getRawValue();
-        assert table.getSymbol(name).isPresent();
-        var symbol = table.getSymbol(name).get();
+        var symbol = table.getSymbolSafely(name, funcFParam);
         int dim = symbol.getDim();
         if (dim == 0) {
             builder.buildArg(irFunction, IrType.create(IrType.IrTypeID.Int32TyID)); //todo 后续考虑数组的情况

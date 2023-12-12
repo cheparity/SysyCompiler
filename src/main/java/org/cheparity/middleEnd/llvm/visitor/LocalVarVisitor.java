@@ -51,20 +51,23 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
             if (constDef.getGrammarType() != GrammarType.CONST_DEF) continue;
             //查表获得符号 -> 添加到符号表
             var constRawName = constDef.getChild(0).getRawValue();
-            assert symbolTable.getSymbol(constRawName).isPresent();
-            Symbol symbol = symbolTable.getSymbol(constRawName).get();
+            Symbol symbol = symbolTable.getSymbolSafely(constRawName, constDecl);
 
             boolean isArr = constDef.deepDownFind(GrammarType.LEFT_BRACKET, 1).isPresent();
             if (!isArr) {
                 var nodeUnion = new IrUtil(builder, basicBlock).calcAloExp(constDef.getChild(-1));
                 if (nodeUnion.isNum) {
-                    PointerValue pointer = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID, nodeUnion.getNumber());
+                    PointerValue pointer = builder
+                            .buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID, nodeUnion.getNumber())
+                            .setToken(constRawName);
                     symbol.setPointer(pointer);
                     continue;
                 }
                 //是一个 variable
                 Variable variable = nodeUnion.getVariable();
-                PointerValue pointerValue = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID);
+                PointerValue pointerValue = builder
+                        .buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID)
+                        .setToken(constRawName);
                 builder.buildStoreInst(basicBlock, variable, pointerValue);
                 symbol.setPointer(pointerValue);
                 continue;
@@ -82,7 +85,7 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
                 symbol.setDimSize(i + 1, num);
                 arrSize = (arrSize == 0) ? num : num * arrSize;
             }
-            var pointer = builder.buildLocalArray(basicBlock, IrType.IrTypeID.Int32TyID, arrSize);
+            var pointer = builder.buildLocalArray(basicBlock, IrType.IrTypeID.Int32TyID, arrSize).setToken(constRawName);
             symbol.setPointer(pointer);
             //必有initVal ConstInitVal -> ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
             var inits = new ArrayList<NodeUnion>();
@@ -99,26 +102,31 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
             if (varDef.getGrammarType() != GrammarType.VAR_DEF) continue;
             //查表获得符号 -> 添加到符号表
             var varRawName = varDef.getChild(0).getRawValue();
-            assert symbolTable.getSymbol(varRawName).isPresent();
-            Symbol symbol = symbolTable.getSymbol(varRawName).get();
+            Symbol symbol = symbolTable.getSymbolSafely(varRawName, varDecl);
 
             boolean isArr = varDef.deepDownFind(GrammarType.LEFT_BRACKET, 1).isPresent();
             if (!isArr) {
                 if (varDef.deepDownFind(GrammarType.INIT_VAL, 1).isEmpty()) {
                     //没有初值，只alloca不store
-                    PointerValue pointerValue = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID);
+                    PointerValue pointerValue = builder
+                            .buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID)
+                            .setToken(varRawName);
                     symbol.setPointer(pointerValue);
                     continue;
                 }
                 //如果有初值，建立的也是指针
                 var nodeUnion = new IrUtil(builder, basicBlock).calcAloExp(varDef.getChild(2).getChild(0));
                 if (nodeUnion.isNum) {
-                    PointerValue pointer = builder.buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID, nodeUnion.getNumber());
+                    PointerValue pointer = builder
+                            .buildLocalVariable(basicBlock, IrType.IrTypeID.Int32TyID, nodeUnion.getNumber())
+                            .setToken(varRawName);
                     symbol.setPointer(pointer);
                     continue;
                 }
                 Variable variable = nodeUnion.getVariable();
-                PointerValue pointerValue = builder.buildLocalVariable(basicBlock, variable.getType().getBasicType());
+                PointerValue pointerValue = builder
+                        .buildLocalVariable(basicBlock, variable.getType().getBasicType())
+                        .setToken(varRawName);
                 builder.buildStoreInst(basicBlock, variable, pointerValue);
                 symbol.setPointer(pointerValue);
                 continue;
@@ -136,7 +144,9 @@ public final class LocalVarVisitor implements ASTNodeVisitor {
                 symbol.setDimSize(i + 1, num);
                 arrSize = (arrSize == 0) ? num : num * arrSize;
             }
-            var pointer = builder.buildLocalArray(basicBlock, IrType.IrTypeID.Int32TyID, arrSize);
+            var pointer = builder
+                    .buildLocalArray(basicBlock, IrType.IrTypeID.Int32TyID, arrSize)
+                    .setToken(varRawName);
             symbol.setPointer(pointer);
 
             //不一定有initVal

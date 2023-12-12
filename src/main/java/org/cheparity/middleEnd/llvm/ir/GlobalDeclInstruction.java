@@ -42,8 +42,13 @@ public final class GlobalDeclInstruction extends Instruction {
         if (!variable.getType().isArray()) {
             if (variable.getNumber() == null) {
                 //就没有用过
-                LOGGER.warning("Unused variable. Skip its declaration.");
-                return "";
+                LOGGER.warning("Undeclared variable.");
+                return String.format("%s = dso_local %s %s %s",
+                        variable.getName(),
+                        modifier,
+                        variable.getType().toIrCode(),
+                        "zeroinitializer"
+                );
             }
             return String.format("%s = dso_local %s %s %s", variable.getName(), modifier, variable.getType().toIrCode(),
                     variable.getNumber()[0]);

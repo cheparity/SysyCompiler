@@ -60,4 +60,11 @@ public abstract class Value implements IrPrintable {
         return type + " " + name;
     }
 
+    @Override
+    public String toString() {
+        return "Value{" +
+                "type=" + type.toIrCode() +
+                ", name='" + name + '\'' +
+                '}';
+    }
 }

@@ -48,15 +48,13 @@ public final class GlobalVarVisitor implements ASTNodeVisitor {
         for (var varDef : varDecl.getChildren()) {
             if (varDef.getGrammarType() != GrammarType.VAR_DEF) continue;
             String name = varDef.getChild(0).getRawValue();
-            assert globalSymbolTable.getSymbol(name).isPresent();
-            Symbol symbol = globalSymbolTable.getSymbol(name).get();
+            Symbol symbol = globalSymbolTable.getSymbolSafely(name, varDecl);
 
             //首先判断一下是不是数组
             boolean isArr = varDef.deepDownFind(GrammarType.LEFT_BRACKET, 1).isPresent();
             if (!isArr) {
                 if (varDef.getChildren().size() == 1) {
                     //VarDef -> Ident
-                    assert globalSymbolTable.getSymbol(name).isPresent();
                     var variable = builder.buildGlobalVariable(module, IrType.IrTypeID.Int32TyID, name);
                     symbol.setPointer(variable);
                     continue;
@@ -65,7 +63,6 @@ public final class GlobalVarVisitor implements ASTNodeVisitor {
                 var number = IrUtil.calculateConst4Global(varDef.getChild(2).getChild(0));
                 //将value加符号表
                 var variable = builder.buildGlobalVariable(module, IrType.IrTypeID.Int32TyID, name, number);
-                assert globalSymbolTable.getSymbol(name).isPresent();
                 //是的，还要分配指针
                 symbol.setPointer(variable);
                 continue;
@@ -107,8 +104,7 @@ public final class GlobalVarVisitor implements ASTNodeVisitor {
             if (constDef.getGrammarType() != GrammarType.CONST_DEF) continue;
             //直接以变量名命名
             String name = constDef.getChild(0).getRawValue(); //ident
-            assert globalSymbolTable.getSymbol(name).isPresent();
-            Symbol symbol = globalSymbolTable.getSymbol(name).get();
+            Symbol symbol = globalSymbolTable.getSymbolSafely(name, constDecl);
 
             //常量计算一定有确定的值，在错误处理阶段检查过
             //ConstInitVal → ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'

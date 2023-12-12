@@ -13,10 +13,7 @@ import middleEnd.symbols.SymbolTable;
 import middleEnd.symbols.VarSymbol;
 import utils.LoggerUtil;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
@@ -189,8 +186,7 @@ class IrUtil {
                 //查表找到变量，计算偏移量，返回结果。要考虑到Ident无值的情况，此时需要分配空间，返回寄存器
                 var name = node.getChild(0).getIdent();
                 var table = SymbolTable.getGlobal();
-                assert table.getSymbol(name).isPresent();
-                Symbol symbol = table.getSymbol(name).get();
+                Symbol symbol = table.getSymbolSafely(name, node);
                 int dim = symbol.getDim();
                 if (dim == 0) {
                     var num = symbol.getNumber();
@@ -377,9 +373,8 @@ class IrUtil {
             case LVAL -> {
                 //Ident {'[' Exp ']'}
                 //查表找到变量，计算偏移量，返回结果。要考虑到Ident无值的情况，此时需要分配空间，返回寄存器
-                var name = node.getChild(0).getRawValue();
-                assert table.getSymbol(name).isPresent();
-                Symbol symbol = table.getSymbol(name).get();
+                var name = node.getChild(0).getRawValue();//"aaa"
+                Symbol symbol = table.getSymbolSafely(name, node);
 
                 int dim = symbol.getDim();
                 if (dim == 0) {
@@ -402,14 +397,12 @@ class IrUtil {
                     PointerValue loadPointer = builder.buildElementPointer(block, symbol.getPointer(), offsetUnion);
                     return union.setVariable(builder.pointerToVariable(loadPointer));
                 }
-                //如果是a[2][3]这种，就可以直接load
                 if (offsetUnion.isNum) {
                     Optional<Integer> number = symbol.getNumber(offsetUnion.getNumber());
                     if (number.isPresent()) {
                         return union.setNumber(number.get());
                     }
                 }
-
                 //否则需要load出来
                 Variable variable = builder.buildLoadArrayInsts(block, symbol.getPointer(), offsetUnion);
                 return union.setVariable(variable);
@@ -546,6 +539,32 @@ class IrUtil {
                 return calcAloExp(node); //剩余的情况就是算术表达式
             }
         }
+    }
+
+    public Variable calcLogicExpWithoutOpt(ASTNode node) {
+        Set<String> idents = node.getIdents();
+        ArrayList<Symbol> symbolsToBeReset = new ArrayList<>();
+        ArrayList<Integer[]> numbersToBeReset = new ArrayList<>();
+        idents.forEach(ident -> {
+            Symbol symbol = table.getSymbolSafely(ident, node);
+            //把symbol的number全设置为0
+            LOGGER.info("Reset number of " + symbol.getToken().getRawValue());
+            if (symbol.getPointer() != null) {
+                symbolsToBeReset.add(symbol);
+                numbersToBeReset.add(symbol.getPointer().getNumber());
+                symbol.getPointer().resetNumber();
+            }
+        });
+        NodeUnion resultUnion = calcLogicExp(node);
+        assert !resultUnion.isNum;
+        var ret = resultUnion.getVariable();
+        //reload numbers
+        for (int i = 0; i < numbersToBeReset.size(); i++) {
+            var number = numbersToBeReset.get(i);
+            var symbol = symbolsToBeReset.get(i);
+            symbol.getPointer().setNumber(number);
+        }
+        return ret;
     }
 
     public void unwrapArrayInitVal(ASTNode node, ArrayList<NodeUnion> inits) {

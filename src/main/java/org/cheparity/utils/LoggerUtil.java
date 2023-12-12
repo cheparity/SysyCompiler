@@ -20,6 +20,7 @@ public class LoggerUtil {
      * FINEST
      */
     private static final Level LEVEL = Level.FINE;
+    //    private static final Level LEVEL = Level.OFF;
     private static final Handler CONSOLE_HANDLER = new ConsoleHandler();
     private static final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
 

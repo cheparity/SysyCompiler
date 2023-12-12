@@ -42,6 +42,9 @@ public class IrBuilder {
      */
     public void buildBrInst(BasicBlock belonging, Variable cond, BasicBlock ifTrue, BasicBlock ifFalse) {
         var br = new BrInstruction(cond, ifTrue, ifFalse);
+        if (belonging.endWithRet()) {
+            return; //不要构建语句
+        }
         if (belonging.endWithBr()) {
             belonging.getInstructionList().removeLast();
         }
@@ -57,6 +60,9 @@ public class IrBuilder {
      */
     public void buildBrInst(BasicBlock belonging, BasicBlock dest) {
         var br = new BrInstruction(dest);
+        if (belonging.endWithRet()) {
+            return; //不要构建语句
+        }
         if (belonging.endWithBr()) {
             belonging.getInstructionList().removeLast();
         }
@@ -344,7 +350,7 @@ public class IrBuilder {
 
     public PointerValue buildLocalArray(BasicBlock basicBlock, IrType.IrTypeID basicType, int arrSize) {
         LOGGER.fine("build local array: " + basicType + " in block: " + basicBlock.getName());
-        return buildAllocaInst(basicBlock, IrType.create(IrType.IrTypeID.Int32TyID, IrType.IrTypeID.ArrayTyID).setDim(arrSize));
+        return buildAllocaInst(basicBlock, IrType.create(basicType, IrType.IrTypeID.ArrayTyID).setDim(arrSize));
     }
 
     public PointerValue buildElementPointer(BasicBlock basicBlock, PointerValue arrayPointer, NodeUnion nodeUnion) {
@@ -359,8 +365,13 @@ public class IrBuilder {
     public PointerValue buildElementPointer(BasicBlock basicBlock, PointerValue arrayPointer, Variable offIndex) {
         LOGGER.fine("build element arrayPointer: " + arrayPointer.getName() + " in block: " + basicBlock.getName());
         PointerValue result = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
-//        ConstValue off0 = new ConstValue(0, IrType.IrTypeID.Int32TyID);
-        var inst = new GetElementPtrInstruction(result, arrayPointer, offIndex);
+        GetElementPtrInstruction inst;
+        if (arrayPointer.getType().isArray()) {
+            ConstValue off0 = new ConstValue(0, IrType.IrTypeID.Int32TyID);
+            inst = new GetElementPtrInstruction(result, arrayPointer, off0, offIndex);
+        } else {
+            inst = new GetElementPtrInstruction(result, arrayPointer, offIndex);
+        }
         basicBlock.addInstruction(inst);
         LOGGER.fine("build get element ptr: " + inst.toIrCode());
         return result;
@@ -373,13 +384,27 @@ public class IrBuilder {
 
     public Variable buildLoadArrayInsts(BasicBlock basicBlock, PointerValue arrayPointer, NodeUnion offset) {
         if (offset.isNum) {
-            return buildLoadArrayInsts(basicBlock, arrayPointer, offset.getNumber());
+            ConstValue offConst = new ConstValue(offset.getNumber(), IrType.IrTypeID.Int32TyID);
+            return buildLoadArrayInsts(basicBlock, arrayPointer, offConst);
         } else {
             return buildLoadArrayInsts(basicBlock, arrayPointer, offset.getVariable());
         }
     }
 
-    public Variable buildLoadArrayInsts(BasicBlock basicBlock, PointerValue arrayPointer, Variable offset) {
+    private Variable buildLoadArrayInsts(BasicBlock basicBlock, PointerValue arrayPointer, Variable offset) {
+        if (arrayPointer.getType().isArray()) {
+            PointerValue elePtr = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
+            ConstValue off0 = new ConstValue(0, IrType.IrTypeID.Int32TyID);
+            var getElementPtrInstruction = new GetElementPtrInstruction(elePtr, arrayPointer, off0, offset);
+            basicBlock.addInstruction(getElementPtrInstruction);
+
+            Variable loadResult2 = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate(), false);
+            LoadInstruction loadInstruction2 = new LoadInstruction(loadResult2, elePtr);
+            basicBlock.addInstruction(loadInstruction2);
+            return loadResult2;
+        }
+
+
         var loadResult1 = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
         var loadInstruction1 = new LoadInstruction(pointerToVariable(loadResult1), arrayPointer);
         basicBlock.addInstruction(loadInstruction1);
@@ -387,23 +412,6 @@ public class IrBuilder {
         PointerValue elePtr = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
 
         GetElementPtrInstruction getElementPtrInstruction = new GetElementPtrInstruction(elePtr, loadResult1, offset);
-        basicBlock.addInstruction(getElementPtrInstruction);
-
-        Variable loadResult2 = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate(), false);
-        LoadInstruction loadInstruction2 = new LoadInstruction(loadResult2, elePtr);
-        basicBlock.addInstruction(loadInstruction2);
-        return loadResult2;
-    }
-
-    public Variable buildLoadArrayInsts(BasicBlock basicBlock, PointerValue arrayPointer, int offset) {
-        var loadResult1 = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
-        var loadInstruction1 = new LoadInstruction(pointerToVariable(loadResult1), arrayPointer);
-        basicBlock.addInstruction(loadInstruction1);
-
-        ConstValue offIndex = new ConstValue(offset, IrType.IrTypeID.Int32TyID);
-        PointerValue elePtr = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
-
-        GetElementPtrInstruction getElementPtrInstruction = new GetElementPtrInstruction(elePtr, loadResult1, offIndex);
         basicBlock.addInstruction(getElementPtrInstruction);
 
         Variable loadResult2 = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate(), false);
@@ -640,6 +648,13 @@ public class IrBuilder {
                 IrType.create(pointer.getType().getBasicType(), IrType.IrTypeID.PointerTyID),
                 pointer.getName(),
                 false);
+    }
+
+    public PointerValue variableToPointer(Variable variable) {
+        return new PointerValue(
+                IrType.create(variable.getType().getBasicType()),
+                variable.getName()
+        );
     }
 
 }

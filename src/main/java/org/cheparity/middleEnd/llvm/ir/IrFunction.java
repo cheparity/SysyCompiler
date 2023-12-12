@@ -1,9 +1,13 @@
 package middleEnd.llvm.ir;
 
+import utils.LoggerUtil;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 public final class IrFunction extends GlobalValue implements GlobalObjects {
+    private final static Logger LOGGER = LoggerUtil.getLogger();
     private final List<Argument> arguments = new ArrayList<>();
     private final IrType returnType;
     private final Module module; //所属module
@@ -36,6 +40,10 @@ public final class IrFunction extends GlobalValue implements GlobalObjects {
 
     List<BasicBlock> getBlockList() {
         return this.blockList;
+    }
+
+    BasicBlock getBlock(int i) {
+        return this.blockList.get(i);
     }
 
     BasicBlock getLastBlock() {
@@ -76,7 +84,19 @@ public final class IrFunction extends GlobalValue implements GlobalObjects {
                 getLastBlock().addInstruction(new RetInstruction(new ConstValue(0, IrType.IrTypeID.Int32TyID)));
             }
         }
-        getBlockList().forEach(block -> sb.append(block.toIrCode()));
+        for (int i = 0; i < getBlockList().size(); i++) {
+            //主要为了检查有没有空块的情况，这是不合法的
+            //如果是空块，且不是最后一个块
+            var now = getBlock(i);
+            if (now.getInstructionList().isEmpty() && i < getBlockList().size() - 1) {
+                //补上br语句
+                var nextBlk = getBlock(i + 1);
+                now.addInstruction(new BrInstruction(nextBlk));
+                LOGGER.warning("Basic block " + now.getName() + " is empty. Add br instruction to " + nextBlk.getName());
+            }
+            sb.append(now.toIrCode());
+        }
+
         //如果没有ret，则需要补上ret，否则过不了llvm的编译。那就默认ret void / ret i32 0
         sb.append("}");
         return sb.toString();

@@ -1,6 +1,7 @@
 package middleEnd.symbols;
 
 import exception.DupIdentError;
+import frontEnd.lexer.dataStruct.Token;
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.ErrorHandler;
 
@@ -75,6 +76,18 @@ public class SymbolTable {
      * @return The symbol if found, otherwise null.(value)
      */
     public Optional<Symbol> getSymbol(String name) {
+        /* 注意：有可能出现这种情况：
+         * int main() {
+         *     int a = 76;
+         *     {
+         *         printf("%d\n", a);
+         *         int a = +-+10;
+         *     }
+         *     return 0;
+         * }
+         * 这样在print语句的时候，应该返回的是上层符号表的符号！这种错误应该只会在语法分析中出现，所以语法分析一律调用需要传递token的函数
+         */
+
         if (directory.containsKey(name)) {
             return Optional.of(directory.get(name));
         }
@@ -82,6 +95,35 @@ public class SymbolTable {
             return outer.getSymbol(name);
         }
         return Optional.empty();
+    }
+
+    /**
+     * 获取比token早的符号表，避免调用到之后定义的符号。
+     *
+     * @param ident         要寻找的符号名
+     * @param tokenPosition 当前调用位置
+     * @return 符号（一定存在）
+     */
+    private Symbol getSymbolSafely(String ident, Token tokenPosition) {
+        return getSymbolSafely(ident, tokenPosition.getLineNum());
+    }
+
+    private Symbol getSymbolSafely(String ident, int lineNumber) {
+        //make assertion
+        Symbol candidateResult;
+        if (directory.containsKey(ident)) {
+            candidateResult = directory.get(ident);
+            if (candidateResult.getToken().getLineNum() <= lineNumber) {
+                //如果候选符号在定义的符号之前，ok，可以返回
+                return candidateResult;
+            }
+        }
+        //否则的话，要找外层符号
+        return outer.getSymbolSafely(ident, lineNumber);
+    }
+
+    public Symbol getSymbolSafely(String ident, ASTNode visitingNode) {
+        return getSymbolSafely(ident, visitingNode.getLineNumber());
     }
 
     /**

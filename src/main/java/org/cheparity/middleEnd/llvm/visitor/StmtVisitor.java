@@ -10,7 +10,6 @@ import middleEnd.llvm.ir.IrBuilder;
 import middleEnd.llvm.ir.PointerValue;
 import middleEnd.llvm.ir.Variable;
 import middleEnd.llvm.utils.NodeUnion;
-import middleEnd.symbols.Symbol;
 import middleEnd.symbols.SymbolTable;
 import utils.CallBack;
 import utils.LoggerUtil;
@@ -65,6 +64,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         //stmt -> 'printf''('FormatString{','Exp}')'';'
         else if (stmt.getChild(0).getGrammarType() == GrammarType.PRINTF) {
             LOGGER.info("visit printfStmt: " + stmt.getRawValue());
+
             visitPrintfStmt(stmt);
         }
         //Stmt -> LVal '=' Exp ';'
@@ -175,28 +175,42 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         caller.emit(callBackMessage, this);
     }
 
-    private void visitLvalStmt(ASTNode lvalStmt) {
-        //Stmt -> LVal '=' Exp ';'
-
+    private PointerValue visitLValAssign(ASTNode lvalStmt) {
         //visit LVal
         //LVal -> Ident {'[' Exp ']'}
         ASTNode lval = lvalStmt.getChild(0);
         String ident = lval.getIdent();
         assert ident != null;
-        var symbolOptional = symbolTable.getSymbol(ident);
-        assert symbolOptional.isPresent();
-        var symbol = symbolOptional.get();
+
+        var symbol = symbolTable.getSymbolSafely(ident, lvalStmt);
         PointerValue pointer = symbol.getPointer();
         assert pointer != null;
-        if (pointer.getType().isArray() || pointer.getType().isPointer()) {
+        if (symbol.getDim() == 0) {
+            return pointer;
+        } else if (pointer.getType().isArray()) {
             //比如a[1][2] = 3，a[2] = 5这种，得先getelementptr出来才能store
             NodeUnion offset = new IrUtil(builder, basicBlock).calcOffset(lval, symbol);
             pointer = builder.buildElementPointer(basicBlock, pointer, offset);
+        } else if (pointer.getType().isPointer()) {
+            //说明是指针的指针！
+            //得先load出来得到数组指针，再getelementptr load出来的值，最后再store
+            NodeUnion offset = new IrUtil(builder, basicBlock).calcOffset(lval, symbol);
+            Variable pointerVariable = builder.buildLoadInst(basicBlock, pointer);
+            PointerValue truePointer = builder.variableToPointer(pointerVariable);
+            pointer = builder.buildElementPointer(basicBlock, truePointer, offset);
         }
+        return pointer;
+    }
+
+    private void visitLvalStmt(ASTNode lvalStmt) {
+        //Stmt -> LVal '=' Exp ';'
+        ASTNode lval = lvalStmt.getChild(0);
+        PointerValue pointer = visitLValAssign(lval);
         //visit Exp
         NodeUnion result = new IrUtil(builder, basicBlock).calcAloExp(lvalStmt.getChild(2));
         if (result.isNum) {
             builder.buildStoreInst(basicBlock, builder.buildConstIntNum(result.getNumber()), pointer);
+            pointer.setNumber(result.getNumber());
         } else {
             builder.buildStoreInst(basicBlock, result.getVariable(), pointer);
         }
@@ -230,12 +244,9 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
 
     private void visitGetintStmt(ASTNode getintStmt) {
         var lval = getintStmt.getChild(0);
-        String lvalName = lval.getChild(0).getRawValue();
-        assert basicBlock.getSymbolTable().getSymbol(lvalName).isPresent();
-        Symbol symbol = basicBlock.getSymbolTable().getSymbol(lvalName).get();
-        //给symbol重新赋值
+        PointerValue pointer = visitLValAssign(lval);
         Variable variable = builder.buildCallInst(basicBlock, "getint");
-        builder.buildStoreInst(basicBlock, variable, symbol.getPointer());
+        builder.buildStoreInst(basicBlock, variable, pointer);
     }
 
     private void visitRetStmt(ASTNode retStmt) {
@@ -257,7 +268,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         //LAndExp -> EqExp | LAndExp '&&' EqExp
         //EqExp -> RelExp | EqExp ('==' | '!=') RelExp
         //RelExp -> AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
-        BasicBlock ifTrueBlk, finalBlk, elseBlk = null;
+        BasicBlock ifTrueBlk, finalBlk, elseBlk = null, entryBlock = basicBlock;
         final boolean hasElseStmt = ifStmt.deepDownFind(GrammarType.ELSE, 1).isPresent();
         final ASTNode condNode = ifStmt.getChild(2);
         final ASTNode ifTrueNodeStmt = ifStmt.getChild(4);
@@ -296,11 +307,13 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         finalBlk = builder.buildBasicBlock(basicBlock, basicBlock.getSymbolTable()).setTag("ifEnd");//新建一个基本块
 
         //在全部解析完ifTrueBlk, finalBlk, elseBlk之后，才可以buildBrInst
+//        builder.buildBrInst(entryBlock, cond, ifTrueBlk);
         if (elseBlk != null) {
-            builder.buildBrInst(basicBlock, cond, ifTrueBlk, elseBlk); //entryBlock 根据 条件 -> ifTrueBlk | elseBlk
+            builder.buildBrInst(entryBlock, cond, ifTrueBlk, elseBlk); //entryBlock 根据 条件 -> ifTrueBlk | elseBlk
+            builder.buildBrInst(ifTrueBlk, finalBlk); //ifTrueBlk -> finalBlk
             builder.buildBrInst(elseBlk, finalBlk); //elseBlk -> finalBlk
         } else {
-            builder.buildBrInst(basicBlock, cond, ifTrueBlk, finalBlk); //entryBlock 根据 条件 -> ifTrueBlk | finalBlk
+            builder.buildBrInst(entryBlock, cond, ifTrueBlk, finalBlk); //entryBlock 根据 条件 -> ifTrueBlk | finalBlk
             builder.buildBrInst(ifTrueBlk, finalBlk); //ifTrueBlk -> finalBlk
         }
         //这里应该是调用者的basicBlock = finalBlock？
@@ -335,19 +348,10 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         BasicBlock condBlk, loopStartBlk, forStmt2Blk, finalBlk, loopEndBlk, beforeForBlk = basicBlock.setTag("beforeFor");
         //condBlk是无论如何都要创建的
         condBlk = builder.buildBasicBlock(basicBlock).setTag("cond");
-        NodeUnion condUnion;
-        if (cond == null) {
-            condUnion = new NodeUnion(null, builder, condBlk.setSymbolTable(symbolTable))
-                    .setNumber(1);
-        } else {
-            condUnion = new IrUtil(builder, condBlk.setSymbolTable(symbolTable)).calcLogicExp(cond);
-        }
-        if (condUnion.isNum && condUnion.getNumber() == 0) {
-            //如果恒为0则啥也不用干。需要把condBlk drop掉
-            basicBlock.dropBlock(condBlk);
-            return;
-        }
-
+        Variable condVariable = (cond == null) ?
+                builder.buildConstIntNum(1) :
+                new IrUtil(builder, condBlk).calcLogicExpWithoutOpt(cond);
+        //不能使用优化的
 
         //处理loop循环体
         //此时basicBlock的意义还是beforeForBlk，即for语句所在的块
@@ -386,12 +390,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         }
 
         builder.buildBrInst(beforeForBlk, condBlk); //cond处理完了，basicBlock直接跳，因为后面basicBlock可能会更改
-        if (condUnion.isNum && condUnion.getNumber() != 0) {
-            //如果恒为1，则直接跳转到loopBlk
-            builder.buildBrInst(condBlk, loopStartBlk);
-        } else {
-            builder.buildBrInst(condBlk, condUnion.getVariable(), loopStartBlk, finalBlk);
-        }
+        builder.buildBrInst(condBlk, condVariable, loopStartBlk, finalBlk);
         //从loop跳转到forStmt2Blk
         if (forStmt2Blk != null) {
             builder.buildBrInst(loopEndBlk, forStmt2Blk);
