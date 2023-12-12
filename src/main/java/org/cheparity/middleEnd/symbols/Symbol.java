@@ -81,13 +81,14 @@ public abstract class Symbol {
     }
 
     public Optional<Integer> getNumber(int offset) {
+        //数组的情况
         if (getPointer() != null) {
             Integer[] number = getPointer().getNumber();
             if (number == null) return Optional.empty();
             return Optional.of(number[offset]);
         }
-
-        if (getIrVariable().isPresent()) {
+        //如果已经被load出来
+        if (getIrVariable().isPresent() && getIrVariable().get().readonly) { //修改：增加只读的条件
             return getIrVariable().get().getNumber();
         }
         return Optional.empty();

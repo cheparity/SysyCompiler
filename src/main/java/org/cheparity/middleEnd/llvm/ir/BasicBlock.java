@@ -152,7 +152,7 @@ public class BasicBlock extends Value {
      *
      * @param blk2drop 待删除的块
      */
-    public void dropBlock(BasicBlock blk2drop) {
+    public void removeBlock(BasicBlock blk2drop) {
         getFunction().getBlockList().remove(blk2drop);
         successors.remove(blk2drop);
     }

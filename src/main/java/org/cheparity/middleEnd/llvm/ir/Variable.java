@@ -6,7 +6,7 @@ import java.util.Optional;
  * 确保Variable和pointer是伴生的关系
  */
 public class Variable extends Value implements TokenContainer {
-    final boolean readonly;
+    public final boolean readonly;
     private int number;
     private boolean valued = false;
     private String token = "";

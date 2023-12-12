@@ -5,10 +5,7 @@ import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
 import middleEnd.ASTNodeVisitor;
 import middleEnd.llvm.BlockController;
-import middleEnd.llvm.ir.BasicBlock;
-import middleEnd.llvm.ir.IrBuilder;
-import middleEnd.llvm.ir.PointerValue;
-import middleEnd.llvm.ir.Variable;
+import middleEnd.llvm.ir.*;
 import middleEnd.llvm.utils.NodeUnion;
 import middleEnd.symbols.SymbolTable;
 import utils.CallBack;
@@ -175,14 +172,13 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         caller.emit(callBackMessage, this);
     }
 
-    private PointerValue visitLValAssign(ASTNode lvalStmt) {
+    private PointerValue visitLValAssign(ASTNode lval) {
         //visit LVal
         //LVal -> Ident {'[' Exp ']'}
-        ASTNode lval = lvalStmt.getChild(0);
-        String ident = lval.getIdent();
+        String ident = lval.getChild(0).getIdent();
         assert ident != null;
 
-        var symbol = symbolTable.getSymbolSafely(ident, lvalStmt);
+        var symbol = symbolTable.getSymbolSafely(ident, lval);
         PointerValue pointer = symbol.getPointer();
         assert pointer != null;
         if (symbol.getDim() == 0) {
@@ -307,7 +303,6 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         finalBlk = builder.buildBasicBlock(basicBlock, basicBlock.getSymbolTable()).setTag("ifEnd");//新建一个基本块
 
         //在全部解析完ifTrueBlk, finalBlk, elseBlk之后，才可以buildBrInst
-//        builder.buildBrInst(entryBlock, cond, ifTrueBlk);
         if (elseBlk != null) {
             builder.buildBrInst(entryBlock, cond, ifTrueBlk, elseBlk); //entryBlock 根据 条件 -> ifTrueBlk | elseBlk
             builder.buildBrInst(ifTrueBlk, finalBlk); //ifTrueBlk -> finalBlk
@@ -347,11 +342,22 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
 
         BasicBlock condBlk, loopStartBlk, forStmt2Blk, finalBlk, loopEndBlk, beforeForBlk = basicBlock.setTag("beforeFor");
         //condBlk是无论如何都要创建的
-        condBlk = builder.buildBasicBlock(basicBlock).setTag("cond");
-        Variable condVariable = (cond == null) ?
-                builder.buildConstIntNum(1) :
-                new IrUtil(builder, condBlk).calcLogicExpWithoutOpt(cond);
-        //不能使用优化的
+        condBlk = builder.buildBasicBlock(basicBlock, symbolTable).setTag("cond");
+        Variable condVariable; //不能优化！后面会变！！
+        if (cond != null) {
+            NodeUnion nodeUnion = new IrUtil(builder, condBlk).calcLogicExp(cond);
+            //如果是数字，这下真说明是常量了
+            if (nodeUnion.isNum && nodeUnion.getNumber() == 0) {
+                basicBlock.removeBlock(condBlk);
+                return;
+            } else if (!nodeUnion.isNum) {
+                condVariable = nodeUnion.getVariable();
+            } else { //nodeUnion.isNum && nodeUnion.getNumber() == 0
+                condVariable = builder.buildConstValue(1, IrType.IrTypeID.BitTyID);
+            }
+        } else {
+            condVariable = builder.buildConstValue(1, IrType.IrTypeID.BitTyID);
+        }
 
         //处理loop循环体
         //此时basicBlock的意义还是beforeForBlk，即for语句所在的块

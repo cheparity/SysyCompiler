@@ -4,6 +4,7 @@ package middleEnd.llvm.ir;
  * 指针变量。可以通过Variable找到对应的PointerValue，但是不能通过PointerValue找到对应的Variable（除非指针变量拥有对应的Variable）
  */
 public class PointerValue extends Value implements TokenContainer {
+    public final boolean readonly;
     /**
      * 所指对象。<font color='red'>可以为空</font>
      */
@@ -18,10 +19,19 @@ public class PointerValue extends Value implements TokenContainer {
      */
     PointerValue(IrType type, String name) {
         super(type, name);
+        this.readonly = false;
+    }
+
+    PointerValue(IrType type, String name, boolean readonly) {
+        super(type, name);
+        this.readonly = readonly;
     }
 
     public Integer[] getNumber() {
-        return number;
+        if (this.readonly) {
+            return number;
+        }
+        return null;
     }
 
     public void setNumber(Integer... number) {

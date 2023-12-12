@@ -45,7 +45,15 @@ public class IrBuilder {
         if (belonging.endWithRet()) {
             return; //不要构建语句
         }
-        if (belonging.endWithBr()) {
+        if (belonging.endWithBr()) { //处理方法和下面不一样
+            LOGGER.warning("Already has br instruction " + belonging.getLastInstruction().toIrCode() + "!");
+//            var lastInstruction = (BrInstruction) belonging.getLastInstruction();
+//            if (lastInstruction.isConditional) {
+//                LOGGER.warning("Skipped!");
+//                return;
+//            }
+            // 包含信息更多，所以无脑replace？
+            LOGGER.warning("REPLACED!");
             belonging.getInstructionList().removeLast();
         }
         belonging.addInstruction(br);
@@ -64,6 +72,13 @@ public class IrBuilder {
             return; //不要构建语句
         }
         if (belonging.endWithBr()) {
+            LOGGER.warning("Already has br instruction " + belonging.getLastInstruction().toIrCode() + "!");
+            var lastInstruction = (BrInstruction) belonging.getLastInstruction();
+            if (lastInstruction.isConditional) {
+                LOGGER.warning("Skipped!");
+                return;
+            }
+            LOGGER.warning("REPLACED!");
             belonging.getInstructionList().removeLast();
         }
         belonging.addInstruction(br);
@@ -150,7 +165,7 @@ public class IrBuilder {
      * @return 返回一个result的Variable，这个Variable是<font color='red'>寄存器</font>，里面存放了结果
      */
     public Variable buildNegInst(BasicBlock block, Variable register) {
-        var zeroConst = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), "0", true);
+        var zeroConst = new ConstValue(0, IrType.IrTypeID.Int32TyID);
         assert zeroConst.getNumber().isEmpty();
         zeroConst.setNumber(0);
         LOGGER.fine("build neg instruction: " + zeroConst.getName() + " in block: " + block.getName());
@@ -174,13 +189,9 @@ public class IrBuilder {
      */
     public Variable buildNotInst(BasicBlock block, Variable variable) {
         assert variable.getNumber().isEmpty();
-        var zeroConst = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), "0", true);
-        zeroConst.setNumber(0);
-        var zero = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), "0", true);
-        zero.setNumber(0);
-        var op1 = buildCmpInst(block, variable, IcmpInstruction.Cond.NE, zero);
-        var trueVariable = new Variable(IrType.create(IrType.IrTypeID.BitTyID), "true", true);
-        trueVariable.setNumber(1);
+        var zeroConst = new ConstValue(0, IrType.IrTypeID.Int32TyID);
+        var op1 = buildCmpInst(block, variable, IcmpInstruction.Cond.NE, zeroConst);
+        var trueVariable = new ConstValue(1, IrType.IrTypeID.BitTyID);
         LOGGER.fine("build not instruction: " + trueVariable.getName() + " in block: " + block.getName());
         return buildBinInstruction(block, op1, Operator.create(IrType.create(IrType.IrTypeID.BitTyID), Operator.OpCode.XOR), trueVariable);
     }
@@ -199,7 +210,6 @@ public class IrBuilder {
      * @return 返回一个result的Variable，这个Variable是<font color='red'>寄存器</font>，里面存放了结果
      */
     public Variable buildLogicInst(BasicBlock block, Variable a, IcmpInstruction.Cond op, Variable b) {
-//        assert a.getType() == b.getType();
         LOGGER.fine("build logic instruction: " + op + " in block: " + block.getName());
         return buildCmpInst(block, a, op, b);
     }
@@ -516,7 +526,8 @@ public class IrBuilder {
      */
     public GlobalValue buildGlobalArray(Module module, IrType.IrTypeID irTypeID, boolean isConst, int arrSize,
                                         String name, Integer... initNums) {
-        var globalArr = new GlobalValue(IrType.create(irTypeID, IrType.IrTypeID.ArrayTyID).setDim(arrSize), "@" + name, true);
+        var globalArr = new GlobalValue(IrType.create(irTypeID, IrType.IrTypeID.ArrayTyID).setDim(arrSize),
+                "@" + name, isConst);
         if (initNums == null || initNums.length == 0) {
             Integer[] zeros = new Integer[arrSize];
             Arrays.fill(zeros, 0);

@@ -13,7 +13,10 @@ import middleEnd.symbols.SymbolTable;
 import middleEnd.symbols.VarSymbol;
 import utils.LoggerUtil;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
@@ -539,32 +542,6 @@ class IrUtil {
                 return calcAloExp(node); //剩余的情况就是算术表达式
             }
         }
-    }
-
-    public Variable calcLogicExpWithoutOpt(ASTNode node) {
-        Set<String> idents = node.getIdents();
-        ArrayList<Symbol> symbolsToBeReset = new ArrayList<>();
-        ArrayList<Integer[]> numbersToBeReset = new ArrayList<>();
-        idents.forEach(ident -> {
-            Symbol symbol = table.getSymbolSafely(ident, node);
-            //把symbol的number全设置为0
-            LOGGER.info("Reset number of " + symbol.getToken().getRawValue());
-            if (symbol.getPointer() != null) {
-                symbolsToBeReset.add(symbol);
-                numbersToBeReset.add(symbol.getPointer().getNumber());
-                symbol.getPointer().resetNumber();
-            }
-        });
-        NodeUnion resultUnion = calcLogicExp(node);
-        assert !resultUnion.isNum;
-        var ret = resultUnion.getVariable();
-        //reload numbers
-        for (int i = 0; i < numbersToBeReset.size(); i++) {
-            var number = numbersToBeReset.get(i);
-            var symbol = symbolsToBeReset.get(i);
-            symbol.getPointer().setNumber(number);
-        }
-        return ret;
     }
 
     public void unwrapArrayInitVal(ASTNode node, ArrayList<NodeUnion> inits) {

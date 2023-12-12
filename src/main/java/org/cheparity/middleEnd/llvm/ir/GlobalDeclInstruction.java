@@ -40,7 +40,7 @@ public final class GlobalDeclInstruction extends Instruction {
     @Override
     public String toIrCode() {
         if (!variable.getType().isArray()) {
-            if (variable.getNumber() == null) {
+            if (variable.number == null) {
                 //就没有用过
                 LOGGER.warning("Undeclared variable.");
                 return String.format("%s = dso_local %s %s %s",
@@ -51,7 +51,7 @@ public final class GlobalDeclInstruction extends Instruction {
                 );
             }
             return String.format("%s = dso_local %s %s %s", variable.getName(), modifier, variable.getType().toIrCode(),
-                    variable.getNumber()[0]);
+                    variable.number[0]);
         }
         //@b = dso_local global [100 x i32]] zeroinitializer
         //@a = dso_local global [10 x i32] [i32 1, i32 2, i32 3, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0]
@@ -60,7 +60,7 @@ public final class GlobalDeclInstruction extends Instruction {
         var basicType = type.getBasicType();
         sb.append(variable.getName()).append(" = dso_local ").append(modifier).append(" ").append(type.toIrCode()).append(" ");
         boolean isAllZero = true;
-        for (Integer num : variable.getNumber()) {
+        for (Integer num : variable.number) {
             if (!num.equals(0)) {
                 isAllZero = false;
                 break;
@@ -71,11 +71,11 @@ public final class GlobalDeclInstruction extends Instruction {
             sb.append("zeroinitializer");
         } else {
             sb.append("[");
-            for (int i = 0; i < variable.getNumber().length; i++) {
+            for (int i = 0; i < variable.number.length; i++) {
                 if (i != 0) {
                     sb.append(", ");
                 }
-                sb.append(basicType.toIrCode()).append(" ").append(variable.getNumber()[i]);
+                sb.append(basicType.toIrCode()).append(" ").append(variable.number[i]);
             }
             sb.append("]");
         }
