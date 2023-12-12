@@ -147,7 +147,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
             @Override
             public void run(BasicBlock finalBlk) {
                 assert finalBlk != null;
-                builder.buildBrInst(basicBlock, finalBlk);
+                builder.buildBrInst(true, basicBlock, finalBlk);
                 LOGGER.info("execute callback of finalBlk " + finalBlk.getName());
             }
         };
@@ -163,7 +163,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
             @Override
             public void run(BasicBlock forStmt2) {
                 assert forStmt2 != null;
-                builder.buildBrInst(basicBlock, forStmt2);
+                builder.buildBrInst(true, basicBlock, forStmt2);
                 LOGGER.info("execute callback of forStmt2 " + forStmt2.getName());
             }
         };
@@ -304,12 +304,12 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
 
         //在全部解析完ifTrueBlk, finalBlk, elseBlk之后，才可以buildBrInst
         if (elseBlk != null) {
-            builder.buildBrInst(entryBlock, cond, ifTrueBlk, elseBlk); //entryBlock 根据 条件 -> ifTrueBlk | elseBlk
-            builder.buildBrInst(ifTrueBlk, finalBlk); //ifTrueBlk -> finalBlk
-            builder.buildBrInst(elseBlk, finalBlk); //elseBlk -> finalBlk
+            builder.buildBrInst(false, entryBlock, cond, ifTrueBlk, elseBlk); //entryBlock 根据 条件 -> ifTrueBlk | elseBlk
+            builder.buildBrInst(false, ifTrueBlk, finalBlk); //ifTrueBlk -> finalBlk todo why? 应该是ifTrueBlk的最后一句！
+            builder.buildBrInst(false, elseBlk, finalBlk); //elseBlk -> finalBlk
         } else {
-            builder.buildBrInst(entryBlock, cond, ifTrueBlk, finalBlk); //entryBlock 根据 条件 -> ifTrueBlk | finalBlk
-            builder.buildBrInst(ifTrueBlk, finalBlk); //ifTrueBlk -> finalBlk
+            builder.buildBrInst(false, entryBlock, cond, ifTrueBlk, finalBlk); //entryBlock 根据 条件 -> ifTrueBlk | finalBlk
+            builder.buildBrInst(false, ifTrueBlk, finalBlk); //ifTrueBlk -> finalBlk
         }
         //这里应该是调用者的basicBlock = finalBlock？
         // 其实可以通过传递caller的方式传递过来
@@ -395,14 +395,14 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
             });
         }
 
-        builder.buildBrInst(beforeForBlk, condBlk); //cond处理完了，basicBlock直接跳，因为后面basicBlock可能会更改
-        builder.buildBrInst(condBlk, condVariable, loopStartBlk, finalBlk);
+        builder.buildBrInst(false, beforeForBlk, condBlk); //cond处理完了，basicBlock直接跳，因为后面basicBlock可能会更改
+        builder.buildBrInst(false, condBlk, condVariable, loopStartBlk, finalBlk);
         //从loop跳转到forStmt2Blk
         if (forStmt2Blk != null) {
-            builder.buildBrInst(loopEndBlk, forStmt2Blk);
-            builder.buildBrInst(forStmt2Blk, condBlk);
+            builder.buildBrInst(false, loopEndBlk, forStmt2Blk);
+            builder.buildBrInst(false, forStmt2Blk, condBlk);
         } else {
-            builder.buildBrInst(loopEndBlk, condBlk);
+            builder.buildBrInst(false, loopEndBlk, condBlk);
         }
         //最后把caller的basicBlock设为finalBlk
         assert caller instanceof BlockVisitor;

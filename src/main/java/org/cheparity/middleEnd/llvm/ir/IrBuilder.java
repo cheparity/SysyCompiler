@@ -34,27 +34,28 @@ public class IrBuilder {
 
     /**
      * 建立一个条件跳转指令，形如：br i1 %4, label %5, label %6
+     * <p>
+     *
+     * <font color='red'>注意continue和break进来的是替换，其他都是保留原有！</font>
      *
      * @param belonging 所属基本块
      * @param cond      条件
      * @param ifTrue    如果条件为真，跳转到的块
      * @param ifFalse   如果条件为假，跳转到的块
      */
-    public void buildBrInst(BasicBlock belonging, Variable cond, BasicBlock ifTrue, BasicBlock ifFalse) {
+    public void buildBrInst(Boolean sudo, BasicBlock belonging, Variable cond, BasicBlock ifTrue, BasicBlock ifFalse) {
         var br = new BrInstruction(cond, ifTrue, ifFalse);
         if (belonging.endWithRet()) {
             return; //不要构建语句
         }
-        if (belonging.endWithBr()) { //处理方法和下面不一样
+        if (belonging.endWithBr()) {
             LOGGER.warning("Already has br instruction " + belonging.getLastInstruction().toIrCode() + "!");
-//            var lastInstruction = (BrInstruction) belonging.getLastInstruction();
-//            if (lastInstruction.isConditional) {
-//                LOGGER.warning("Skipped!");
-//                return;
-//            }
-            // 包含信息更多，所以无脑replace？
-            LOGGER.warning("REPLACED!");
-            belonging.getInstructionList().removeLast();
+            if (sudo) {
+                LOGGER.warning("REPLACED!");
+                belonging.getInstructionList().removeLast();
+            }
+            LOGGER.warning("Skipped!");
+            return;
         }
         belonging.addInstruction(br);
         LOGGER.fine("build br instruction: " + br.toIrCode() + " at block: " + belonging.getName());
@@ -62,24 +63,26 @@ public class IrBuilder {
 
     /**
      * 直接跳转到dest，形如 br label [dest]
+     * <p>
+     *
+     * <font color='red'>注意continue和break进来的是替换，其他都是保留原有！</font>
      *
      * @param belonging 所属基本块
      * @param dest      目的块
      */
-    public void buildBrInst(BasicBlock belonging, BasicBlock dest) {
+    public void buildBrInst(Boolean sudo, BasicBlock belonging, BasicBlock dest) {
         var br = new BrInstruction(dest);
         if (belonging.endWithRet()) {
             return; //不要构建语句
         }
         if (belonging.endWithBr()) {
             LOGGER.warning("Already has br instruction " + belonging.getLastInstruction().toIrCode() + "!");
-            var lastInstruction = (BrInstruction) belonging.getLastInstruction();
-            if (lastInstruction.isConditional) {
-                LOGGER.warning("Skipped!");
-                return;
+            if (sudo) {
+                LOGGER.warning("REPLACED!");
+                belonging.getInstructionList().removeLast();
             }
-            LOGGER.warning("REPLACED!");
-            belonging.getInstructionList().removeLast();
+            LOGGER.warning("Skipped!");
+            return;
         }
         belonging.addInstruction(br);
         LOGGER.fine("build br instruction: " + br.toIrCode() + " at block: " + belonging.getName());
@@ -668,4 +671,12 @@ public class IrBuilder {
         );
     }
 
+    public Variable toBitVariable(BasicBlock basicBlock, Variable rawVariable) {
+        if (rawVariable.getType().getBasicType() == IrType.IrTypeID.BitTyID) {
+            return rawVariable;
+        }
+        //先cmp
+        IrType.IrTypeID typeID = rawVariable.getType().getBasicType();
+        return buildCmpInst(basicBlock, new ConstValue(0, typeID), IcmpInstruction.Cond.NE, rawVariable);
+    }
 }

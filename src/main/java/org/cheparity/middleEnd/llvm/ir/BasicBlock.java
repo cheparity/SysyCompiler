@@ -106,6 +106,7 @@ public class BasicBlock extends Value {
         return successors;
     }
 
+
     void addPredecessor(BasicBlock predecessor) {
         getPredecessors().add(predecessor);
     }
