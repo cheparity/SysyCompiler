@@ -8,7 +8,7 @@ import java.util.logging.Logger;
 /**
  * Provides the logger.
  */
-public class LoggerUtil {
+public final class LoggerUtil {
 
     /**
      * SEVERE

@@ -2,10 +2,7 @@ package middleEnd.llvm.visitor;
 
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
-import middleEnd.llvm.ir.BasicBlock;
-import middleEnd.llvm.ir.IrBuilder;
-import middleEnd.llvm.ir.PointerValue;
-import middleEnd.llvm.ir.Variable;
+import middleEnd.llvm.ir.*;
 import middleEnd.llvm.utils.NodeUnion;
 import middleEnd.symbols.FuncType;
 import middleEnd.symbols.Symbol;
@@ -133,46 +130,9 @@ class IrUtil {
                         default -> throw new RuntimeException("Unexpected grammar type: " + unaryOp);
                     }
                 }
-                if (node.getChildren().size() == 3) {
+                if (node.getChildren().size() >= 3) {
                     //应该不用考虑？
                     throw new RuntimeException("Not considering call func in the global decl!");
-                    /*
-                    //Ident '(' [FuncRParams] ')'
-                    var funcName = node.getChild(0).getRawValue();
-                    var funcRParams = node.getChild(2);
-                    //FuncRParams -> Exp { ',' Exp }
-                    //1.符号表里查函数，函数里获得参数符号 2.获取符号pointer 3.将pointer load进具体的variable里 4.将寄存器variable存进symbol
-
-                    assert SymbolTable.getGlobal().getFuncSymbol(funcName).isPresent();
-                    List<VarSymbol> fparams = SymbolTable.getGlobal().getFuncSymbol(funcName).get().getParams();
-                    ArrayList<Variable> paramVariables = new ArrayList<>(); //新建一个variable列表，用于存放实参
-
-                    //for循环是在构建实参列表paramVariables
-                    for (int i = 0; i < fparams.size(); i++) {
-//                    var pSymbol = fparams.get(i);
-                        var pNode = node.getChild(2).getChild(2 * i); //0->0, 1->2, 2->4, .. i->2*i
-                        NodeUnion calc = calcAloExp(pNode);
-                        //如果传参是数字：%2 = call i32 @foo(i32 1) 直接call
-                        if (calc.isNum) {
-                            paramVariables.add(builder.buildConstIntNum(calc.getNumber()));
-                            continue;
-                        }
-                        //如果传参是变量
-//                    PointerValue pointer = pSymbol.getPointer();
-//                    Variable register = builder.buildLoadInst(block, pointer); //此时variable为load出的寄存器
-                        paramVariables.add(calc.getVariable()); //将寄存器存入列表
-//                    pSymbol.setIrVariable(calc.getVariable()); //将寄存器存入符号表
-                    }
-                    //5.build call inst
-                    //如果是void，直接call
-                    if (SymbolTable.getGlobal().getFuncSymbol(funcName).get().getFuncType() == FuncType.VOID) {
-                        builder.buildCallInst(block, funcName, paramVariables.toArray(new Variable[0]));
-                        return union.setNumber(0);
-                    }
-                    //如果是int，call后再load
-                    Variable variable = builder.buildCallInst(block, funcName, paramVariables.toArray(new Variable[0]));
-                    return union.setVariable(variable);
-                    */
                 }
             }
             case PRIMARY_EXP -> {
@@ -348,11 +308,11 @@ class IrUtil {
                     NodeUnion calc = calcAloExp(pNode);
                     //如果传参是数字：%2 = call i32 @foo(i32 1) 直接call
                     if (calc.isNum) {
-                        rparams.add(builder.buildConstIntNum(calc.getNumber()));
-                        continue;
+                        rparams.add(builder.buildConstValue(calc.getNumber(), IrType.IrTypeID.Int32TyID));
+                    } else {
+                        //如果传参是变量
+                        rparams.add(calc.getVariable()); //将寄存器存入列表
                     }
-                    //如果传参是变量
-                    rparams.add(calc.getVariable()); //将寄存器存入列表
                 }
                 //5.build call inst
                 //如果是void，直接call

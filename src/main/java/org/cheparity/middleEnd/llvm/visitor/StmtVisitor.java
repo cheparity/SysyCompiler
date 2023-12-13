@@ -290,7 +290,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         //处理各个block
         Variable cond = condUnion.getVariable();
         cond = builder.toBitVariable(basicBlock, cond);
-        
+
         //需要把stmt包装为block => 需要新建一个block
         ifTrueBlk = builder.buildBasicBlock(basicBlock).setTag("ifTrue");
         ifTrueNodeStmt.accept(new StmtVisitor(ifTrueBlk, this)); //此时如果是break或者continue，则还不知道，要visit完for stmt之后才能知道跳转到哪里
@@ -321,7 +321,6 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
 
     //Stmt -> 'for' '(' [ForStmt1] ';' [Cond] ';' [ForStmt2] ')' Stmt
     private void visitForStmt(ASTNode forStmt) {
-        //找到两个;的位置，根据;的位置来判断是否有ForStmt
         int semi1 = 0, semi2 = 0;
         for (int i = 2; i < forStmt.getChildren().size(); i++) {
             var child = forStmt.getChild(i);
@@ -335,15 +334,16 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         var loopStmt = forStmt.getChild(-1);
         LOGGER.info("get forStmt1: " + forStmt1 + " cond: " + cond + " forStmt2: " + forStmt2);
 
-        //我们需要建立的块有：forStmt1，Cond，ForStmt2，Stmt，Stmt之后的语句。
-        //1.执行初始化表达式ForStmt1 => 可以放在if所处的block内
+        //处理forStmt1 => 只有它，不用新建一个基本块
         if (forStmt1 != null) {
             // ForStmt -> LVal '=' Exp，是Stmt的一种特殊情况
             forStmt1.accept(new StmtVisitor(basicBlock, this));
         }
 
-        BasicBlock condBlk, loopStartBlk, forStmt2Blk, finalBlk, loopEndBlk, beforeForBlk = basicBlock.setTag("beforeFor");
-        //condBlk是无论如何都要创建的
+        BasicBlock condBlk, loopStartBlk, forStmt2Blk, finalBlk, loopEndBlk, beforeForBlk;
+        beforeForBlk = basicBlock.setTag("beforeFor");
+
+        //处理condition
         condBlk = builder.buildBasicBlock(basicBlock, symbolTable).setTag("cond");
         Variable condVariable; //不能优化！后面会变！！
         if (cond != null) {
@@ -366,11 +366,13 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         //此时basicBlock的意义还是beforeForBlk，即for语句所在的块
         loopStartBlk = builder.buildBasicBlock(condBlk, symbolTable).setTag("forBody");
         loopStmt.accept(new StmtVisitor(loopStartBlk, this));
-        forStmt2Blk = null;
+
+        //处理forStmt2
+        forStmt2Blk = builder.buildBasicBlock(loopStartBlk, symbolTable).setTag("forStmt2");
         if (forStmt2 != null) {
-            forStmt2Blk = builder.buildBasicBlock(loopStartBlk, symbolTable).setTag("forStmt2");
             forStmt2.accept(new StmtVisitor(forStmt2Blk, this));
         }
+
         //此时basicBlock可能会改变，由原先的“for语句所在的块”，变为“loop语句的结束块”
         //当然如果没有改变的话，还是for语句所在的块。我们需要将其改为loop所在的块（loopStartBlk）作为“loop语句结束的块”
         if (basicBlock == beforeForBlk) {
@@ -387,29 +389,21 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
                 ((CallBack<BasicBlock>) message.data).run(finalBlk);
                 messages.remove(message);
             });
-            BasicBlock finalForStmt2Blk = forStmt2Blk;
+
             messages.stream().filter(message -> message.request.equals("continueReq")).toList().forEach(message -> {
-                if (finalForStmt2Blk != null) {
-                    ((CallBack<BasicBlock>) message.data).run(finalForStmt2Blk);
-                } else { //如果是null，就直接continue到condBlk
-                    ((CallBack<BasicBlock>) message.data).run(condBlk);
-                }
+                ((CallBack<BasicBlock>) message.data).run(forStmt2Blk);
                 messages.remove(message);
             });
         }
 
         builder.buildBrInst(false, beforeForBlk, condBlk); //cond处理完了，basicBlock直接跳，因为后面basicBlock可能会更改
         builder.buildBrInst(false, condBlk, condVariable, loopStartBlk, finalBlk);
-        //从loop跳转到forStmt2Blk
-        if (forStmt2Blk != null) {
-            builder.buildBrInst(false, loopEndBlk, forStmt2Blk);
-            builder.buildBrInst(false, forStmt2Blk, condBlk);
-        } else {
-            builder.buildBrInst(false, loopEndBlk, condBlk);
-        }
+        builder.buildBrInst(false, forStmt2Blk, condBlk);
+        builder.buildBrInst(false, loopEndBlk, forStmt2Blk);
         //最后把caller的basicBlock设为finalBlk
         assert caller instanceof BlockVisitor;
         ((BlockVisitor) caller).updateVisitingBlk(finalBlk);
+
     }
 
     @Override

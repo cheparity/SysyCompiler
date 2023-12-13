@@ -53,9 +53,10 @@ public class IrBuilder {
             if (sudo) {
                 LOGGER.warning("REPLACED!");
                 belonging.getInstructionList().removeLast();
+            } else {
+                LOGGER.warning("Skipped!");
+                return;
             }
-            LOGGER.warning("Skipped!");
-            return;
         }
         belonging.addInstruction(br);
         LOGGER.fine("build br instruction: " + br.toIrCode() + " at block: " + belonging.getName());
@@ -80,9 +81,10 @@ public class IrBuilder {
             if (sudo) {
                 LOGGER.warning("REPLACED!");
                 belonging.getInstructionList().removeLast();
+            } else {
+                LOGGER.warning("Skipped!");
+                return;
             }
-            LOGGER.warning("Skipped!");
-            return;
         }
         belonging.addInstruction(br);
         LOGGER.fine("build br instruction: " + br.toIrCode() + " at block: " + belonging.getName());
@@ -286,12 +288,26 @@ public class IrBuilder {
     public Variable buildCmpInst(BasicBlock block, Variable a, IcmpInstruction.Cond condition, Variable b) {
         LOGGER.fine("compare " + a.getType().toIrCode() + " " + a.toIrCode() + " " + condition.toIrCode() + " " + b.getType().toIrCode() + " " +
                 b.toIrCode());
-//        assert a.getType() == b.getType();
+        IrType.IrTypeID at = a.getType().getBasicType();
+        IrType.IrTypeID bt = b.getType().getBasicType();
+        if (at.superior(bt)) {
+            b = buildZextInst(block, b, a);
+        } else if (bt.superior(at)) {
+            a = buildZextInst(block, a, b);
+        }
+
         Variable res = new Variable(IrType.create(IrType.IrTypeID.BitTyID), allocator.allocate());
         IcmpInstruction icmpInstruction = new IcmpInstruction(res, a, b, condition);
         block.addInstruction(icmpInstruction);
         LOGGER.fine("build icmp instruction: " + icmpInstruction.toIrCode() + " in block: " + block.getName());
         return res;
+    }
+
+    private Variable buildZextInst(BasicBlock block, Variable inferior, Variable superior) {
+        Variable result = new Variable(superior.getType(), allocator.allocate());
+        ZextInstruction zextInstruction = new ZextInstruction(inferior, result);
+        block.addInstruction(zextInstruction);
+        return result;
     }
 
     public void buildRetInstOfConst(BasicBlock basicBlock, int resultNumber) {

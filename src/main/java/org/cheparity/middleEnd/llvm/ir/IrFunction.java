@@ -84,15 +84,14 @@ public final class IrFunction extends GlobalValue implements GlobalObjects {
                 getLastBlock().addInstruction(new RetInstruction(new ConstValue(0, IrType.IrTypeID.Int32TyID)));
             }
         }
+        //检查br
         for (int i = 0; i < getBlockList().size(); i++) {
-            //主要为了检查有没有空块的情况，这是不合法的
-            //如果是空块，且不是最后一个块
             var now = getBlock(i);
-            if (now.getInstructionList().isEmpty() && i < getBlockList().size() - 1) {
+            if (i < getBlockList().size() - 1 && !now.endWithRet() && !now.endWithBr()) {
                 //补上br语句
                 var nextBlk = getBlock(i + 1);
                 now.addInstruction(new BrInstruction(nextBlk));
-                LOGGER.warning("Basic block " + now.getName() + " is empty. Add br instruction to " + nextBlk.getName());
+                LOGGER.warning("Basic block " + now.getName() + " isn't end with br. Add br instruction to " + nextBlk.getName());
             }
             sb.append(now.toIrCode());
         }

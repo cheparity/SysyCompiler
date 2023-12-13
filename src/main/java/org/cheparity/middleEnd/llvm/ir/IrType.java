@@ -82,6 +82,10 @@ public final class IrType implements IrPrintable {
             this.value = value;
         }
 
+        boolean superior(IrTypeID other) {
+            return this.compareTo(other) > 0;
+        }
+
         @Override
         public String toIrCode() {
             return this.value;

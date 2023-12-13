@@ -285,7 +285,7 @@ public final class NodeUnion {
         if (this.isNum) {
             ret = builder.buildLogicInst(
                     block,
-                    builder.buildConstValue(this.number, IrType.IrTypeID.BitTyID),
+                    builder.buildConstValue(this.number, IrType.IrTypeID.Int32TyID),
                     IcmpInstruction.Cond.EQ,
                     other.variable
             );
@@ -294,7 +294,7 @@ public final class NodeUnion {
                     block,
                     this.variable,
                     IcmpInstruction.Cond.EQ,
-                    builder.buildConstValue(other.number, IrType.IrTypeID.BitTyID)
+                    builder.buildConstValue(other.number, IrType.IrTypeID.Int32TyID)
             );
         }
         return this.setVariable(ret);
@@ -325,7 +325,7 @@ public final class NodeUnion {
         if (this.isNum) {
             ret = builder.buildLogicInst(
                     block,
-                    builder.buildConstValue(this.number, IrType.IrTypeID.BitTyID),
+                    builder.buildConstValue(this.number, IrType.IrTypeID.Int32TyID),
                     IcmpInstruction.Cond.NE,
                     other.variable
             );
@@ -334,7 +334,7 @@ public final class NodeUnion {
                     block,
                     this.variable,
                     IcmpInstruction.Cond.NE,
-                    builder.buildConstValue(other.number, IrType.IrTypeID.BitTyID)
+                    builder.buildConstValue(other.number, IrType.IrTypeID.Int32TyID)
             );
         }
         return this.setVariable(ret);
@@ -364,7 +364,7 @@ public final class NodeUnion {
         if (this.isNum) {
             ret = builder.buildLogicInst(
                     block,
-                    builder.buildConstValue(this.number, IrType.IrTypeID.BitTyID),
+                    builder.buildConstValue(this.number, IrType.IrTypeID.Int32TyID),
                     IcmpInstruction.Cond.SLT,
                     other.variable
             );
@@ -373,7 +373,7 @@ public final class NodeUnion {
                     block,
                     this.variable,
                     IcmpInstruction.Cond.SLT,
-                    builder.buildConstValue(other.number, IrType.IrTypeID.BitTyID)
+                    builder.buildConstValue(other.number, IrType.IrTypeID.Int32TyID)
             );
         }
         return this.setVariable(ret);
@@ -403,7 +403,7 @@ public final class NodeUnion {
         if (this.isNum) {
             ret = builder.buildLogicInst(
                     block,
-                    builder.buildConstValue(this.number, IrType.IrTypeID.BitTyID),
+                    builder.buildConstValue(this.number, IrType.IrTypeID.Int32TyID),
                     IcmpInstruction.Cond.SLE,
                     other.variable
             );
@@ -412,7 +412,7 @@ public final class NodeUnion {
                     block,
                     this.variable,
                     IcmpInstruction.Cond.SLE,
-                    builder.buildConstValue(other.number, IrType.IrTypeID.BitTyID)
+                    builder.buildConstValue(other.number, IrType.IrTypeID.Int32TyID)
             );
         }
         return this.setVariable(ret);
@@ -442,7 +442,7 @@ public final class NodeUnion {
         if (this.isNum) {
             ret = builder.buildLogicInst(
                     block,
-                    builder.buildConstValue(this.number, IrType.IrTypeID.BitTyID),
+                    builder.buildConstValue(this.number, IrType.IrTypeID.Int32TyID),
                     IcmpInstruction.Cond.SGT,
                     other.variable
             );
@@ -451,7 +451,7 @@ public final class NodeUnion {
                     block,
                     this.variable,
                     IcmpInstruction.Cond.SGT,
-                    builder.buildConstValue(other.number, IrType.IrTypeID.BitTyID)
+                    builder.buildConstValue(other.number, IrType.IrTypeID.Int32TyID)
             );
         }
         return this.setVariable(ret);
@@ -481,7 +481,7 @@ public final class NodeUnion {
         if (this.isNum) {
             ret = builder.buildLogicInst(
                     block,
-                    builder.buildConstValue(this.number, IrType.IrTypeID.BitTyID),
+                    builder.buildConstValue(this.number, IrType.IrTypeID.Int32TyID),
                     IcmpInstruction.Cond.SGE,
                     other.variable
             );
@@ -490,7 +490,7 @@ public final class NodeUnion {
                     block,
                     this.variable,
                     IcmpInstruction.Cond.SGE,
-                    builder.buildConstValue(other.number, IrType.IrTypeID.BitTyID)
+                    builder.buildConstValue(other.number, IrType.IrTypeID.Int32TyID)
             );
         }
         return this.setVariable(ret);
