@@ -8,6 +8,7 @@ import middleEnd.symbols.SymbolTable;
 import middleEnd.symbols.VarSymbol;
 import utils.LoggerUtil;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
@@ -411,6 +412,14 @@ public class IrBuilder {
         return buildElementPointer(basicBlock, arrayPointer, constValue);
     }
 
+    /**
+     * 如果我的%1是一个（一维）数组指针，我要把某一个值从中load出来，就要调用这个指令
+     *
+     * @param basicBlock   所属块
+     * @param arrayPointer 数组指针
+     * @param offset       偏移
+     * @return 寄存器
+     */
     public Variable buildLoadArrayInsts(BasicBlock basicBlock, PointerValue arrayPointer, NodeUnion offset) {
         if (offset.isNum) {
             ConstValue offConst = new ConstValue(offset.getNumber(), IrType.IrTypeID.Int32TyID);
@@ -422,31 +431,16 @@ public class IrBuilder {
 
     private Variable buildLoadArrayInsts(BasicBlock basicBlock, PointerValue arrayPointer, Variable offset) {
         if (arrayPointer.getType().isArray()) {
-            PointerValue elePtr = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
-            ConstValue off0 = new ConstValue(0, IrType.IrTypeID.Int32TyID);
-            var getElementPtrInstruction = new GetElementPtrInstruction(elePtr, arrayPointer, off0, offset);
-            basicBlock.addInstruction(getElementPtrInstruction);
-
-            Variable loadResult2 = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate(), false);
-            LoadInstruction loadInstruction2 = new LoadInstruction(loadResult2, elePtr);
-            basicBlock.addInstruction(loadInstruction2);
-            return loadResult2;
+            //array不需要load出来
+            PointerValue elementPointer = buildElementPointer(basicBlock, arrayPointer, offset);
+            return pointerToVariable(elementPointer);
         }
-
-
-        var loadResult1 = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
-        var loadInstruction1 = new LoadInstruction(pointerToVariable(loadResult1), arrayPointer);
-        basicBlock.addInstruction(loadInstruction1);
-
-        PointerValue elePtr = new PointerValue(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate());
-
-        GetElementPtrInstruction getElementPtrInstruction = new GetElementPtrInstruction(elePtr, loadResult1, offset);
-        basicBlock.addInstruction(getElementPtrInstruction);
-
-        Variable loadResult2 = new Variable(IrType.create(IrType.IrTypeID.Int32TyID), allocator.allocate(), false);
-        LoadInstruction loadInstruction2 = new LoadInstruction(loadResult2, elePtr);
-        basicBlock.addInstruction(loadInstruction2);
-        return loadResult2;
+        //如果是指针，则首先要从arrayPointer里load出来
+        Variable arrayPosition = buildLoadInst(basicBlock, arrayPointer);
+        //然后要构建getelementptr
+        PointerValue elementPointer = buildElementPointer(basicBlock, variableToPointer(arrayPosition), offset);
+        //最后return todo 这里想清楚是return什么，需不需要load出来。如果需要值就要load出来（在调用的地方load），否则不需要
+        return pointerToVariable(elementPointer);
     }
 
     public void buildArrayStoreInsts(BasicBlock basicBlock, PointerValue arrayPointer, NodeUnion... inits) {
@@ -636,7 +630,49 @@ public class IrBuilder {
         LOGGER.fine("build void ret instruction: " + retInst.toIrCode() + " in block: " + block.getName());
     }
 
-    public Variable buildCallInst(BasicBlock block, String funName, Variable... paramVariables) {
+    public Variable buildCallInst(BasicBlock block, String funName, NodeUnion... paramVariables) {
+        assert SymbolTable.getGlobal().getSymbol(funName).isPresent();
+        var symbol = (FuncSymbol) SymbolTable.getGlobal().getSymbol(funName).get();
+        List<VarSymbol> fparams = symbol.getParams();
+        List<Variable> rparams = new ArrayList<>();
+
+        for (int i = 0; i < symbol.getParamCount(); i++) {
+            var fp = fparams.get(i);
+            var rp = paramVariables[i];
+
+            if (fp.getDim() == 0 && rp.isNum) {
+                //需要数字，结果也是数字
+                rparams.add(new ConstValue(rp.getNumber(), IrType.IrTypeID.Int32TyID));
+            } else if (fp.getDim() == 0 && !rp.isNum) {
+                //需要数字，结果不是数字
+                Variable variable = rp.getVariable();
+                if (variable.getType().isNumber()) {
+                    rparams.add(variable);
+                } else {
+                    var numberVar = buildLoadInst(block, variableToPointer(variable));
+                    rparams.add(numberVar);
+                }
+            } else if (!rp.isNum) {
+                //不需要数字，结果肯定不会是数字
+                rparams.add(rp.getVariable());
+            }
+        }
+
+        IrContext context = IrTranslator.context;
+        Module module = context.getIrModule();
+        IrFunction func = module.getFunc("@" + funName);
+        if (func.getReturnType().getBasicType() == IrType.IrTypeID.VoidTyID) {
+            buildVoidCallInst(block, funName, rparams.toArray(new Variable[0]));
+            return null;
+        }
+        Variable variable = new Variable(func.getType(), allocator.allocate());
+        CallInstruction callInstruction = new CallInstruction(func, variable, rparams.toArray(new Variable[0]));
+        block.addInstruction(callInstruction);
+        LOGGER.fine("build call instruction: " + callInstruction.toIrCode() + " in block: " + block.getName());
+        return variable;
+    }
+
+    public Variable buildCallCoreInst(BasicBlock block, String funName, Variable... paramVariables) {
         IrContext context = IrTranslator.context;
         Module module = context.getIrModule();
         IrFunction func = module.getFunc("@" + funName);
@@ -651,7 +687,7 @@ public class IrBuilder {
         return variable;
     }
 
-    public void buildVoidCallInst(BasicBlock block, String funName, Variable... paramVariables) {
+    private void buildVoidCallInst(BasicBlock block, String funName, Variable... paramVariables) {
         IrContext context = IrTranslator.context;
         Module module = context.getIrModule();
         IrFunction func = module.getFunc("@" + funName);
@@ -694,5 +730,11 @@ public class IrBuilder {
         //先cmp
         IrType.IrTypeID typeID = rawVariable.getType().getBasicType();
         return buildCmpInst(basicBlock, new ConstValue(0, typeID), IcmpInstruction.Cond.NE, rawVariable);
+    }
+
+    public void removeBlock(BasicBlock belonging, BasicBlock removed, String reason) {
+        LOGGER.info("Remove block " + removed.getName() + " from block " + belonging.getName() + " because " + reason);
+        belonging.removeBlock(removed);
+        allocator.rewind();
     }
 }

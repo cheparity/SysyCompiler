@@ -39,6 +39,10 @@ public final class IrType implements IrPrintable {
         return this.getBasicType().toIrCode();
     }
 
+    public boolean isNumber() {
+        return !isArray() && !isPointer();
+    }
+
     public boolean isPointer() {
         if (this.getDerivedType() == null) {
             return false;

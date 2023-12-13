@@ -93,11 +93,14 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         else if (stmt.getChild(0).getGrammarType() == GrammarType.BREAK) {
             LOGGER.info("visit breakStmt: " + stmt.getRawValue());
             visitBreakStmt();
+            caller.emit(new Message<>(null, "stop visiting following stmts!"), this);
         }
         //Stmt -> 'continue' ';'
         else if (stmt.getChild(0).getGrammarType() == GrammarType.CONTINUE) {
             LOGGER.info("visit continueStmt: " + stmt.getRawValue());
             visitContinueStmt();
+            //后面的语句不能再继续visit了！
+            caller.emit(new Message<>(null, "stop visiting following stmts!"), this);
         }
         if (!this.messages.isEmpty()) {
             //如果有未能处理的消息，发给caller继续处理
@@ -218,22 +221,28 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         var args = new Variable[exps.size()];
         for (int i = 0; i < exps.size(); i++) {
             var res = new IrUtil(builder, basicBlock).calcAloExp(exps.get(i));
-            if (res.isNum) args[i] = builder.buildConstIntNum(res.getNumber());
-            else args[i] = res.getVariable();
+            //重要！检查参数类型的一致性！
+            if (res.isNum) {
+                args[i] = builder.buildConstValue(res.getNumber(), IrType.IrTypeID.Int32TyID);
+            } else if (res.getVariable().getType().isNumber()) {
+                args[i] = res.getVariable();
+            } else {
+                args[i] = builder.buildLoadInst(basicBlock, builder.variableToPointer(res.getVariable()));
+            }
         }
         //解析formatString
         char[] chars = formatString.toCharArray();
         int argCnt = 0;
         for (int i = 1; i < chars.length - 1; i++) {
             if (chars[i] == '%' && chars[i + 1] == 'd') {
-                builder.buildCallInst(basicBlock, "putint", args[argCnt]);
+                builder.buildCallCoreInst(basicBlock, "putint", args[argCnt]);
                 argCnt++;
                 i++;
             } else if (chars[i] == '\\' && chars[i + 1] == 'n') {
-                builder.buildCallInst(basicBlock, "putch", builder.buildConstIntNum(10));
+                builder.buildCallCoreInst(basicBlock, "putch", builder.buildConstValue(10, IrType.IrTypeID.Int32TyID));
                 i++;
             } else {
-                builder.buildCallInst(basicBlock, "putch", builder.buildConstIntNum(chars[i]));
+                builder.buildCallCoreInst(basicBlock, "putch", builder.buildConstValue(chars[i], IrType.IrTypeID.Int32TyID));
             }
         }
     }
@@ -241,7 +250,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
     private void visitGetintStmt(ASTNode getintStmt) {
         var lval = getintStmt.getChild(0);
         PointerValue pointer = visitLValAssign(lval);
-        Variable variable = builder.buildCallInst(basicBlock, "getint");
+        Variable variable = builder.buildCallCoreInst(basicBlock, "getint");
         builder.buildStoreInst(basicBlock, variable, pointer);
     }
 
@@ -350,7 +359,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
             NodeUnion nodeUnion = new IrUtil(builder, condBlk).calcLogicExp(cond);
             //如果是数字，这下真说明是常量了
             if (nodeUnion.isNum && nodeUnion.getNumber() == 0) {
-                basicBlock.removeBlock(condBlk);
+                builder.removeBlock(basicBlock, condBlk, "condition is const 0");
                 return;
             } else if (!nodeUnion.isNum) {
                 condVariable = nodeUnion.getVariable();
@@ -360,7 +369,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         } else {
             condVariable = builder.buildConstValue(1, IrType.IrTypeID.BitTyID);
         }
-        condVariable = builder.toBitVariable(basicBlock, condVariable);
+        condVariable = builder.toBitVariable(condBlk, condVariable);
 
         //处理loop循环体
         //此时basicBlock的意义还是beforeForBlk，即for语句所在的块

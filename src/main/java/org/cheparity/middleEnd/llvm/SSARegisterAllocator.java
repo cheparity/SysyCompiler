@@ -9,4 +9,9 @@ public final class SSARegisterAllocator implements RegisterAllocator {
         return "%" + register;
     }
 
+    @Override
+    public void rewind() {
+        register--;
+    }
+
 }

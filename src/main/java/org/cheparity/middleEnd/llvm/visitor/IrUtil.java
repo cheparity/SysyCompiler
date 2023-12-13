@@ -2,12 +2,13 @@ package middleEnd.llvm.visitor;
 
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
-import middleEnd.llvm.ir.*;
+import middleEnd.llvm.ir.BasicBlock;
+import middleEnd.llvm.ir.IrBuilder;
+import middleEnd.llvm.ir.Variable;
 import middleEnd.llvm.utils.NodeUnion;
 import middleEnd.symbols.FuncType;
 import middleEnd.symbols.Symbol;
 import middleEnd.symbols.SymbolTable;
-import middleEnd.symbols.VarSymbol;
 import utils.LoggerUtil;
 
 import java.util.ArrayList;
@@ -299,29 +300,22 @@ class IrUtil {
                 String funcName = node.getChild(0).getRawValue();
                 //1.符号表里查函数，函数里获得参数符号 2.获取符号pointer 3.将pointer load进具体的variable里 4.将寄存器variable存进symbol
                 assert SymbolTable.getGlobal().getFuncSymbol(funcName).isPresent();
-                List<VarSymbol> fparams = SymbolTable.getGlobal().getFuncSymbol(funcName).get().getParams();
-                List<Variable> rparams = new ArrayList<>(); //新建一个variable列表，用于存放实参
+                int symbolCnt = SymbolTable.getGlobal().getFuncSymbol(funcName).get().getParamCount();
+                List<NodeUnion> rparams = new ArrayList<>(); //新建一个variable列表，用于存放实参
 
                 //for循环是在构建实参列表paramVariables
-                for (int i = 0; i < fparams.size(); i++) {
+                for (int i = 0; i < symbolCnt; i++) {
                     var pNode = node.getChild(2).getChild(2 * i); //0->0, 1->2, 2->4, .. i->2*i
-                    NodeUnion calc = calcAloExp(pNode);
-                    //如果传参是数字：%2 = call i32 @foo(i32 1) 直接call
-                    if (calc.isNum) {
-                        rparams.add(builder.buildConstValue(calc.getNumber(), IrType.IrTypeID.Int32TyID));
-                    } else {
-                        //如果传参是变量
-                        rparams.add(calc.getVariable()); //将寄存器存入列表
-                    }
+                    rparams.add(calcAloExp(pNode));
                 }
                 //5.build call inst
                 //如果是void，直接call
                 if (SymbolTable.getGlobal().getFuncSymbol(funcName).get().getFuncType() == FuncType.VOID) {
-                    builder.buildCallInst(block, funcName, rparams.toArray(new Variable[0]));
+                    builder.buildCallInst(block, funcName, rparams.toArray(new NodeUnion[0]));
                     return union.setNumber(0);
                 }
                 //如果是int，call后再load
-                Variable variable = builder.buildCallInst(block, funcName, rparams.toArray(new Variable[0]));
+                Variable variable = builder.buildCallInst(block, funcName, rparams.toArray(new NodeUnion[0]));
                 return union.setVariable(variable);
             }
             case PRIMARY_EXP -> {
@@ -357,18 +351,14 @@ class IrUtil {
                 NodeUnion offsetUnion = this.calcOffset(node, symbol, actualDimSame); //不应该调用global的！！
                 if (!actualDimSame.get()) {
                     //但如果实际dim!=nodeDim，就是a[5][6]这种数组，取了a[2]这种情况，或者a[8]这种数组取了a这种情况，不可以常规计算，要计算地址
-                    PointerValue loadPointer = builder.buildElementPointer(block, symbol.getPointer(), offsetUnion);
-                    return union.setVariable(builder.pointerToVariable(loadPointer));
-                }
-                if (offsetUnion.isNum) {
-                    Optional<Integer> number = symbol.getNumber(offsetUnion.getNumber());
-                    if (number.isPresent()) {
-                        return union.setNumber(number.get());
-                    }
+//                    PointerValue loadPointer = builder.buildElementPointer(block, symbol.getPointer(), offsetUnion);
+                    Variable loadPointer = builder.buildLoadArrayInsts(block, symbol.getPointer(), offsetUnion);
+                    return union.setVariable(loadPointer);
                 }
                 //否则需要load出来
                 Variable variable = builder.buildLoadArrayInsts(block, symbol.getPointer(), offsetUnion);
-                return union.setVariable(variable);
+                Variable p = builder.buildLoadInst(block, builder.variableToPointer(variable));
+                return union.setVariable(p);
             }
             case CONST_INIT_VAL -> {
                 //ConstInitVal -> ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'

@@ -1,11 +1,14 @@
 package middleEnd.llvm.ir;
 
 import middleEnd.symbols.SymbolTable;
+import utils.LoggerUtil;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.logging.Logger;
 
 public class BasicBlock extends Value {
+    private final static Logger LOGGER = LoggerUtil.getLogger();
     private final LinkedList<BasicBlock> predecessors = new LinkedList<>();
     private final LinkedList<BasicBlock> successors = new LinkedList<>();
     private final LinkedList<Instruction> instructionList = new LinkedList<>();
@@ -66,6 +69,7 @@ public class BasicBlock extends Value {
     }
 
     public BasicBlock setTag(String tag) {
+        LOGGER.fine("Set tag " + tag + " for block " + getName());
         this.tags.add(tag);
         return this;
     }
@@ -153,7 +157,7 @@ public class BasicBlock extends Value {
      *
      * @param blk2drop 待删除的块
      */
-    public void removeBlock(BasicBlock blk2drop) {
+    void removeBlock(BasicBlock blk2drop) {
         getFunction().getBlockList().remove(blk2drop);
         successors.remove(blk2drop);
     }

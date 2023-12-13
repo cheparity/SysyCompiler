@@ -9,4 +9,9 @@ public class MipsRegisterAllocator implements RegisterAllocator {
     public String allocate() {
         return "$t" + registerCount++;
     }
+
+    @Override
+    public void rewind() {
+
+    }
 }

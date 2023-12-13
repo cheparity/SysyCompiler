@@ -14,6 +14,15 @@ public final class NodeUnion {
     private Variable variable;
     private int number;
 
+    public NodeUnion() {
+        this.isNum = false;
+        this.variable = null;
+        this.number = 0;
+        this.node = null;
+        this.builder = null;
+        this.block = null;
+    }
+
     public NodeUnion(ASTNode node, IrBuilder builder, BasicBlock block) {
         this.builder = builder;
         this.block = block;

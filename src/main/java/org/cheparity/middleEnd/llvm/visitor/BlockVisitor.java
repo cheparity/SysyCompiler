@@ -9,6 +9,9 @@ import middleEnd.llvm.ir.IrBuilder;
 import utils.LoggerUtil;
 import utils.Message;
 
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 /**
@@ -18,6 +21,7 @@ import java.util.logging.Logger;
  */
 public final class BlockVisitor implements ASTNodeVisitor, BlockController {
     private final static Logger LOGGER = LoggerUtil.getLogger();
+    private final LinkedList<Message> messages = new LinkedList<>();
     private final IrBuilder builder;
     private final ASTNodeVisitor caller;
     /**
@@ -41,9 +45,30 @@ public final class BlockVisitor implements ASTNodeVisitor, BlockController {
 
     @Override
     public void emit(Message message, ASTNodeVisitor sender) {
+        if (sender == this) {
+            LOGGER.info(this + " cannot handle the message, continue to pass.");
+            caller.emit(message, sender);
+            return;
+        }
+        if (catchMessage(message, "stop visiting following stmts!")) {
+            LOGGER.info(this + " catches message " + message.request + " , and stop broadcasting.");
+            return;
+        }
         //不需要捕捉
         LOGGER.info(this + " don't need to handle this message, continue to pass.");
         caller.emit(message, sender);
+    }
+
+    private boolean catchMessage(Message message, String... requests) {
+        AtomicBoolean isCaught = new AtomicBoolean(false);
+        Arrays.stream(requests).toList().forEach(request -> {
+            if (message.request.equals(request)) {
+                LOGGER.info(this + " catches message " + message.request + " , and stop broadcasting.");
+                this.messages.add(message);
+                isCaught.set(true);
+            }
+        });
+        return isCaught.get();
     }
 
     public BasicBlock getBasicBlock() {
@@ -65,8 +90,12 @@ public final class BlockVisitor implements ASTNodeVisitor, BlockController {
         //block -> {blockItem}
         for (var child : block.getChildren()) {
             if (child.getGrammarType() != GrammarType.BLOCK_ITEM) continue;
-            child.accept(new LocalVarVisitor(this));
+            if (!this.messages.isEmpty()) {
+                LOGGER.info(this + " catches message " + this.messages.getFirst().request + " , and stop visiting following stmts!");
+                return;
+            }
             child.accept(new StmtVisitor(this));
+            child.accept(new LocalVarVisitor(this));
         }
     }
 
