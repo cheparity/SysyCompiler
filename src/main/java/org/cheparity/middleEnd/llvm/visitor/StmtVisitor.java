@@ -126,6 +126,12 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         if (catchMessage(message, "breakReq", "continueReq")) {
             return;
         }
+        if (message.request.equals("stop visiting following stmts!")) {
+            if (nodeVisiting.getChild(0).getGrammarType() == GrammarType.IF
+                    || nodeVisiting.getChild(0).getGrammarType() == GrammarType.FOR) {
+                return;//截断不发送
+            }
+        }
         LOGGER.info(this + " cannot handle the message, continue to pass.");
         caller.emit(message, sender);
     }
@@ -177,11 +183,11 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
     }
 
     private void emitSkipMessage() {
-        GrammarType g = nodeVisiting.getFather().getChild(0).getGrammarType();
-        if (g != GrammarType.IF && g != GrammarType.FOR) {
-            LOGGER.info(this + " send the message of stop visiting following stmts!");
-            caller.emit(new Message<>(null, "stop visiting following stmts!"), this);
-        }
+//        GrammarType g = nodeVisiting.getFather().getChild(0).getGrammarType();
+//        if (g != GrammarType.IF && g != GrammarType.FOR) {
+        LOGGER.info(this + " send the message of stop visiting following stmts!");
+        caller.emit(new Message<>(null, "stop visiting following stmts!"), this);
+//        }
     }
 
     private PointerValue visitLValAssign(ASTNode lval) {

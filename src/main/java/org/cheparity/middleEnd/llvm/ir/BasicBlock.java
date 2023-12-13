@@ -24,6 +24,7 @@ public class BasicBlock extends Value {
      * 应该在{@link middleEnd.llvm.visitor.BlockVisitor}里设置
      */
     private SymbolTable symbolTable;
+    
 
     BasicBlock(String name) {
         super(IrType.create(IrType.IrTypeID.LabelTyID), name);
