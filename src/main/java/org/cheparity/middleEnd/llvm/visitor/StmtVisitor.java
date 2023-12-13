@@ -289,6 +289,8 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         //如果cond判断不了，则构建if的结构
         //处理各个block
         Variable cond = condUnion.getVariable();
+        cond = builder.toBitVariable(basicBlock, cond);
+        
         //需要把stmt包装为block => 需要新建一个block
         ifTrueBlk = builder.buildBasicBlock(basicBlock).setTag("ifTrue");
         ifTrueNodeStmt.accept(new StmtVisitor(ifTrueBlk, this)); //此时如果是break或者continue，则还不知道，要visit完for stmt之后才能知道跳转到哪里
@@ -358,6 +360,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         } else {
             condVariable = builder.buildConstValue(1, IrType.IrTypeID.BitTyID);
         }
+        condVariable = builder.toBitVariable(basicBlock, condVariable);
 
         //处理loop循环体
         //此时basicBlock的意义还是beforeForBlk，即for语句所在的块

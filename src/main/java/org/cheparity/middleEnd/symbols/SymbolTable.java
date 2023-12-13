@@ -1,7 +1,6 @@
 package middleEnd.symbols;
 
 import exception.DupIdentError;
-import frontEnd.lexer.dataStruct.Token;
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.ErrorHandler;
 
@@ -97,17 +96,6 @@ public class SymbolTable {
         return Optional.empty();
     }
 
-    /**
-     * 获取比token早的符号表，避免调用到之后定义的符号。
-     *
-     * @param ident         要寻找的符号名
-     * @param tokenPosition 当前调用位置
-     * @return 符号（一定存在）
-     */
-    private Symbol getSymbolSafely(String ident, Token tokenPosition) {
-        return getSymbolSafely(ident, tokenPosition.getLineNum());
-    }
-
     private Symbol getSymbolSafely(String ident, int lineNumber) {
         //make assertion
         Symbol candidateResult;
@@ -123,7 +111,14 @@ public class SymbolTable {
     }
 
     public Symbol getSymbolSafely(String ident, ASTNode visitingNode) {
-        return getSymbolSafely(ident, visitingNode.getLineNumber());
+        //先找到ident的tokenPosition，再定位其位置
+        List<ASTNode> idents = visitingNode.getIdentNodes().stream()
+                .filter(i -> i.getRawValue().equals(ident)).toList();
+        int maxLine = -1;
+        for (var i : idents) {
+            maxLine = Math.max(i.getLineNumber(), maxLine);
+        }
+        return getSymbolSafely(ident, maxLine);
     }
 
     /**

@@ -204,6 +204,9 @@ public class ASTNode implements ASTNodeElement {
     }
 
     public int getLineNumber() {
+        if (this instanceof ASTLeaf) {
+            return ((ASTLeaf) this).getToken().getLineNum();
+        }
         Token fstLeaveTk = getLeaves().get(0);
         return fstLeaveTk.getLineNum();
     }
@@ -228,6 +231,17 @@ public class ASTNode implements ASTNodeElement {
         Set<String> res = new HashSet<>();
         for (var child : children) {
             res.addAll(child.getIdents());
+        }
+        return res;
+    }
+
+    public Set<ASTNode> getIdentNodes() {
+        if (this.getGrammarType() == GrammarType.IDENT) {
+            return Set.of(this);
+        }
+        Set<ASTNode> res = new HashSet<>();
+        for (var child : children) {
+            res.addAll(child.getIdentNodes());
         }
         return res;
     }
