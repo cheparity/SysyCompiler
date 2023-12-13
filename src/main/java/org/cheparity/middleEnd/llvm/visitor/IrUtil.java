@@ -413,12 +413,18 @@ class IrUtil {
         return offsetUnion;
     }
 
+    /**
+     * 你能得到一堆加在block里的指令，和一个nodeUnion，表示condition。可以用这个condition进行判断
+     *
+     * @param node 条件节点
+     * @return condition
+     */
     public NodeUnion calcLogicExp(ASTNode node) {
         //Cond -> LOrExp
         //LOrExp -> LAndExp | LOrExp '||' LAndExp
         //LAndExp -> EqExp | LAndExp '&&' EqExp
         //EqExp -> RelExp | EqExp ('==' | '!=') RelExp
-        //RelExp -> AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
+        //RelExp -> AddExp | RelExp ('<' | '<=' | '>' | '>=') AddExp
         switch (node.getGrammarType()) {
             case COND -> {
                 return calcLogicExp(node.getChild(0));

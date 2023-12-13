@@ -281,6 +281,54 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         else builder.buildRetInstOfConst(basicBlock, res.getVariable());
     }
 
+    private void visitCond(ASTNode condNode) {
+        var beforeCondBlk = basicBlock.setTag("beforeCond");
+        var condBlk = builder.buildBasicBlock(basicBlock, basicBlock.getSymbolTable()).setTag("cond");
+        visitCondRecurs(condNode.getChild(0));
+    }
+
+    private void visitCondRecurs(ASTNode node) {
+        BasicBlock entryBlk = null;
+        BasicBlock condTrueBlk = null, condFalseBlk = null;
+        var g = node.getGrammarType();
+        switch (g) {
+            case LOR_EXP -> { //LOrExp -> LAndExp | LOrExp '||' LAndExp
+                if (node.getChildren().size() == 1) {
+                    NodeUnion nodeUnion = new IrUtil(builder, condTrueBlk).calcLogicExp(node.getChild(0));
+
+
+                    return;
+                }
+            }
+            case LAND_EXP -> {//LAndExp -> EqExp | LAndExp '&&' EqExp
+                if (node.getChildren().size() == 1) {
+                    visitCondRecurs(node.getChild(0));
+                    return;
+                }
+            }
+            case EQ_EXP -> {//EqExp -> RelExp | EqExp ('==' | '!=') RelExp
+                if (node.getChildren().size() == 1) {
+                    visitCondRecurs(node.getChild(0));
+                    return;
+                }
+            }
+            case REL_EXP -> {//RelExp -> AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
+                NodeUnion logicExpUnion = new IrUtil(builder, entryBlk).calcLogicExp(node);
+                if (logicExpUnion.isNum && logicExpUnion.getNumber() == 1) {
+                    builder.buildBrInst(false, entryBlk, condTrueBlk);
+                } else if (logicExpUnion.isNum && logicExpUnion.getNumber() == 0) {
+                    builder.buildBrInst(false, entryBlk, condFalseBlk);
+                } else {
+                    builder.buildBrInst(false, entryBlk, logicExpUnion.getVariable(), condTrueBlk, condFalseBlk);
+                }
+
+            }
+            default -> {
+                //calcAloExp(node);
+            }
+        }
+    }
+
     //Stmt -> 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
     private void visitIfStmt(ASTNode ifStmt) {
         //Cond -> LOrExp
@@ -366,7 +414,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
 
         BasicBlock condBlk, loopStartBlk, forStmt2Blk, finalBlk, loopEndBlk, beforeForBlk;
         beforeForBlk = basicBlock.setTag("beforeFor");
-
+        //cond begin
         //处理condition
         condBlk = builder.buildBasicBlock(basicBlock, symbolTable).setTag("cond");
         Variable condVariable; //不能优化！后面会变！！
@@ -385,7 +433,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
             condVariable = builder.buildConstValue(1, IrType.IrTypeID.BitTyID);
         }
         condVariable = builder.toBitVariable(condBlk, condVariable);
-
+        //cond end
         //处理loop循环体
         //此时basicBlock的意义还是beforeForBlk，即for语句所在的块
         loopStartBlk = builder.buildBasicBlock(condBlk, symbolTable).setTag("forBody");
