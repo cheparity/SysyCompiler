@@ -539,21 +539,11 @@ class IrUtil {
                 };
             }
             default -> {
-                NodeUnion nodeUnion = calcAloExp(node);//剩余的情况就是算术表达式
-                //还不能直接用！
-                if (nodeUnion.isNum) {
-                    //那肯定是常量了
-                    if (nodeUnion.getNumber() != 0) {
-                        return nodeUnion.setNumber(1);
-                    }
-                    return nodeUnion.setNumber(0);
-                }
-                //如果不是number，需要包装一下
-                Variable bitVariable = builder.toBitVariable(block, nodeUnion.getVariable());
-                return nodeUnion.setVariable(bitVariable);
+                return calcAloExp(node); //这里就是应该直接返回，但是要在最终的出口返回的地方（函数调用的地方）判断
             }
         }
     }
+
 
     public void unwrapArrayInitVal(ASTNode node, ArrayList<NodeUnion> inits) {
         //ConstInitVal -> ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
