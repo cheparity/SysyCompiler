@@ -9,9 +9,7 @@ import middleEnd.llvm.ir.IrBuilder;
 import utils.LoggerUtil;
 import utils.Message;
 
-import java.util.Arrays;
 import java.util.LinkedList;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 /**
@@ -24,6 +22,7 @@ public final class BlockVisitor implements ASTNodeVisitor, BlockController {
     private final LinkedList<Message> messages = new LinkedList<>();
     private final IrBuilder builder;
     private final ASTNodeVisitor caller;
+    private ASTNode nodeVisiting;
     /**
      * basicBlock可能会在{@link StmtVisitor}中，由于if/for语句的存在，被改变。
      */
@@ -50,6 +49,7 @@ public final class BlockVisitor implements ASTNodeVisitor, BlockController {
             caller.emit(message, sender);
             return;
         }
+
         if (catchMessage(message, "stop visiting following stmts!")) {
             LOGGER.info(this + " catches message " + message.request + " , and stop broadcasting.");
             return;
@@ -60,15 +60,23 @@ public final class BlockVisitor implements ASTNodeVisitor, BlockController {
     }
 
     private boolean catchMessage(Message message, String... requests) {
-        AtomicBoolean isCaught = new AtomicBoolean(false);
-        Arrays.stream(requests).toList().forEach(request -> {
+        boolean isCaught = false;
+        for (String request : requests) {
             if (message.request.equals(request)) {
+                //要找的block接信息者：是由ifStmt或者forStmt产生的block
+                //Stmt -> 'if' '(' Cond ')' **Stmt** [ 'else' **Stmt** ] && **Stmt** -> Block
+                //Stmt -> 'for' '(' [ForStmt1] ';' [Cond] ';' [ForStmt2] ')' **Stmt** && **Stmt** -> Block
+                ASTNode stmt = nodeVisiting.getFather();
+                if (stmt.getGrammarType() != GrammarType.STMT) continue;
+                if (stmt.getFather() == null) continue;
+                GrammarType grammarType = stmt.getFather().getChild(0).getGrammarType();
+                if (grammarType != GrammarType.IF && grammarType != GrammarType.FOR) continue;
                 LOGGER.info(this + " catches message " + message.request + " , and stop broadcasting.");
                 this.messages.add(message);
-                isCaught.set(true);
+                isCaught = true;
             }
-        });
-        return isCaught.get();
+        }
+        return isCaught;
     }
 
     public BasicBlock getBasicBlock() {
@@ -84,8 +92,14 @@ public final class BlockVisitor implements ASTNodeVisitor, BlockController {
     }
 
     @Override
+    public ASTNode getVisitingNode() {
+        return this.nodeVisiting;
+    }
+
+    @Override
     public void visit(ASTNode block) {
         assert block.getGrammarType().equals(GrammarType.BLOCK);
+        nodeVisiting = block;
         basicBlock.setSymbolTable(block.getSymbolTable());
         //block -> {blockItem}
         for (var child : block.getChildren()) {

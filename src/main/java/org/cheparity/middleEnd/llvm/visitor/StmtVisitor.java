@@ -24,6 +24,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
     final SymbolTable symbolTable;
     private final LinkedList<Message> messages = new LinkedList<>();
     private final ASTNodeVisitor caller;
+    private ASTNode nodeVisiting;
     private BasicBlock basicBlock;
 
     public StmtVisitor(BlockVisitor caller) {
@@ -48,6 +49,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
 
     @Override
     public void visit(ASTNode stmt) {
+        nodeVisiting = stmt;
         //stmt -> 'return' Exp ';'
         if (stmt.getChild(0).getGrammarType() == GrammarType.RETURN) {
             LOGGER.info("visit returnStmt: " + stmt.getRawValue());
@@ -93,14 +95,11 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         else if (stmt.getChild(0).getGrammarType() == GrammarType.BREAK) {
             LOGGER.info("visit breakStmt: " + stmt.getRawValue());
             visitBreakStmt();
-            caller.emit(new Message<>(null, "stop visiting following stmts!"), this);
         }
         //Stmt -> 'continue' ';'
         else if (stmt.getChild(0).getGrammarType() == GrammarType.CONTINUE) {
             LOGGER.info("visit continueStmt: " + stmt.getRawValue());
             visitContinueStmt();
-            //后面的语句不能再继续visit了！
-            caller.emit(new Message<>(null, "stop visiting following stmts!"), this);
         }
         if (!this.messages.isEmpty()) {
             //如果有未能处理的消息，发给caller继续处理
@@ -157,6 +156,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         Message<CallBack<BasicBlock>> callBackMessage = new Message<>(callBack, "breakReq");
         LOGGER.info(this + " send the message of " + callBackMessage);
         caller.emit(callBackMessage, this);
+        emitSkipMessage();
     }
 
     private void visitContinueStmt() {
@@ -173,6 +173,15 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         Message<CallBack<BasicBlock>> callBackMessage = new Message<>(callBack, "continueReq");
         LOGGER.info(this + " send the message of " + callBackMessage);
         caller.emit(callBackMessage, this);
+        emitSkipMessage();
+    }
+
+    private void emitSkipMessage() {
+        GrammarType g = nodeVisiting.getFather().getChild(0).getGrammarType();
+        if (g != GrammarType.IF && g != GrammarType.FOR) {
+            LOGGER.info(this + " send the message of stop visiting following stmts!");
+            caller.emit(new Message<>(null, "stop visiting following stmts!"), this);
+        }
     }
 
     private PointerValue visitLValAssign(ASTNode lval) {
@@ -423,5 +432,10 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         if (caller != null && caller instanceof BlockController) {
             ((BlockController) caller).updateVisitingBlk(basicBlock);
         }
+    }
+
+    @Override
+    public ASTNode getVisitingNode() {
+        return this.nodeVisiting;
     }
 }
