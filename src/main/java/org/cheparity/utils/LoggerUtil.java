@@ -10,6 +10,8 @@ import java.util.logging.Logger;
  */
 public final class LoggerUtil {
 
+    private static final Handler CONSOLE_HANDLER = new ConsoleHandler();
+    private static final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
     /**
      * SEVERE
      * WARNING
@@ -20,9 +22,7 @@ public final class LoggerUtil {
      * FINEST
      */
 //    private static final Level LEVEL = Level.FINE;
-    private static final Level LEVEL = Level.OFF;
-    private static final Handler CONSOLE_HANDLER = new ConsoleHandler();
-    private static final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+    private static Level LEVEL = Level.OFF;
 
     public static Logger getLogger() {
         var logger = Logger.getLogger(STACK_WALKER.getCallerClass().getName());
@@ -31,5 +31,10 @@ public final class LoggerUtil {
         logger.addHandler(CONSOLE_HANDLER);
         logger.setLevel(LEVEL);
         return logger;
+    }
+
+    public static void setLoggerLevel(Level level) {
+        LEVEL = level;
+        CONSOLE_HANDLER.setLevel(LEVEL);
     }
 }

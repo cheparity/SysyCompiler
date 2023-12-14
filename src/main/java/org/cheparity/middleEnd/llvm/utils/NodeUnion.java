@@ -9,24 +9,21 @@ import middleEnd.llvm.ir.*;
 public final class NodeUnion {
     final ASTNode node;
     private final IrBuilder builder;
-    private final BasicBlock block;
+    public BasicBlock block;
     public boolean isNum;
     private Variable variable;
     private int number;
 
-    public NodeUnion() {
-        this.isNum = false;
-        this.variable = null;
-        this.number = 0;
-        this.node = null;
-        this.builder = null;
-        this.block = null;
-    }
 
     public NodeUnion(ASTNode node, IrBuilder builder, BasicBlock block) {
         this.builder = builder;
         this.block = block;
         this.node = node;
+    }
+
+    public NodeUnion setBlock(BasicBlock block) {
+        this.block = block;
+        return this;
     }
 
     public int getNumber() {
@@ -282,7 +279,7 @@ public final class NodeUnion {
             else return this.setNumber(0);
         }
         if (!this.isNum && !other.isNum) {
-            Variable ret = builder.buildLogicInst(
+            Variable ret = builder.buildCmpInst(
                     block,
                     this.variable,
                     IcmpInstruction.Cond.EQ,
@@ -292,14 +289,14 @@ public final class NodeUnion {
         }
         Variable ret;
         if (this.isNum) {
-            ret = builder.buildLogicInst(
+            ret = builder.buildCmpInst(
                     block,
                     builder.buildConstValue(this.number, IrType.IrTypeID.Int32TyID),
                     IcmpInstruction.Cond.EQ,
                     other.variable
             );
         } else {
-            ret = builder.buildLogicInst(
+            ret = builder.buildCmpInst(
                     block,
                     this.variable,
                     IcmpInstruction.Cond.EQ,
@@ -321,7 +318,7 @@ public final class NodeUnion {
             else return this.setNumber(0);
         }
         if (!this.isNum && !other.isNum) {
-            Variable ret = builder.buildLogicInst(
+            Variable ret = builder.buildCmpInst(
                     block,
                     this.variable,
                     IcmpInstruction.Cond.NE,
@@ -332,14 +329,14 @@ public final class NodeUnion {
 
         Variable ret;
         if (this.isNum) {
-            ret = builder.buildLogicInst(
+            ret = builder.buildCmpInst(
                     block,
                     builder.buildConstValue(this.number, IrType.IrTypeID.Int32TyID),
                     IcmpInstruction.Cond.NE,
                     other.variable
             );
         } else {
-            ret = builder.buildLogicInst(
+            ret = builder.buildCmpInst(
                     block,
                     this.variable,
                     IcmpInstruction.Cond.NE,
@@ -361,7 +358,7 @@ public final class NodeUnion {
             else return this.setNumber(0);
         }
         if (!this.isNum && !other.isNum) {
-            Variable ret = builder.buildLogicInst(
+            Variable ret = builder.buildCmpInst(
                     block,
                     this.variable,
                     IcmpInstruction.Cond.SLT,
@@ -371,14 +368,14 @@ public final class NodeUnion {
         }
         Variable ret;
         if (this.isNum) {
-            ret = builder.buildLogicInst(
+            ret = builder.buildCmpInst(
                     block,
                     builder.buildConstValue(this.number, IrType.IrTypeID.Int32TyID),
                     IcmpInstruction.Cond.SLT,
                     other.variable
             );
         } else {
-            ret = builder.buildLogicInst(
+            ret = builder.buildCmpInst(
                     block,
                     this.variable,
                     IcmpInstruction.Cond.SLT,
@@ -400,7 +397,7 @@ public final class NodeUnion {
             else return this.setNumber(0);
         }
         if (!this.isNum && !other.isNum) {
-            Variable ret = builder.buildLogicInst(
+            Variable ret = builder.buildCmpInst(
                     block,
                     this.variable,
                     IcmpInstruction.Cond.SLE,
@@ -410,14 +407,14 @@ public final class NodeUnion {
         }
         Variable ret;
         if (this.isNum) {
-            ret = builder.buildLogicInst(
+            ret = builder.buildCmpInst(
                     block,
                     builder.buildConstValue(this.number, IrType.IrTypeID.Int32TyID),
                     IcmpInstruction.Cond.SLE,
                     other.variable
             );
         } else {
-            ret = builder.buildLogicInst(
+            ret = builder.buildCmpInst(
                     block,
                     this.variable,
                     IcmpInstruction.Cond.SLE,
@@ -439,7 +436,7 @@ public final class NodeUnion {
             else return this.setNumber(0);
         }
         if (!this.isNum && !other.isNum) {
-            Variable ret = builder.buildLogicInst(
+            Variable ret = builder.buildCmpInst(
                     block,
                     this.variable,
                     IcmpInstruction.Cond.SGT,
@@ -449,14 +446,14 @@ public final class NodeUnion {
         }
         Variable ret;
         if (this.isNum) {
-            ret = builder.buildLogicInst(
+            ret = builder.buildCmpInst(
                     block,
                     builder.buildConstValue(this.number, IrType.IrTypeID.Int32TyID),
                     IcmpInstruction.Cond.SGT,
                     other.variable
             );
         } else {
-            ret = builder.buildLogicInst(
+            ret = builder.buildCmpInst(
                     block,
                     this.variable,
                     IcmpInstruction.Cond.SGT,
@@ -478,7 +475,7 @@ public final class NodeUnion {
             else return this.setNumber(0);
         }
         if (!this.isNum && !other.isNum) {
-            Variable ret = builder.buildLogicInst(
+            Variable ret = builder.buildCmpInst(
                     block,
                     this.variable,
                     IcmpInstruction.Cond.SGE,
@@ -488,14 +485,14 @@ public final class NodeUnion {
         }
         Variable ret;
         if (this.isNum) {
-            ret = builder.buildLogicInst(
+            ret = builder.buildCmpInst(
                     block,
                     builder.buildConstValue(this.number, IrType.IrTypeID.Int32TyID),
                     IcmpInstruction.Cond.SGE,
                     other.variable
             );
         } else {
-            ret = builder.buildLogicInst(
+            ret = builder.buildCmpInst(
                     block,
                     this.variable,
                     IcmpInstruction.Cond.SGE,

@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
 public final class StmtVisitor implements ASTNodeVisitor, BlockController {
@@ -45,68 +46,6 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         this.basicBlock = basicBlock;
         this.builder = caller.getBuilder();
         this.symbolTable = basicBlock.getSymbolTable();
-    }
-
-    @Override
-    public void visit(ASTNode stmt) {
-        nodeVisiting = stmt;
-        //stmt -> 'return' Exp ';'
-        if (stmt.getChild(0).getGrammarType() == GrammarType.RETURN) {
-            LOGGER.info("visit returnStmt: " + stmt.getRawValue());
-            visitRetStmt(stmt);
-        }
-        //Stmt -> LVal '=' 'getint''('')'';'
-        else if (stmt.deepDownFind(GrammarType.GETINT, 1).isPresent()) {
-            LOGGER.info("visit getintStmt: " + stmt.getRawValue());
-            visitGetintStmt(stmt);
-        }
-        //stmt -> 'printf''('FormatString{','Exp}')'';'
-        else if (stmt.getChild(0).getGrammarType() == GrammarType.PRINTF) {
-            LOGGER.info("visit printfStmt: " + stmt.getRawValue());
-
-            visitPrintfStmt(stmt);
-        }
-        //Stmt -> LVal '=' Exp ';'
-        else if (stmt.getChild(0).getGrammarType() == GrammarType.LVAL) {
-            LOGGER.info("visit lvalStmt: " + stmt.getRawValue());
-            visitLvalStmt(stmt);
-        }
-        //Stmt -> Exp ';'
-        else if (stmt.getChild(0).getGrammarType() == GrammarType.EXP) {
-            LOGGER.info("visit expStmt: " + stmt.getRawValue());
-            new IrUtil(builder, basicBlock).calcAloExp(stmt.getChild(0));
-        }
-        //Stmt -> 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
-        else if (stmt.getChild(0).getGrammarType() == GrammarType.IF) {
-            LOGGER.info("visit ifStmt: " + stmt.getRawValue());
-            visitIfStmt(stmt);
-        }
-        //Stmt -> 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
-        else if (stmt.getChild(0).getGrammarType() == GrammarType.FOR) {
-            LOGGER.info("visit forStmt: " + stmt.getRawValue());
-            visitForStmt(stmt);
-        }
-        //Stmt -> Block
-        else if (stmt.getChild(0).getGrammarType() == GrammarType.BLOCK) {
-            LOGGER.info("visit blockStmt: " + stmt.getRawValue());
-            stmt.accept(new BlockVisitor(basicBlock, this)); //这自动就处理匿名内部类的问题了
-        }
-        //Stmt -> 'break' ';'
-        else if (stmt.getChild(0).getGrammarType() == GrammarType.BREAK) {
-            LOGGER.info("visit breakStmt: " + stmt.getRawValue());
-            visitBreakStmt();
-        }
-        //Stmt -> 'continue' ';'
-        else if (stmt.getChild(0).getGrammarType() == GrammarType.CONTINUE) {
-            LOGGER.info("visit continueStmt: " + stmt.getRawValue());
-            visitContinueStmt();
-        }
-        if (!this.messages.isEmpty()) {
-            //如果有未能处理的消息，发给caller继续处理
-            LOGGER.info(this + " has " + this.messages.size() + " messages to send to caller.");
-            this.messages.forEach(message -> caller.emit(message, this));
-            this.messages.clear();
-        }
     }
 
     @Override
@@ -281,52 +220,42 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         else builder.buildRetInstOfConst(basicBlock, res.getVariable());
     }
 
-    private void visitCond(ASTNode condNode) {
-        var beforeCondBlk = basicBlock.setTag("beforeCond");
-        var condBlk = builder.buildBasicBlock(basicBlock, basicBlock.getSymbolTable()).setTag("cond");
-        visitCondRecurs(condNode.getChild(0));
-    }
-
-    private void visitCondRecurs(ASTNode node) {
-        BasicBlock entryBlk = null;
-        BasicBlock condTrueBlk = null, condFalseBlk = null;
+    private NodeUnion visitCond(ASTNode node, AtomicReference<BasicBlock> block) {
+        //Cond -> LOrExp
+        //LOrExp -> LAndExp | LOrExp '||' LAndExp
+        //LAndExp -> EqExp | LAndExp '&&' EqExp
         var g = node.getGrammarType();
-        switch (g) {
-            case LOR_EXP -> { //LOrExp -> LAndExp | LOrExp '||' LAndExp
-                if (node.getChildren().size() == 1) {
-                    NodeUnion nodeUnion = new IrUtil(builder, condTrueBlk).calcLogicExp(node.getChild(0));
+        if (g == GrammarType.LOR_EXP || g == GrammarType.LAND_EXP) {
+            if (node.getChildren().size() == 1) {
+                return visitCond(node.getChild(0), block);
+            }
+            var entryBlk = block.get();
+            var leftUnion = visitCond(node.getChild(0), block);
+            var leftBlk = block.get();
+            var rightUnion = visitCond(node.getChild(2), block);
+            var rightBlk = block.get();
+//            builder.buildBrInst(false, entryBlk, leftBlk);
+            if (g == GrammarType.LOR_EXP) {
 
-
-                    return;
-                }
-            }
-            case LAND_EXP -> {//LAndExp -> EqExp | LAndExp '&&' EqExp
-                if (node.getChildren().size() == 1) {
-                    visitCondRecurs(node.getChild(0));
-                    return;
-                }
-            }
-            case EQ_EXP -> {//EqExp -> RelExp | EqExp ('==' | '!=') RelExp
-                if (node.getChildren().size() == 1) {
-                    visitCondRecurs(node.getChild(0));
-                    return;
-                }
-            }
-            case REL_EXP -> {//RelExp -> AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
-                NodeUnion logicExpUnion = new IrUtil(builder, entryBlk).calcLogicExp(node);
-                if (logicExpUnion.isNum && logicExpUnion.getNumber() == 1) {
-                    builder.buildBrInst(false, entryBlk, condTrueBlk);
-                } else if (logicExpUnion.isNum && logicExpUnion.getNumber() == 0) {
-                    builder.buildBrInst(false, entryBlk, condFalseBlk);
-                } else {
-                    builder.buildBrInst(false, entryBlk, logicExpUnion.getVariable(), condTrueBlk, condFalseBlk);
-                }
+            } else {
 
             }
-            default -> {
-                //calcAloExp(node);
-            }
+            return leftUnion.setBlock(rightBlk).or(rightUnion.setBlock(rightBlk)).setBlock(rightBlk);
         }
+        //是的！只有这里才能保证上一层是原子操作
+        var inlineBlk = builder.buildBasicBlock(block.get(), block.get().getSymbolTable()).setTag("cond");
+        block.set(inlineBlk);
+        NodeUnion nodeUnion = new IrUtil(builder, inlineBlk).calcLogicExp(node);
+
+        if (nodeUnion.isNum) {
+            return nodeUnion;
+        }
+        var aBit = nodeUnion.getVariable();
+        if (aBit.getType().getBasicType() != IrType.IrTypeID.BitTyID) {
+            Variable zero = builder.buildConstValue(0, IrType.IrTypeID.BitTyID);
+            aBit = builder.buildCmpInst(block.get(), aBit, IcmpInstruction.Cond.NE, zero);
+        }
+        return nodeUnion.setVariable(aBit);
     }
 
     //Stmt -> 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
@@ -342,7 +271,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         final ASTNode ifTrueNodeStmt = ifStmt.getChild(4);
 
         //如果cond可以直接判断，则没必要构建if的结构
-        NodeUnion condUnion = new IrUtil(builder, basicBlock).calcLogicExp(condNode);
+        NodeUnion condUnion = visitCond(condNode.getChild(0), new AtomicReference<>(entryBlock));
         if (condUnion.isNum) {
             int number = condUnion.getNumber();
             LOGGER.fine("Meet [ " + number + " ]. Jump to ifTrueBlk or elseBlk directly!");
@@ -362,6 +291,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         //处理各个block
         Variable cond = condUnion.getVariable();
         cond = builder.toBitVariable(basicBlock, cond);
+        var condBlk = condUnion.block;
 
         //需要把stmt包装为block => 需要新建一个block
         ifTrueBlk = builder.buildBasicBlock(basicBlock).setTag("ifTrue");
@@ -378,11 +308,11 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
 
         //在全部解析完ifTrueBlk, finalBlk, elseBlk之后，才可以buildBrInst
         if (elseBlk != null) {
-            builder.buildBrInst(false, entryBlock, cond, ifTrueBlk, elseBlk); //entryBlock 根据 条件 -> ifTrueBlk | elseBlk
+            builder.buildBrInst(false, condBlk, cond, ifTrueBlk, elseBlk); //entryBlock 根据 条件 -> ifTrueBlk | elseBlk
             builder.buildBrInst(false, ifTrueBlk, finalBlk); //ifTrueBlk -> finalBlk todo why? 应该是ifTrueBlk的最后一句！
             builder.buildBrInst(false, elseBlk, finalBlk); //elseBlk -> finalBlk
         } else {
-            builder.buildBrInst(false, entryBlock, cond, ifTrueBlk, finalBlk); //entryBlock 根据 条件 -> ifTrueBlk | finalBlk
+            builder.buildBrInst(false, condBlk, cond, ifTrueBlk, finalBlk); //entryBlock 根据 条件 -> ifTrueBlk | finalBlk
             builder.buildBrInst(false, ifTrueBlk, finalBlk); //ifTrueBlk -> finalBlk
         }
         //这里应该是调用者的basicBlock = finalBlock？
@@ -429,6 +359,7 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
             } else { //nodeUnion.isNum && nodeUnion.getNumber() == 0
                 condVariable = builder.buildConstValue(1, IrType.IrTypeID.BitTyID);
             }
+            condBlk = nodeUnion.block; //todo 最后是nodeUnion的block
         } else {
             condVariable = builder.buildConstValue(1, IrType.IrTypeID.BitTyID);
         }
@@ -492,4 +423,68 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
     public ASTNode getVisitingNode() {
         return this.nodeVisiting;
     }
+
+
+    @Override
+    public void visit(ASTNode stmt) {
+        nodeVisiting = stmt;
+        //stmt -> 'return' Exp ';'
+        if (stmt.getChild(0).getGrammarType() == GrammarType.RETURN) {
+            LOGGER.info("visit returnStmt: " + stmt.getRawValue());
+            visitRetStmt(stmt);
+        }
+        //Stmt -> LVal '=' 'getint''('')'';'
+        else if (stmt.deepDownFind(GrammarType.GETINT, 1).isPresent()) {
+            LOGGER.info("visit getintStmt: " + stmt.getRawValue());
+            visitGetintStmt(stmt);
+        }
+        //stmt -> 'printf''('FormatString{','Exp}')'';'
+        else if (stmt.getChild(0).getGrammarType() == GrammarType.PRINTF) {
+            LOGGER.info("visit printfStmt: " + stmt.getRawValue());
+
+            visitPrintfStmt(stmt);
+        }
+        //Stmt -> LVal '=' Exp ';'
+        else if (stmt.getChild(0).getGrammarType() == GrammarType.LVAL) {
+            LOGGER.info("visit lvalStmt: " + stmt.getRawValue());
+            visitLvalStmt(stmt);
+        }
+        //Stmt -> Exp ';'
+        else if (stmt.getChild(0).getGrammarType() == GrammarType.EXP) {
+            LOGGER.info("visit expStmt: " + stmt.getRawValue());
+            new IrUtil(builder, basicBlock).calcAloExp(stmt.getChild(0));
+        }
+        //Stmt -> 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
+        else if (stmt.getChild(0).getGrammarType() == GrammarType.IF) {
+            LOGGER.info("visit ifStmt: " + stmt.getRawValue());
+            visitIfStmt(stmt);
+        }
+        //Stmt -> 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
+        else if (stmt.getChild(0).getGrammarType() == GrammarType.FOR) {
+            LOGGER.info("visit forStmt: " + stmt.getRawValue());
+            visitForStmt(stmt);
+        }
+        //Stmt -> Block
+        else if (stmt.getChild(0).getGrammarType() == GrammarType.BLOCK) {
+            LOGGER.info("visit blockStmt: " + stmt.getRawValue());
+            stmt.accept(new BlockVisitor(basicBlock, this)); //这自动就处理匿名内部类的问题了
+        }
+        //Stmt -> 'break' ';'
+        else if (stmt.getChild(0).getGrammarType() == GrammarType.BREAK) {
+            LOGGER.info("visit breakStmt: " + stmt.getRawValue());
+            visitBreakStmt();
+        }
+        //Stmt -> 'continue' ';'
+        else if (stmt.getChild(0).getGrammarType() == GrammarType.CONTINUE) {
+            LOGGER.info("visit continueStmt: " + stmt.getRawValue());
+            visitContinueStmt();
+        }
+        if (!this.messages.isEmpty()) {
+            //如果有未能处理的消息，发给caller继续处理
+            LOGGER.info(this + " has " + this.messages.size() + " messages to send to caller.");
+            this.messages.forEach(message -> caller.emit(message, this));
+            this.messages.clear();
+        }
+    }
+
 }

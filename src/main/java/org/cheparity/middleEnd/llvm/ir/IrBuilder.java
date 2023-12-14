@@ -33,6 +33,18 @@ public class IrBuilder {
         return func;
     }
 
+    public void buildBrInst(Boolean sudo, BasicBlock belonging, NodeUnion cond, BasicBlock ifTrue, BasicBlock ifFalse) {
+        if (cond.isNum && cond.getNumber() == 1) {
+            //直接跳转到ifTrueBlk
+            buildBrInst(sudo, belonging, ifTrue);
+        } else if (cond.isNum && cond.getNumber() == 0) {
+            buildBrInst(sudo, belonging, ifFalse);
+        } else {
+            buildBrInst(sudo, belonging, cond.getVariable(), ifTrue, ifFalse);
+        }
+
+    }
+
     /**
      * 建立一个条件跳转指令，形如：br i1 %4, label %5, label %6
      * <p>
@@ -200,24 +212,6 @@ public class IrBuilder {
         var trueVariable = new ConstValue(1, IrType.IrTypeID.BitTyID);
         LOGGER.fine("build not instruction: " + trueVariable.getName() + " in block: " + block.getName());
         return buildBinInstruction(block, op1, Operator.create(IrType.create(IrType.IrTypeID.BitTyID), Operator.OpCode.XOR), trueVariable);
-    }
-
-    /**
-     * 专门构建与或非等逻辑运算的函数。
-     * <p>
-     * 1. <font color='red'>等和不等运算</font>：直接build icmp instruction，得到的结果即为返回结果
-     * <p>
-     * 2. 与或运算：与0进行icmp之后，得到bit变量，再进行buildBinInst（and/or）得到bit的变量结果
-     *
-     * @param block 所属基本块
-     * @param a     左操作数
-     * @param b     右操作数
-     * @param op    操作码（{@link IcmpInstruction.Cond}）
-     * @return 返回一个result的Variable，这个Variable是<font color='red'>寄存器</font>，里面存放了结果
-     */
-    public Variable buildLogicInst(BasicBlock block, Variable a, IcmpInstruction.Cond op, Variable b) {
-        LOGGER.fine("build logic instruction: " + op + " in block: " + block.getName());
-        return buildCmpInst(block, a, op, b);
     }
 
     /**

@@ -72,10 +72,10 @@ public class Compiler {
     }
 
     private static void printLlvmIrAnswer() {
-        var fos = getFos("llvm_ir.txt");
         parser.setTokens(LexerImpl.getInstance().getAllTokens());
         ASTNode ast = parser.getAST();
         IrContext irContext = irTranslator.translate2LlvmIr(ast);
+        var fos = getFos("llvm_ir.txt");
 //        System.out.println(irContext.toIrCode());
         PrintStream ps = new PrintStream(fos);
         ps.println(irContext.toIrCode());

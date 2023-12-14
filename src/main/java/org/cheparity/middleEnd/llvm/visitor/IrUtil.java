@@ -495,7 +495,7 @@ class IrUtil {
                 };
             }
             default -> {
-                return calcAloExp(node); //这里就是应该直接返回，但是要在最终的出口返回的地方（函数调用的地方）判断
+                return calcAloExp(node);
             }
         }
     }
