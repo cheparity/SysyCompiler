@@ -184,7 +184,6 @@ public class IrBuilder {
      */
     public Variable buildNegInst(BasicBlock block, Variable register) {
         var zeroConst = new ConstValue(0, IrType.IrTypeID.Int32TyID);
-        assert zeroConst.getNumber().isEmpty();
         zeroConst.setNumber(0);
         LOGGER.fine("build neg instruction: " + zeroConst.getName() + " in block: " + block.getName());
         return buildBinInstruction(block, zeroConst, Operator.create(IrType.create(IrType.IrTypeID.Int32TyID), Operator.OpCode.SUB),
