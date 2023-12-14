@@ -12,6 +12,7 @@ import utils.CallBack;
 import utils.LoggerUtil;
 import utils.Message;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -220,25 +221,54 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         else builder.buildRetInstOfConst(basicBlock, res.getVariable());
     }
 
-    private NodeUnion visitCond(ASTNode node, AtomicReference<BasicBlock> block) {
+    private NodeUnion visitCond(ASTNode node, AtomicReference<BasicBlock> block,
+                                ArrayList<Message<CallBack<BasicBlock>>> messages) {
         //Cond -> LOrExp
         //LOrExp -> LAndExp | LOrExp '||' LAndExp
         //LAndExp -> EqExp | LAndExp '&&' EqExp
         var g = node.getGrammarType();
+        if (g == GrammarType.COND) {
+            return visitCond(node.getChild(0), block, messages);
+        }
         if (g == GrammarType.LOR_EXP || g == GrammarType.LAND_EXP) {
             if (node.getChildren().size() == 1) {
-                return visitCond(node.getChild(0), block);
+                return visitCond(node.getChild(0), block, messages);
             }
             var entryBlk = block.get();
-            var leftUnion = visitCond(node.getChild(0), block);
+            var leftUnion = visitCond(node.getChild(0), block, messages);
             var leftBlk = block.get();
-            var rightUnion = visitCond(node.getChild(2), block);
+            if (entryBlk == basicBlock) {
+                builder.buildBrInst(false, entryBlk, leftBlk);
+            }
+            var rightUnion = visitCond(node.getChild(2), block, messages);
             var rightBlk = block.get();
 //            builder.buildBrInst(false, entryBlk, leftBlk);
             if (g == GrammarType.LOR_EXP) {
-
+                var cond = new NodeUnion(node, builder, leftUnion.block);
+                if (leftUnion.isNum) cond.setNumber(leftUnion.getNumber());
+                else cond.setVariable(leftUnion.getVariable());
+                var callBack = new CallBack<BasicBlock>() {
+                    @Override
+                    public void run(BasicBlock finalBlk) {
+                        assert finalBlk != null;
+                        builder.buildBrInst(false, leftBlk, cond, finalBlk, rightBlk);
+                        LOGGER.info("execute callback of finalBlk " + finalBlk.getName());
+                    }
+                };
+                messages.add(new Message<>(callBack, "reqFinalBlk"));
             } else {
-
+                var cond = new NodeUnion(node, builder, leftUnion.block);
+                if (leftUnion.isNum) cond.setNumber(leftUnion.getNumber());
+                else cond.setVariable(leftUnion.getVariable());
+                var callBack = new CallBack<BasicBlock>() {
+                    @Override
+                    public void run(BasicBlock finalBlk) {
+                        assert finalBlk != null;
+                        builder.buildBrInst(false, leftBlk, cond, rightBlk, finalBlk);
+                        LOGGER.info("execute callback of finalBlk " + finalBlk.getName());
+                    }
+                };
+                messages.add(new Message<>(callBack, "reqFinalBlk"));
             }
             return leftUnion.setBlock(rightBlk).or(rightUnion.setBlock(rightBlk)).setBlock(rightBlk);
         }
@@ -271,7 +301,8 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         final ASTNode ifTrueNodeStmt = ifStmt.getChild(4);
 
         //如果cond可以直接判断，则没必要构建if的结构
-        NodeUnion condUnion = visitCond(condNode.getChild(0), new AtomicReference<>(entryBlock));
+        ArrayList<Message<CallBack<BasicBlock>>> messages = new ArrayList<>();
+        NodeUnion condUnion = visitCond(condNode, new AtomicReference<>(entryBlock), messages);
         if (condUnion.isNum) {
             int number = condUnion.getNumber();
             LOGGER.fine("Meet [ " + number + " ]. Jump to ifTrueBlk or elseBlk directly!");
@@ -309,12 +340,17 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         //在全部解析完ifTrueBlk, finalBlk, elseBlk之后，才可以buildBrInst
         if (elseBlk != null) {
             builder.buildBrInst(false, condBlk, cond, ifTrueBlk, elseBlk); //entryBlock 根据 条件 -> ifTrueBlk | elseBlk
-            builder.buildBrInst(false, ifTrueBlk, finalBlk); //ifTrueBlk -> finalBlk todo why? 应该是ifTrueBlk的最后一句！
+            builder.buildBrInst(false, ifTrueBlk, finalBlk); //ifTrueBlk -> finalBlk
             builder.buildBrInst(false, elseBlk, finalBlk); //elseBlk -> finalBlk
         } else {
             builder.buildBrInst(false, condBlk, cond, ifTrueBlk, finalBlk); //entryBlock 根据 条件 -> ifTrueBlk | finalBlk
             builder.buildBrInst(false, ifTrueBlk, finalBlk); //ifTrueBlk -> finalBlk
         }
+        for (var message : messages) {
+            CallBack<BasicBlock> callBack = message.get();
+            callBack.run(ifTrueBlk);
+        }
+
         //这里应该是调用者的basicBlock = finalBlock？
         // 其实可以通过传递caller的方式传递过来
         assert caller instanceof BlockController;

@@ -1,5 +1,7 @@
 package middleEnd.llvm.ir;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 /**
  * br i1 [cond], label [iftrue], label [iffalse]
  * <p>
@@ -8,10 +10,10 @@ package middleEnd.llvm.ir;
 public final class BrInstruction extends Instruction {
     final boolean isConditional;
 
-    final Variable cond;
-    final BasicBlock ifTrue;
-    final BasicBlock ifFalse;
-    final BasicBlock dest;
+    Variable cond;
+    AtomicReference<BasicBlock> ifTrue;
+    AtomicReference<BasicBlock> ifFalse;
+    AtomicReference<BasicBlock> dest;
 
     /**
      * Unconditional branch
@@ -23,8 +25,8 @@ public final class BrInstruction extends Instruction {
     BrInstruction(Variable cond, BasicBlock ifTrue, BasicBlock ifFalse) {
         this.isConditional = true;
         this.cond = cond;
-        this.ifTrue = ifTrue;
-        this.ifFalse = ifFalse;
+        this.ifTrue = new AtomicReference<>(ifTrue);
+        this.ifFalse = new AtomicReference<>(ifFalse);
         this.dest = null;
     }
 
@@ -38,7 +40,7 @@ public final class BrInstruction extends Instruction {
         this.cond = null;
         this.ifTrue = null;
         this.ifFalse = null;
-        this.dest = dest;
+        this.dest = new AtomicReference<>(dest);
     }
 
     @Override
@@ -47,10 +49,11 @@ public final class BrInstruction extends Instruction {
             assert cond != null;
             assert ifTrue != null;
             assert ifFalse != null;
-            return String.format("br i1 %s, label %s, label %s", cond.toIrCode(), ifTrue.getName(), ifFalse.getName());
+            return String.format("br i1 %s, label %s, label %s", cond.toIrCode(), ifTrue.get().getName(),
+                    ifFalse.get().getName());
         } else {
             assert dest != null;
-            return String.format("br label %s", dest.getName());
+            return String.format("br label %s", dest.get().getName());
         }
     }
 }

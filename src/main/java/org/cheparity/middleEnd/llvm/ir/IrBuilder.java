@@ -319,7 +319,6 @@ public class IrBuilder {
     }
 
     public Variable buildConstValue(int number, IrType.IrTypeID typeID) {
-        assert number == 0 || number == 1;
         LOGGER.fine("build const number: " + number + " of type: " + typeID.toIrCode());
         return new ConstValue(number, typeID);
     }
