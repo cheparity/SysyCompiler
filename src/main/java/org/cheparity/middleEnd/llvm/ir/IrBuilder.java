@@ -724,6 +724,14 @@ public class IrBuilder {
         return buildCmpInst(basicBlock, new ConstValue(0, typeID), IcmpInstruction.Cond.NE, rawVariable);
     }
 
+    public void toBitVariable(BasicBlock basicBlock, NodeUnion variableUnion) {
+        if (variableUnion.isNum) {
+            return; //不用转换
+        }
+        Variable bitVariable = toBitVariable(basicBlock, variableUnion.getVariable());
+        variableUnion.setVariable(bitVariable);
+    }
+
     public void removeBlock(BasicBlock belonging, BasicBlock removed, String reason) {
         LOGGER.info("Remove block " + removed.getName() + " from block " + belonging.getName() + " because " + reason);
         belonging.removeBlock(removed);
