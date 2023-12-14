@@ -11,14 +11,11 @@ import middleEnd.symbols.Symbol;
 import middleEnd.symbols.SymbolTable;
 import utils.LoggerUtil;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
-class IrUtil {
+public class IrUtil {
     private final static Logger LOGGER = LoggerUtil.getLogger();
     private final SymbolTable table;
     private final IrBuilder builder;
@@ -226,6 +223,32 @@ class IrUtil {
                 .setFather(blk);
 
         return stmt.replaceItselfAs(blk);
+    }
+
+    public static void unwrapAllLogicNodes(ASTNode node, LinkedList<ASTNode> exps) {
+        //Cond -> LOrExp
+        //LOrExp -> LAndExp | LOrExp '||' LAndExp
+        //LAndExp -> EqExp | LAndExp '&&' EqExp
+        //EqExp -> RelExp | EqExp ('==' | '!=') RelExp
+        //RelExp -> AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
+        GrammarType grammarType = node.getGrammarType();
+        switch (grammarType) {
+            case COND -> {
+                unwrapAllLogicNodes(node.getChild(0), exps);
+            }
+            case LOR_EXP, LAND_EXP -> {
+                if (node.getChildren().size() == 1) {
+                    unwrapAllLogicNodes(node.getChild(0), exps);
+                } else {
+                    unwrapAllLogicNodes(node.getChild(0), exps);
+                    exps.add(node.getChild(1));
+                    unwrapAllLogicNodes(node.getChild(2), exps);
+                }
+            }
+            case EQ_EXP -> {
+                exps.add(node);
+            }
+        }
     }
 
     public NodeUnion calcAloExp(ASTNode node) {

@@ -2,7 +2,7 @@
 
 int foo(int a, int b)
 {
-    if (b && a > b || b < 0 && a > 0)
+    if (b && a > b || b < 0 && a > 0 || b)
     {
         int c = a + b;
     }

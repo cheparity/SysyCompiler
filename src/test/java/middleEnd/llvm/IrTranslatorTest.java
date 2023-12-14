@@ -23,4 +23,11 @@ public class IrTranslatorTest extends TestCase {
         IrContext irContext = irTranslator.translate2LlvmIr(ast);
         System.out.println(irContext.toIrCode());
     }
+
+    public void testUnwrap() {
+        sysYParser.setTokens(LexerImpl.getInstance().getAllTokens());
+        ASTNode ast = sysYParser.getAST();
+        IrContext irContext = irTranslator.translate2LlvmIr(ast);
+//        IrUtil.unwrapAllLogicNodes(ast);
+    }
 }
