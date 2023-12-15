@@ -223,14 +223,6 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
                            AtomicReference<BasicBlock> successBlockAtom,
                            AtomicReference<BasicBlock> failBlockAtom
     ) {
-//        if (condNode==null) {
-//            //condition为null
-//            var condBlk = builder.buildBasicBlock(basicBlock,basicBlock.getSymbolTable()).setTag("cond");
-//            var successBlk = builder.buildBasicBlock(condBlk,basicBlock.getSymbolTable()).setTag("successBlk");
-//            ifTrueStmt.accept(new StmtVisitor(successBlk,this));
-//            var failBlk = builder.buildBasicBlock(basicBlock,symbolTable);
-//
-//        }
 
         LinkedList<ASTNode> expNodes = new LinkedList<>();
         IrUtil.unwrapAllLogicNodes(condNode, expNodes);
