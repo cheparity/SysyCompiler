@@ -34,10 +34,10 @@ public class IrBuilder {
     }
 
     public void buildBrInst(Boolean sudo, BasicBlock belonging, NodeUnion cond, BasicBlock ifTrue, BasicBlock ifFalse) {
-        if (cond.isNum && cond.getNumber() == 1) {
+        if (cond.isNum && cond.getNumber() != 0) {
             //直接跳转到ifTrueBlk
             buildBrInst(sudo, belonging, ifTrue);
-        } else if (cond.isNum && cond.getNumber() == 0) {
+        } else if (cond.isNum) {
             buildBrInst(sudo, belonging, ifFalse);
         } else {
             buildBrInst(sudo, belonging, cond.getVariable(), ifTrue, ifFalse);

@@ -24,7 +24,7 @@ public class BasicBlock extends Value {
      * 应该在{@link middleEnd.llvm.visitor.BlockVisitor}里设置
      */
     private SymbolTable symbolTable;
-    
+
 
     BasicBlock(String name) {
         super(IrType.create(IrType.IrTypeID.LabelTyID), name);
@@ -171,5 +171,13 @@ public class BasicBlock extends Value {
     public boolean endWithRet() {
         if (this.getInstructionList().isEmpty()) return false;
         return this.getInstructionList().getLast() instanceof RetInstruction;
+    }
+
+    @Override
+    public String toString() {
+        return "BasicBlock{" +
+                "tags=" + tags +
+                ", name=" + this.getName() +
+                '}';
     }
 }
