@@ -218,10 +218,23 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
     }
 
     //引入message机制
-    private NodeUnion visitCond(ASTNode node, AtomicReference<BasicBlock> condBlock) {
+    private void visitCond(ASTNode condNode,
+                           AtomicReference<BasicBlock> successBlockAtom,
+                           AtomicReference<BasicBlock> failBlockAtom,
+                           ASTNode ifTrueStmt
+    ) {
+//        if (condNode==null) {
+//            //condition为null
+//            var condBlk = builder.buildBasicBlock(basicBlock,basicBlock.getSymbolTable()).setTag("cond");
+//            var successBlk = builder.buildBasicBlock(condBlk,basicBlock.getSymbolTable()).setTag("successBlk");
+//            ifTrueStmt.accept(new StmtVisitor(successBlk,this));
+//            var failBlk = builder.buildBasicBlock(basicBlock,symbolTable);
+//
+//        }
+
         LinkedList<ASTNode> expNodes = new LinkedList<>();
-        IrUtil.unwrapAllLogicNodes(node, expNodes);
-        BasicBlock nowBlk = null, successBlk;
+        IrUtil.unwrapAllLogicNodes(condNode, expNodes);
+        BasicBlock nowBlk = null, successBlk, failBlk;
         BasicBlock[] blkList = new BasicBlock[expNodes.size()];
         NodeUnion[] condUnions = new NodeUnion[expNodes.size()]; //与blkList是伴生的关系
 
@@ -244,8 +257,11 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
             }
         }
         assert nowBlk != null;
-        successBlk = builder.buildBasicBlock(nowBlk, nowBlk.getSymbolTable()).setTag("condFinal");
-//        finalBlk = blkList[blkList.length - 1].setTag("condFinal");
+        successBlk = builder.buildBasicBlock(nowBlk, nowBlk.getSymbolTable()).setTag("successBlk");
+        if (ifTrueStmt != null) {
+            ifTrueStmt.accept(new StmtVisitor(successBlk, this));
+        }
+        failBlk = builder.buildBasicBlock(nowBlk, nowBlk.getSymbolTable()).setTag("failBlk");
 
         //再构建br
         for (int i = 0; i < expNodes.size(); i++) {
@@ -256,64 +272,49 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
                 int j;
                 var belonging = blkList[i - 1];
                 var cond = condUnions[i - 1];
-                var ifTureBlk = blkList[i + 1];
+                var ifTureBlk = blkList[i + 1]; //继续解析&&后的块
                 for (j = i; j < expNodes.size() && expNodes.get(j).getGrammarType() != GrammarType.LOGICAL_OR; j++) ;
-                var ifFalseBlk = (j >= expNodes.size()) ? successBlk : blkList[j + 1]; //todo problem
+                var ifFalseBlk = (j >= expNodes.size()) ? failBlk : blkList[j + 1];
                 builder.buildBrInst(false, belonging, cond, ifTureBlk, ifFalseBlk); //finalBlk一般是ifTrue的Blk！！
             } else {
                 var belonging = blkList[i - 1];
-                var ifFalseBlk = blkList[i + 1];
+                var ifFalseBlk = blkList[i + 1]; //成功跳转success，失败则继续解析||右边的块
                 var cond = condUnions[i - 1];
-                //失败则跳转到下一个
                 builder.buildBrInst(false, belonging, cond, successBlk, ifFalseBlk);
             }
         }
 
         //remove finalBlk
-        builder.removeBlock(nowBlk, successBlk, "visit cond");
-        condBlock.set(blkList[blkList.length - 1].setTag("condLast")); //返回的却是最后一个块
-        return condUnions[expNodes.size() - 1]; //和最后一个块的条件语句
+//        condBlockAtom.set(blkList[blkList.length - 1].setTag("condLast")); //返回是最后一个块
+        successBlockAtom.set(successBlk);
+        failBlockAtom.set(failBlk);
+//        return condUnions[expNodes.size() - 1]; //和最后一个块的条件语句
     }
 
     //Stmt -> 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
     private void visitIfStmt(ASTNode ifStmt) {
-
-        //Cond -> LOrExp
-        //LOrExp -> LAndExp | LOrExp '||' LAndExp
-        //LAndExp -> EqExp | LAndExp '&&' EqExp
-        //EqExp -> RelExp | EqExp ('==' | '!=') RelExp
-        //RelExp -> AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
-        BasicBlock ifTrueBlk, finalBlk, elseBlk = null, entryBlock = basicBlock;
+        BasicBlock ifTrueBlk, finalBlk, elseBlk, entryBlock = basicBlock;
         final boolean hasElseStmt = ifStmt.deepDownFind(GrammarType.ELSE, 1).isPresent();
         final ASTNode condNode = ifStmt.getChild(2);
         final ASTNode ifTrueNodeStmt = ifStmt.getChild(4);
 
-        AtomicReference<BasicBlock> condBlkAtom = new AtomicReference<>();
+        AtomicReference<BasicBlock> ifTrueBlkAtom = new AtomicReference<>();
+        AtomicReference<BasicBlock> ifFalseBlkAtom = new AtomicReference<>();
         //如果cond可以直接判断，则没必要构建if的结构
-        var condUnion = visitCond(condNode, condBlkAtom);
-        BasicBlock condBlk = condBlkAtom.get();
-
-        //需要把stmt包装为block => 需要新建一个block
-        ifTrueBlk = builder.buildBasicBlock(basicBlock).setTag("ifTrue");
-        ifTrueNodeStmt.accept(new StmtVisitor(ifTrueBlk, this)); //此时如果是break或者continue，则还不知道，要visit完for stmt之后才能知道跳转到哪里
-        //所以不用管
+        visitCond(condNode, ifTrueBlkAtom, ifFalseBlkAtom, ifTrueNodeStmt);
+        //if True
+        ifTrueBlk = ifTrueBlkAtom.get().setTag("ifTrue");
+        //else
         if (hasElseStmt) {
-//            ASTNode elseStmt = IrUtil.wrapStmtAsBlock(ifStmt.getChild(-1), symbolTable);
             var elseStmt = ifStmt.getChild(-1);
-            elseBlk = builder.buildBasicBlock(basicBlock).setTag("else");
+            elseBlk = ifFalseBlkAtom.get().setTag("else");
             elseStmt.accept(new StmtVisitor(elseBlk, this));
-            //需要给elseBlk增加br语句
-        }
-        finalBlk = builder.buildBasicBlock(basicBlock, basicBlock.getSymbolTable()).setTag("ifEnd");//新建一个基本块
-
-        //在全部解析完ifTrueBlk, finalBlk, elseBlk之后，才可以buildBrInst
-        if (elseBlk != null) {
-            builder.buildBrInst(false, condBlk, condUnion, ifTrueBlk, elseBlk); //entryBlock 根据 条件 -> ifTrueBlk | elseBlk
-            builder.buildBrInst(false, ifTrueBlk, finalBlk); //ifTrueBlk -> finalBlk
-            builder.buildBrInst(false, elseBlk, finalBlk); //elseBlk -> finalBlk
+            finalBlk = builder.buildBasicBlock(basicBlock, basicBlock.getSymbolTable()).setTag("ifEnd");//新建一个基本块
+            builder.buildBrInst(false, ifTrueBlk, finalBlk);
+            builder.buildBrInst(false, elseBlk, finalBlk);
         } else {
-            builder.buildBrInst(false, condBlk, condUnion, ifTrueBlk, finalBlk); //entryBlock 根据 条件 -> ifTrueBlk | finalBlk
-            builder.buildBrInst(false, ifTrueBlk, finalBlk); //ifTrueBlk -> finalBlk
+            finalBlk = ifFalseBlkAtom.get().setTag("ifEnd");
+            builder.buildBrInst(false, ifTrueBlk, finalBlk);
         }
 
         //这里应该是调用者的basicBlock = finalBlock？
@@ -337,72 +338,51 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
         var loopStmt = forStmt.getChild(-1);
         LOGGER.info("get forStmt1: " + forStmt1 + " cond: " + cond + " forStmt2: " + forStmt2);
 
+        var entryBlk = basicBlock.setTag("beforeFor");
+
         //处理forStmt1 => 只有它，不用新建一个基本块
         if (forStmt1 != null) {
             // ForStmt -> LVal '=' Exp，是Stmt的一种特殊情况
             forStmt1.accept(new StmtVisitor(basicBlock, this));
         }
 
-        BasicBlock condBlk, loopStartBlk, forStmt2Blk, finalBlk, loopEndBlk, beforeForBlk;
-        beforeForBlk = basicBlock.setTag("beforeFor");
-        //cond begin
-        //处理condition
-//        Variable condVariable; //不能优化！后面会变！！
-//        if (cond != null) {
-//            AtomicReference<BasicBlock> condBlkAtom = new AtomicReference<>();
-//            var nodeUnion = visitCond(cond, condBlkAtom);
-//            condBlk = condBlkAtom.get();
-//            //如果是数字，这下真说明是常量了
-//            if (nodeUnion.isNum && nodeUnion.getNumber() == 0) {
-//                condVariable = builder.buildConstValue(0, IrType.IrTypeID.Int32TyID);
-////                builder.removeBlock(basicBlock, condBlk, "condition is const 0");
-////                return;
-//            } else if (!nodeUnion.isNum) {
-//                condVariable = nodeUnion.getVariable();
-//            } else { //nodeUnion.isNum && nodeUnion.getNumber() == 1
-//                condVariable = builder.buildConstValue(1, IrType.IrTypeID.BitTyID);
-//            }
-//            condBlk = nodeUnion.block; //todo 最后是nodeUnion的block
-//        } else {
-//            condVariable = builder.buildConstValue(1, IrType.IrTypeID.BitTyID);
-//            condBlk = builder.buildBasicBlock(basicBlock, symbolTable).setTag("cond");
-//        }
-//        condVariable = builder.toBitVariable(condBlk, condVariable);
-        //cond end
-        //处理loop循环体
-        //此时basicBlock的意义还是beforeForBlk，即for语句所在的块
+        BasicBlock forStmt2Blk, finalBlk; //必建块
 
+        if (cond == null) {
+            //1 构建loopStart循环块
+            //2 从entryBlock跳转到loopStart
+            //3 从loop跳转到forStmt2块，其中forStmt2块，有没有都得建立
+            //4 forStmt2块跳转到loopStart（因为没有condition）
+            BasicBlock loopStartBlk = builder.buildBasicBlock(entryBlk);
+            loopStmt.accept(new StmtVisitor(loopStartBlk, this));
 
-        //处理cond（新）
-        NodeUnion condUnion;
-        AtomicReference<BasicBlock> condBlkAtom = new AtomicReference<>();
-        if (cond != null) {
-            condUnion = visitCond(cond, condBlkAtom);
-            condBlk = condBlkAtom.get();
+            BasicBlock loopEndBlk = basicBlock.setTag("loopEnd");
+            forStmt2Blk = builder.buildBasicBlock(loopEndBlk);
+            if (forStmt2 != null) {
+                forStmt2.accept(new StmtVisitor(forStmt2Blk, this));
+            }
+            builder.buildBrInst(false, entryBlk, loopStartBlk);
+            builder.buildBrInst(false, loopEndBlk, forStmt2Blk);
+            builder.buildBrInst(false, forStmt2Blk, loopStartBlk);
         } else {
-            condUnion = new NodeUnion(null, builder, basicBlock).setNumber(1);
-            condBlk = builder.buildBasicBlock(basicBlock, basicBlock.getSymbolTable());
+            //cond != null
+            AtomicReference<BasicBlock> loopStartBlkAtom = new AtomicReference<>();
+            AtomicReference<BasicBlock> forStmt2BlkAtom = new AtomicReference<>();
+            visitCond(cond, loopStartBlkAtom, forStmt2BlkAtom, loopStmt);
+            BasicBlock loopEndBlk = loopStartBlkAtom.get().setTag("loopEnd");
+            forStmt2Blk = forStmt2BlkAtom.get();
+            if (forStmt2 != null) {
+                forStmt2.accept(new StmtVisitor(forStmt2Blk, this));
+            }
+//            builder.buildBrInst(false, entryBlk, loopStartBlk); //已经在cond里做过了
+            builder.buildBrInst(false, loopEndBlk, forStmt2Blk);
+            builder.buildBrInst(false, forStmt2Blk, loopStartBlk);
         }
 
-        loopStartBlk = builder.buildBasicBlock(condBlk, symbolTable).setTag("forBody");
-        loopStmt.accept(new StmtVisitor(loopStartBlk, this));
 
-        //处理forStmt2
-        forStmt2Blk = builder.buildBasicBlock(loopStartBlk, symbolTable).setTag("forStmt2");
-        if (forStmt2 != null) {
-            forStmt2.accept(new StmtVisitor(forStmt2Blk, this));
-        }
+        finalBlk = builder.buildBasicBlock(forStmt2Blk, entryBlk.getSymbolTable());
 
-        //此时basicBlock可能会改变，由原先的“for语句所在的块”，变为“loop语句的结束块”
-        //当然如果没有改变的话，还是for语句所在的块。我们需要将其改为loop所在的块（loopStartBlk）作为“loop语句结束的块”
-        if (basicBlock == beforeForBlk) {
-            loopEndBlk = loopStartBlk.setTag("loopEnd");
-        } else {
-            loopEndBlk = basicBlock.setTag("loopEnd");
-        }
-
-        finalBlk = builder.buildBasicBlock(condBlk, beforeForBlk.getSymbolTable()).setTag("forEnd");
-        //新建一个基本块
+        //处理一下消息
         if (!this.messages.isEmpty()) {
             LOGGER.info("handle message list of " + this.messages.size() + " messages");
             messages.stream().filter(message -> message.request.equals("breakReq")).toList().forEach(message -> {
@@ -415,14 +395,10 @@ public final class StmtVisitor implements ASTNodeVisitor, BlockController {
                 messages.remove(message);
             });
         }
-        builder.buildBrInst(false, beforeForBlk, condBlk); //cond处理完了，basicBlock直接跳，因为后面basicBlock可能会更改
-        builder.buildBrInst(false, condBlk, condUnion, loopStartBlk, finalBlk); //(new) 直接用condUnion判断
-        builder.buildBrInst(false, forStmt2Blk, condBlk);
-        builder.buildBrInst(false, loopEndBlk, forStmt2Blk);
+
         //最后把caller的basicBlock设为finalBlk
         assert caller instanceof BlockVisitor;
         ((BlockVisitor) caller).updateVisitingBlk(finalBlk);
-
     }
 
     @Override
