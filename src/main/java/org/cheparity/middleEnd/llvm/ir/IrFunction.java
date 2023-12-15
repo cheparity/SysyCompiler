@@ -90,7 +90,7 @@ public final class IrFunction extends GlobalValue implements GlobalObjects {
             if (i < getBlockList().size() - 1 && !now.endWithRet() && !now.endWithBr()) {
                 //补上br语句
                 var nextBlk = getBlock(i + 1);
-                now.addInstruction(new BrInstruction(nextBlk));
+//                now.addInstruction(new BrInstruction(nextBlk));
                 LOGGER.warning("Basic block " + now.getName() + " isn't end with br. Add br instruction to " + nextBlk.getName());
             }
             sb.append(now.toIrCode());
