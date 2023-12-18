@@ -1,5 +1,6 @@
 package middleEnd.llvm.ir;
 
+import middleEnd.os.MipsPrintable;
 import middleEnd.symbols.SymbolTable;
 import utils.LoggerUtil;
 
@@ -7,7 +8,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.logging.Logger;
 
-public class BasicBlock extends Value {
+public class BasicBlock extends Value implements MipsPrintable {
     private final static Logger LOGGER = LoggerUtil.getLogger();
     private final LinkedList<BasicBlock> predecessors = new LinkedList<>();
     private final LinkedList<BasicBlock> successors = new LinkedList<>();
@@ -85,8 +86,8 @@ public class BasicBlock extends Value {
 
 
     boolean isEntryBlock() {
-        if (getFunction() == null) return false;
-        return getFunction().getEntryBlock() == this;
+        if (getFunction() == null) return true;
+        return getFunction().getEntryBlock() != this;
     }
 
     public SymbolTable getSymbolTable() {
@@ -138,7 +139,7 @@ public class BasicBlock extends Value {
     public String toIrCode() {
         var sb = new StringBuilder();
         //如果不是entryBlock，则需要打印label
-        if (!isEntryBlock()) {
+        if (isEntryBlock()) {
             sb.append(getName().substring(1)).append(":");
             if (!tags.isEmpty()) {
                 sb.append("\t; ");
@@ -179,5 +180,18 @@ public class BasicBlock extends Value {
                 "tags=" + tags +
                 ", name=" + this.getName() +
                 '}';
+    }
+
+    @Override
+    public String toMipsCode() {
+        var sb = new StringBuilder();
+        //如果不是entryBlock，则需要打印label
+        if (isEntryBlock()) {
+            sb.append(getName().substring(1)).append(":");
+            sb.append("\n");
+        }
+        getInstructionList().forEach(inst -> sb.append('\t').append(inst.toMipsCode()).append("\n"));
+        sb.append("\n");
+        return sb.toString();
     }
 }

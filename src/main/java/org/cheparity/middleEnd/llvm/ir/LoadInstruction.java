@@ -1,5 +1,7 @@
 package middleEnd.llvm.ir;
 
+import middleEnd.llvm.MipsRegisterAllocator;
+
 /**
  * [result] = load [(optional)volatile] [ty], ptr [pointer]
  */
@@ -18,5 +20,13 @@ public final class LoadInstruction extends Instruction {
     @Override
     public String toIrCode() {
         return result.toIrCode() + " = load " + type.toIrCode() + ", " + pointerValue.getType().toIrCode() + "* " + pointerValue.getName();
+    }
+
+    @Override
+    public String toMipsCode() {
+        var sb = new StringBuilder();
+        Integer offset = MipsRegisterAllocator.getMemOff(pointerValue.getName());
+
+        return null;
     }
 }

@@ -1,4 +1,4 @@
-package backend.mips.os;
+package middleEnd.os;
 
 public interface MipsPrintable {
     String toMipsCode();

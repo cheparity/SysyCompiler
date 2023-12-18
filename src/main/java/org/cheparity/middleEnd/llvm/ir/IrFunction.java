@@ -1,23 +1,25 @@
 package middleEnd.llvm.ir;
 
+import middleEnd.llvm.MipsRegisterAllocator;
+import middleEnd.os.MipsPrintable;
 import utils.LoggerUtil;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
-public final class IrFunction extends GlobalValue implements GlobalObjects {
+public final class IrFunction extends GlobalValue implements GlobalObjects, MipsPrintable {
     private final static Logger LOGGER = LoggerUtil.getLogger();
     private final List<Argument> arguments = new ArrayList<>();
     private final IrType returnType;
-    private final Module module; //所属module
     private final List<BasicBlock> blockList = new ArrayList<>();
+    private final MipsRegisterAllocator mipsRegisterAllocator = new MipsRegisterAllocator();
     private BasicBlock entryBlock;
 
     IrFunction(IrType type, String name, Module module) {
         super(type, name);
         this.returnType = type;
-        this.module = module;
+        //所属module
     }
 
     void insertArgument(Argument argument) {
@@ -96,9 +98,26 @@ public final class IrFunction extends GlobalValue implements GlobalObjects {
             sb.append(now.toIrCode());
         }
 
-        //如果没有ret，则需要补上ret，否则过不了llvm的编译。那就默认ret void / ret i32 0
         sb.append("}");
         return sb.toString();
     }
 
+    @Override
+    public String toMipsCode() {
+        toIrCode(); //确保一下该加的指令都加上了
+        var sb = new StringBuilder();
+        sb.append(".global ").append(this.getName().substring(1)).append('\n');
+        sb.append(this.getName().substring(1)).append(":\n");
+//        addiu	$sp, $sp, -8
+//        sb.append("\taddiu\t$sp, $sp, -8\n");
+        //需要把sp存在fp里
+        getBlockList().forEach(block -> {
+            sb.append(block.toMipsCode());
+        });
+        MipsRegisterAllocator.resetMem();
+//        addiu	$sp, $sp, 8
+//        sb.append("\taddiu\t$sp, $sp, 8\n\n");
+
+        return sb.toString();
+    }
 }

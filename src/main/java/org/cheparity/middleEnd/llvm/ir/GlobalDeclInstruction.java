@@ -81,4 +81,39 @@ public final class GlobalDeclInstruction extends Instruction {
         }
         return sb.toString();
     }
+
+    @Override
+    public String toMipsCode() {
+        var sb = new StringBuilder();
+        var name = variable.getName();
+        var type = variable.getType();
+        sb.append(name).append(": .word ");
+        Integer[] numbers = variable.getNumber();
+        if (type.isArray()) {
+            if (numbers == null) {
+                var size = type.getSize();
+                for (int i = 0; i < size; i++) {
+                    if (i != 0) {
+                        sb.append(", ");
+                    }
+                    sb.append("0");
+                }
+            } else {
+                for (int i = 0; i < numbers.length; i++) {
+                    if (i != 0) {
+                        sb.append(", ");
+                    }
+                    sb.append(variable.number[i]);
+                }
+            }
+        } else {
+            //是数字
+            if (numbers == null) {
+                sb.append("0");
+            } else {
+                sb.append(numbers[0]);
+            }
+        }
+        return sb.toString();
+    }
 }

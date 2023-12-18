@@ -1,5 +1,7 @@
 package middleEnd.llvm.ir;
 
+import middleEnd.llvm.MipsRegisterAllocator;
+
 /**
  * [resultIdentifier] = alloca [allocType]
  * <p>
@@ -17,5 +19,13 @@ public final class AllocaInstruction extends Instruction {
     @Override
     public String toIrCode() {
         return String.format("%s = %s %s", operand.getName(), "alloca", operand.getType().toIrCode());
+    }
+
+    @Override
+    public String toMipsCode() {
+        var sb = new StringBuilder();
+        int offset = MipsRegisterAllocator.allocaMem(operand.getName());
+        sb.append("addiu\t$sp, $sp, ").append(offset);
+        return sb.toString();
     }
 }

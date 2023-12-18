@@ -1,10 +1,12 @@
 package middleEnd.llvm.ir;
 
+import middleEnd.os.MipsPrintable;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class Module extends Value {
+public class Module extends Value implements MipsPrintable {
     List<IrFunction> irFunctions = new ArrayList<>();
     List<GlobalValue> globalValues = new ArrayList<>();
     List<Instruction> globalInstructions = new ArrayList<>();
@@ -39,7 +41,6 @@ public class Module extends Value {
     @Override
     public String toIrCode() {
         StringBuilder sb = new StringBuilder();
-//        sb.append(HEADER);
         for (var gloInst : globalInstructions) {
             sb.append(gloInst.toIrCode()).append("\n");
         }
@@ -51,4 +52,22 @@ public class Module extends Value {
         return sb.toString();
     }
 
+    @Override
+    public String toMipsCode() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(".data:\n");
+        for (var gloInst : globalInstructions) {
+            if (gloInst instanceof GlobalDeclInstruction) {
+                sb.append('\t').append(gloInst.toMipsCode()).append("\n");
+            }
+        }
+        sb.append('\n');
+        for (IrFunction irFunction : irFunctions) {
+            if (irFunction.getEntryBlock() == null) continue; //decl的函数
+            sb.append(irFunction.toMipsCode()).append("\n");
+        }
+        sb.append('\n');
+        sb.append(".text\n\tjal main\n\tli $v0 10\n\tsyscall");
+        return sb.toString();
+    }
 }

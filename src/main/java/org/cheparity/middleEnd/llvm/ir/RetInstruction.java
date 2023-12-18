@@ -25,6 +25,14 @@ public final class RetInstruction extends Instruction {
         if (retVoid) {
             return "ret void";
         }
+        assert retValue != null;
         return "ret " + retValue.getType().toIrCode() + " " + retValue.toIrCode();
+    }
+
+    @Override
+    public String toMipsCode() {
+//        jr	$ra
+//        nop
+        return "jr\t$ra\n\tnop\n";
     }
 }

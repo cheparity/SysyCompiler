@@ -1,5 +1,7 @@
 package middleEnd.llvm;
 
+import middleEnd.RegisterAllocator;
+
 public final class SSARegisterAllocator implements RegisterAllocator {
     int register = -1;
 
@@ -10,7 +12,7 @@ public final class SSARegisterAllocator implements RegisterAllocator {
     }
 
     @Override
-    public void rewind() {
+    public void reset() {
         register--;
     }
 

@@ -23,6 +23,11 @@ public class IcmpInstruction extends Instruction {
         return String.format("%s = icmp %s %s %s, %s", result.toIrCode(), cond.toIrCode(), op1.getType().toIrCode(), op1.toIrCode(), op2.toIrCode());
     }
 
+    @Override
+    public String toMipsCode() {
+        return null;
+    }
+
     public enum Cond implements IrPrintable {
         /**
          * equal
@@ -74,5 +79,7 @@ public class IcmpInstruction extends Instruction {
         public String toIrCode() {
             return this.value;
         }
+
+
     }
 }

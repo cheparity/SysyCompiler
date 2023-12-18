@@ -6,7 +6,7 @@ import frontEnd.parser.dataStruct.ASTLeaf;
 import frontEnd.parser.dataStruct.ASTNode;
 import frontEnd.parser.dataStruct.GrammarType;
 import frontEnd.parser.impl.RecursiveDescentParser;
-import middleEnd.llvm.IrTranslator;
+import middleEnd.CodeTranslator;
 import middleEnd.llvm.ir.IrContext;
 import utils.LoggerUtil;
 
@@ -18,7 +18,7 @@ public class Compiler {
     private static final Logger LOGGER = LoggerUtil.getLogger();
     private static final SysYLexer lexer = LexerImpl.getInstance();
     private static final SysYParser parser = RecursiveDescentParser.getInstance();
-    private static final IrTranslator irTranslator = IrTranslator.getInstance();
+    private static final CodeTranslator CODE_TRANSLATOR = CodeTranslator.getInstance();
 
     public static void main(String[] args) {
 //        printLexAnswer();
@@ -74,7 +74,7 @@ public class Compiler {
     private static void printLlvmIrAnswer() {
         parser.setTokens(LexerImpl.getInstance().getAllTokens());
         ASTNode ast = parser.getAST();
-        IrContext irContext = irTranslator.translate2LlvmIr(ast);
+        IrContext irContext = CODE_TRANSLATOR.translate2LlvmIr(ast);
         var fos = getFos("llvm_ir.txt");
 //        System.out.println(irContext.toIrCode());
         PrintStream ps = new PrintStream(fos);

@@ -54,4 +54,9 @@ public final class BrInstruction extends Instruction {
             return String.format("br label %s", dest.getName());
         }
     }
+
+    @Override
+    public String toMipsCode() {
+        return null;
+    }
 }

@@ -1,11 +1,12 @@
 package middleEnd.llvm.ir;
 
 import middleEnd.os.IrPrintable;
+import middleEnd.os.MipsPrintable;
 import utils.LoggerUtil;
 
 import java.util.logging.Logger;
 
-public class IrContext implements IrPrintable {
+public class IrContext implements IrPrintable, MipsPrintable {
     private static final Logger LOGGER = LoggerUtil.getLogger();
     Module irModule;
 
@@ -22,7 +23,10 @@ public class IrContext implements IrPrintable {
     }
 
     public IrPrintable[] getGlobalVarDeclInsts() {
-        return this.irModule.globalInstructions.stream().filter(irPrintable -> irPrintable instanceof GlobalDeclInstruction).toList().toArray(new IrPrintable[0]);
+        return this.irModule.globalInstructions.stream()
+                .filter(irPrintable -> irPrintable instanceof GlobalDeclInstruction)
+                .toList()
+                .toArray(new IrPrintable[0]);
     }
 
     public IrPrintable[] getFunctions() {
@@ -32,5 +36,10 @@ public class IrContext implements IrPrintable {
     @Override
     public String toIrCode() {
         return irModule.toIrCode();
+    }
+
+    @Override
+    public String toMipsCode() {
+        return irModule.toMipsCode();
     }
 }

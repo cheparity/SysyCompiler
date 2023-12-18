@@ -19,4 +19,9 @@ public final class ZextInstruction extends Instruction {
                 result.getType().getBasicType().toIrCode()
         );
     }
+
+    @Override
+    public String toMipsCode() {
+        return null;
+    }
 }

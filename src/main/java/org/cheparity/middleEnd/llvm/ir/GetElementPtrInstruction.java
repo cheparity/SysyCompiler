@@ -27,4 +27,9 @@ public final class GetElementPtrInstruction extends Instruction {
         }
         return str1 + str2;
     }
+
+    @Override
+    public String toMipsCode() {
+        return null;
+    }
 }

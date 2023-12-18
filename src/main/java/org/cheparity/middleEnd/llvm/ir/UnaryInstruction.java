@@ -7,4 +7,8 @@ public class UnaryInstruction extends Instruction {
     Variable op;
     Operator operator;
 
+    @Override
+    public String toMipsCode() {
+        return null;
+    }
 }

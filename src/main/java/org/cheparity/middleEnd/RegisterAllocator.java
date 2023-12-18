@@ -1,7 +1,8 @@
-package middleEnd.llvm;
+package middleEnd;
 
 public interface RegisterAllocator {
+
     String allocate();
 
-    void rewind();
+    void reset();
 }

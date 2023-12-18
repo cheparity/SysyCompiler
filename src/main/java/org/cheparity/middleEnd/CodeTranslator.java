@@ -1,4 +1,4 @@
-package middleEnd.llvm;
+package middleEnd;
 
 import frontEnd.parser.dataStruct.ASTNode;
 import middleEnd.llvm.ir.IrBuilder;
@@ -10,17 +10,17 @@ import utils.LoggerUtil;
 
 import java.util.logging.Logger;
 
-public class IrTranslator {
+public final class CodeTranslator {
     public static final IrContext context = new IrContext();
     private final static Logger LOGGER = LoggerUtil.getLogger();
-    private static IrTranslator instance;
+    private static CodeTranslator instance;
 
-    private IrTranslator() {
+    private CodeTranslator() {
     }
 
-    public static IrTranslator getInstance() {
+    public static CodeTranslator getInstance() {
         if (instance == null) {
-            instance = new IrTranslator();
+            instance = new CodeTranslator();
             return instance;
         }
         return instance;
@@ -41,6 +41,7 @@ public class IrTranslator {
         node.accept(new FuncVisitor(module));
         return context;
     }
+
 
 }
 

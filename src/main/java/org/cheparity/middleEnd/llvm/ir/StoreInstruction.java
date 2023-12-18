@@ -1,5 +1,7 @@
 package middleEnd.llvm.ir;
 
+import middleEnd.llvm.MipsRegisterAllocator;
+
 /**
  * store [ty] [value], [ty]* [pointer]
  * <p>
@@ -24,5 +26,13 @@ public final class StoreInstruction extends Instruction {
     @Override
     public String toIrCode() {
         return "store " + value.getType().toIrCode() + " " + value.toIrCode() + ", " + pointerValue.getType().toIrCode() + "* " + pointerValue.getName();
+    }
+
+    @Override
+    public String toMipsCode() {
+        String name = pointerValue.getName();
+        Integer memOff = MipsRegisterAllocator.getMemOff(name);
+//        String.format("sw\t%s, %s($sp)",)
+        return null;
     }
 }

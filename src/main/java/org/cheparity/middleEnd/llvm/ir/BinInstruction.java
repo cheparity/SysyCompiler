@@ -35,4 +35,11 @@ public final class BinInstruction extends Instruction {
     public IrType getType() {
         return type;
     }
+
+    @Override
+    public String toMipsCode() {
+        //就是 load 两个操作数，计算结果，然后 store 回这条指令的位置
+        
+        return null;
+    }
 }

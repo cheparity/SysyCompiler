@@ -1,6 +1,9 @@
 package middleEnd.llvm.ir;
 
-abstract class Instruction extends User {
+import middleEnd.os.MipsPrintable;
+
+abstract class Instruction extends User implements MipsPrintable {
+    protected IrFunction function;
 
     Instruction() {
         super(IrType.create(IrType.IrTypeID.VoidTyID));

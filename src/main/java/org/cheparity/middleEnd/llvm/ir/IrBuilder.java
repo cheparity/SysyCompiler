@@ -1,7 +1,7 @@
 package middleEnd.llvm.ir;
 
-import middleEnd.llvm.IrTranslator;
-import middleEnd.llvm.RegisterAllocator;
+import middleEnd.CodeTranslator;
+import middleEnd.RegisterAllocator;
 import middleEnd.llvm.utils.NodeUnion;
 import middleEnd.symbols.FuncSymbol;
 import middleEnd.symbols.SymbolTable;
@@ -650,7 +650,7 @@ public class IrBuilder {
             }
         }
 
-        IrContext context = IrTranslator.context;
+        IrContext context = CodeTranslator.context;
         Module module = context.getIrModule();
         IrFunction func = module.getFunc("@" + funName);
         if (func.getReturnType().getBasicType() == IrType.IrTypeID.VoidTyID) {
@@ -665,7 +665,7 @@ public class IrBuilder {
     }
 
     public Variable buildCallCoreInst(BasicBlock block, String funName, Variable... paramVariables) {
-        IrContext context = IrTranslator.context;
+        IrContext context = CodeTranslator.context;
         Module module = context.getIrModule();
         IrFunction func = module.getFunc("@" + funName);
         if (func.getReturnType().getBasicType() == IrType.IrTypeID.VoidTyID) {
@@ -680,7 +680,7 @@ public class IrBuilder {
     }
 
     private void buildVoidCallInst(BasicBlock block, String funName, Variable... paramVariables) {
-        IrContext context = IrTranslator.context;
+        IrContext context = CodeTranslator.context;
         Module module = context.getIrModule();
         IrFunction func = module.getFunc("@" + funName);
         CallInstruction callInstruction = new CallInstruction(func, paramVariables);
@@ -735,6 +735,6 @@ public class IrBuilder {
     public void removeBlock(BasicBlock belonging, BasicBlock removed, String reason) {
         LOGGER.info("Remove block " + removed.getName() + " from block " + belonging.getName() + " because " + reason);
         belonging.removeBlock(removed);
-        allocator.rewind();
+        allocator.reset();
     }
 }

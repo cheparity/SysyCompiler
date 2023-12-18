@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.Optional;
 import java.util.logging.Logger;
 
-public class LexerImpl implements SysYLexer {
+public final class LexerImpl implements SysYLexer {
     private final static Logger LOGGER = LoggerUtil.getLogger();
     private final static SysYLexer LEXER_INSTANCE = new LexerImpl();
     private final static String FILENAME = "./testfile.txt";
@@ -50,7 +50,6 @@ public class LexerImpl implements SysYLexer {
      *
      * @return The next word.
      */
-    @Override
     public Optional<Token> next() {
         String rawSym = null;
         for (; curPos < SOURCE_LEN; curPos++) {

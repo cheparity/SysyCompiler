@@ -50,4 +50,9 @@ public final class CallInstruction extends Instruction {
     Variable getReceiver() {
         return receiver;
     }
+
+    @Override
+    public String toMipsCode() {
+        return null;
+    }
 }

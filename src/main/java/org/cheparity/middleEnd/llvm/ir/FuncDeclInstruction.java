@@ -32,4 +32,9 @@ public class FuncDeclInstruction extends Instruction {
         sb.append(")");
         return sb.toString();
     }
+
+    @Override
+    public String toMipsCode() {
+        return null;
+    }
 }
