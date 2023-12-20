@@ -1,12 +1,4 @@
-int foo(int b) {
-    int a[4]={1,2,3,4};
-    int i = b;
-    for(;i<10;i=i+1) {
-        printf("%d",a[i]);
-    }
-    return 0;
-}
-
 int main() {
-    return 0;
+    int a = 1;
+    printf("%d",a);
 }

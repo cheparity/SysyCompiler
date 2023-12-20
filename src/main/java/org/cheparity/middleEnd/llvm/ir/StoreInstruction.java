@@ -31,20 +31,21 @@ public final class StoreInstruction extends Instruction {
         var sb = new StringBuilder();
         String pointer = pointerValue.getName();
         Integer memOff = getMipsRegisterAllocator().getMemOff(pointer);
-        String register = "$t1";
+        String t1 = "$t1";
         if (value.getNumber().isPresent() && !value.getType().isArray()) {
             sb
-                    .append(String.format("li\t\t%s, %s", register, value.getNumber().get()))
+                    .append(String.format("li\t\t%s, %s", t1, value.getNumber().get()))
                     .append("\n\t");
 
         } else {
             //load出来
             sb
-                    .append(String.format("lw\t\t%s, %s($fp)", register, getMipsRegisterAllocator().getMemOff(value.getName())))
+                    .append(String.format("lw\t\t%s, %s($fp)", t1, getMipsRegisterAllocator().getMemOff(value.getName())))
                     .append("\n\t");
 
         }
-        sb.append(String.format("sw\t\t%s, %s($fp)", register, memOff));
+        sb.append("lw\t\t$t0, ").append(memOff).append("($fp)").append("\n\t"); //这是地址
+        sb.append("sw\t\t$t1, ($t0)"); //t1保存到t0所在的地址中
         return sb.toString();
     }
 }
