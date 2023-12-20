@@ -57,6 +57,21 @@ public final class BrInstruction extends Instruction {
 
     @Override
     public String toMipsCode() {
-        return null;
+        if (isConditional) {
+            var sb = new StringBuilder();
+            Integer condOff = getMipsRegisterAllocator().getMemOff(cond.getName());
+            sb
+                    .append(String.format("lw\t\t$t0, %s($fp)", condOff))
+                    .append("\n\t")
+                    .append(String.format("bne\t\t$t0, $zero, %s", //如果不等于0，为真，跳转到真
+                            function.getName().substring(1) + ifTrue.getName().substring(1)))
+                    .append("\n\t")
+                    .append(String.format("j\t\t%s",
+                            function.getName().substring(1) + ifFalse.getName().substring(1)));
+            return sb.toString();
+        } else {
+            assert dest != null;
+            return String.format("j\t\t%s", function.getName().substring(1) + dest.getName().substring(1));
+        }
     }
 }

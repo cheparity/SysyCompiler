@@ -27,7 +27,7 @@ public class IrBuilder {
 
     public IrFunction buildFunction(IrType.IrTypeID type, String name, Module module) {
         String funcName = "@" + name;
-        var func = new IrFunction(IrType.create(type, IrType.IrTypeID.FunctionTyID), funcName, module);
+        var func = new IrFunction(IrType.create(type, IrType.IrTypeID.FunctionTyID), funcName);
         module.insertFunc(func);
         LOGGER.fine("build function: " + funcName);
         return func;
@@ -487,7 +487,9 @@ public class IrBuilder {
     private PointerValue buildAllocaInst(BasicBlock basicBlock, IrType varType) {
         PointerValue pointerValue = new PointerValue(varType, allocator.allocate());
         AllocaInstruction allocaInstruction = new AllocaInstruction(pointerValue);
-        basicBlock.addInstruction(allocaInstruction);
+        basicBlock
+                .addPointerValue(pointerValue) //用于计算栈帧大小
+                .addInstruction(allocaInstruction);
         LOGGER.fine("build alloca instruction: " + allocaInstruction.toIrCode() + " in block: " + basicBlock.getName());
         return pointerValue;
     }
@@ -593,10 +595,10 @@ public class IrBuilder {
                 .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putch").addArg(new Argument(IrType.create(IrType.IrTypeID.Int32TyID), "a")))
                 .insertGlobalInst(new FuncDeclInstruction(IrType.create(IrType.IrTypeID.VoidTyID), "@putstr").addArg(new Argument(IrType.create(IrType.IrTypeID.ByteTyID), "a")));
         module
-                .insertFunc(new IrFunction(IrType.create(IrType.IrTypeID.Int32TyID, IrType.IrTypeID.FunctionTyID), "@getint", module))
-                .insertFunc(new IrFunction(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putint", module))
-                .insertFunc(new IrFunction(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putch", module))
-                .insertFunc(new IrFunction(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putstr", module));
+                .insertFunc(new IrFunction(IrType.create(IrType.IrTypeID.Int32TyID, IrType.IrTypeID.FunctionTyID), "@getint"))
+                .insertFunc(new IrFunction(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putint"))
+                .insertFunc(new IrFunction(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putch"))
+                .insertFunc(new IrFunction(IrType.create(IrType.IrTypeID.VoidTyID, IrType.IrTypeID.FunctionTyID), "@putstr"));
         LOGGER.fine("build module: " + module.getName());
         return module;
     }

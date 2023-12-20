@@ -27,7 +27,7 @@ public class PointerValue extends Value implements TokenContainer {
         this.readonly = readonly;
     }
 
-    public Integer[] getNumber() {
+    public Integer[] getConstNumber() {
         if (this.readonly) {
             return number;
         }

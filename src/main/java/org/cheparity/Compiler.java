@@ -25,6 +25,7 @@ public class Compiler {
 //        printGrammarAnswer();
 //        printErrorAnswer();
         printLlvmIrAnswer();
+        printMipsAnswer();
     }
 
     private static void printLexAnswer() {
@@ -81,14 +82,21 @@ public class Compiler {
         ps.println(irContext.toIrCode());
     }
 
+    private static void printMipsAnswer() {
+        parser.setTokens(LexerImpl.getInstance().getAllTokens());
+        ASTNode ast = parser.getAST();
+        IrContext irContext = CODE_TRANSLATOR.translate2LlvmIr(ast);
+        irContext.toIrCode();
+        var fos = getFos("mips.txt");
+        PrintStream ps = new PrintStream(fos);
+        ps.println(irContext.toMipsCode());
+    }
+
     private static OutputStream getFos(String pathname) {
         File f = new File(pathname);
         FileOutputStream fos;
-        if (f.exists() && !f.delete()) {
-            throw new RuntimeException("delete file error");
-        }
         try {
-            fos = new FileOutputStream(pathname);
+            fos = new FileOutputStream(pathname, false);
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         }

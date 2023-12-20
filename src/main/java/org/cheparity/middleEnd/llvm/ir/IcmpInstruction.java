@@ -1,11 +1,12 @@
 package middleEnd.llvm.ir;
 
 import middleEnd.os.IrPrintable;
+import middleEnd.os.MipsPrintable;
 
 /**
  * [result] = icmp [cond] [ty] [op1], [op2]   ; yields i1 or [N x i1]:result
  */
-public class IcmpInstruction extends Instruction {
+public final class IcmpInstruction extends Instruction {
     final Variable result;
     final Variable op1;
     final Variable op2;
@@ -25,54 +26,92 @@ public class IcmpInstruction extends Instruction {
 
     @Override
     public String toMipsCode() {
-        return null;
+        var sb = new StringBuilder();
+        //形如 %3 = add i32 %2, 2
+        //就是 load 两个操作数，计算结果，然后 store 回这条指令的位置
+        String op1Reg = "$t1", op2Reg = "$t2", resultReg = "$t3";
+        if (op1.getNumber().isPresent()) {
+            //li $t1, 2
+            sb
+                    .append(String.format("li\t\t%s, %s", op1Reg, op1.getNumber().get()))
+                    .append("\n\t");
+        } else {
+            //从内存中读取 op1Reg
+            int offset = getMipsRegisterAllocator().getMemOff(op1.getName());
+            sb
+                    .append(String.format("lw\t\t%s, %s($fp)", op1Reg, offset))
+                    .append("\n\t");
+        }
+        if (op2.getNumber().isPresent()) {
+            //li $t2, 2
+            sb
+                    .append(String.format("li\t\t%s, %s", op2Reg, op2.getNumber().get()))
+                    .append("\n\t");
+        } else {
+            //从内存中读取 op2Reg
+            int offset = getMipsRegisterAllocator().getMemOff(op2.getName());
+            sb
+                    .append(String.format("lw\t\t%s, %s($fp)", op2Reg, offset))
+                    .append("\n\t");
+        }
+
+        sb
+                .append(String.format(String.format("%s\t\t%s, %s, %s", cond.toMipsCode(), resultReg, op1Reg,
+                        op2Reg)))
+                .append("\n\t");
+        //将resultReg的结果store进去
+        int offset = getMipsRegisterAllocator().getMemOff(result.getName());
+        sb.append(String.format("sw\t\t%s, %s($fp)", resultReg, offset));
+        return sb.toString();
     }
 
-    public enum Cond implements IrPrintable {
+    public enum Cond implements IrPrintable, MipsPrintable {
         /**
          * equal
          */
-        EQ("eq"),
+        EQ("eq", "seq"),
         /**
          * not equal
          */
-        NE("ne"),
+        NE("ne", "sne"),
         /**
          * unsigned greater than
          */
-        UGT("ugt"),
+        UGT("ugt", "sgtu"),
         /**
          * unsigned greater or equal
          */
-        UGE("uge"),
+        UGE("uge", "sgeu"),
         /**
          * unsigned less than
          */
-        ULT("ult"),
+        ULT("ult", "sltu"),
         /**
          * unsigned less or equal
          */
-        ULE("ule"),
+        ULE("ule", "sleu"),
         /**
          * signed greater than
          */
-        SGT("sgt"),
+        SGT("sgt", "sgt"),
         /**
          * signed greater or equal
          */
-        SGE("sge"),
+        SGE("sge", "sge"),
         /**
          * signed less than
          */
-        SLT("slt"),
+        SLT("slt", "slt"),
         /**
          * signed less than or equal
          */
-        SLE("sle");
+        SLE("sle", "sle");
         final String value;
+        final String mipsValue;
 
-        Cond(String value) {
-            this.value = value;
+        Cond(String irValue, String mipsValue) {
+            this.value = irValue;
+            this.mipsValue = mipsValue;
         }
 
         @Override
@@ -81,5 +120,9 @@ public class IcmpInstruction extends Instruction {
         }
 
 
+        @Override
+        public String toMipsCode() {
+            return this.mipsValue;
+        }
     }
 }

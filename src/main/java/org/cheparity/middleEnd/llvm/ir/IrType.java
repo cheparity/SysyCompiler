@@ -5,7 +5,8 @@ import middleEnd.os.IrPrintable;
 public final class IrType implements IrPrintable {
     private final IrTypeID basicType;
     private final IrTypeID derivedType;
-    private int size; //如果是数组的话则有size
+    private int length; //如果是数组的话则有size
+
 
     private IrType(IrTypeID basicType, IrTypeID derivedType) {
         this.basicType = basicType;
@@ -20,6 +21,13 @@ public final class IrType implements IrPrintable {
         return new IrType(basicType, derivedType);
     }
 
+    public int getMemByteSize() {
+        int bitSize = this.basicType.bitSize;
+        //返回bitSize的字节数，即bitSize/8
+        if (isArray()) return bitSize * this.getArrayLength() / 8;
+        return bitSize / 8;
+    }
+
     public IrTypeID getBasicType() {
         return basicType;
     }
@@ -31,7 +39,7 @@ public final class IrType implements IrPrintable {
     @Override
     public String toIrCode() {
         if (this.isArray()) {
-            return "[" + this.getSize() + " x " + this.getBasicType().toIrCode() + "]";
+            return "[" + this.getArrayLength() + " x " + this.getBasicType().toIrCode() + "]";
         }
         if (this.isPointer()) {
             return this.getBasicType().toIrCode() + "*";
@@ -50,13 +58,13 @@ public final class IrType implements IrPrintable {
         return this.getDerivedType() == IrTypeID.PointerTyID;
     }
 
-    public int getSize() {
+    public int getArrayLength() {
         assert this.derivedType != null && this.derivedType.equals(IrTypeID.ArrayTyID);
-        return size;
+        return length;
     }
 
     public IrType setDim(int size) {
-        this.size = size;
+        this.length = size;
         return this;
     }
 
@@ -67,23 +75,25 @@ public final class IrType implements IrPrintable {
 
     public enum IrTypeID implements IrPrintable {
         // PrimitiveTypes - make sure LastPrimitiveTyID stays up to date.
-        VoidTyID("void"),        //0: type with no size
-        BitTyID("i1"),      //1-bit type
-        ByteTyID("i8"),
-        Int32TyID("i32"),       //2: 32-bit int type
-        LabelTyID(""),       //7: Labels
-        TokenTyID(""),       // 10: Tokens
-        PointerTyID(""),
+        VoidTyID("void", 0),        //0: type with no size
+        BitTyID("i1", 1),      //1-bit type
+        ByteTyID("i8", 8),
+        Int32TyID("i32", 32),       //2: 32-bit int type
+        LabelTyID("", 0),       //7: Labels
+        TokenTyID("", 0),       // 10: Tokens
+        PointerTyID("", 0),
         // Derived types... see DerivedTypes file.
         // Make sure FirstDerivedTyID stays up to date!
-        FunctionTyID(""),    ///< 12: Functions
-        StructTyID(""),      ///< 13: Structures(no use in SysY)
-        ArrayTyID(""),       ///< 14: Arrays
-        VectorTyID(""); ///< 16: SIMD 'packed' format, or other vector type(no use in SysY)
+        FunctionTyID("", 0),    ///< 12: Functions
+        StructTyID("", 0),      ///< 13: Structures(no use in SysY)
+        ArrayTyID("", 0),       ///< 14: Arrays
+        VectorTyID("", 0); ///< 16: SIMD 'packed' format, or other vector type(no use in SysY)
+        final int bitSize;
         private final String value;
 
-        IrTypeID(String value) {
+        IrTypeID(String value, int bitSize) {
             this.value = value;
+            this.bitSize = bitSize;
         }
 
         boolean superior(IrTypeID other) {

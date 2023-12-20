@@ -26,7 +26,7 @@ public class CodeTranslatorTest extends TestCase {
     }
 
     public void testMips() {
-        LoggerUtil.setLoggerLevel(Level.FINE);
+//        LoggerUtil.setLoggerLevel(Level.FINE);
         sysYParser.setTokens(LexerImpl.getInstance().getAllTokens());
         ASTNode ast = sysYParser.getAST();
         IrContext irContext = codeTranslator.translate2LlvmIr(ast);

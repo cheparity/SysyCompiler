@@ -1,16 +1,10 @@
-int a = 5;
-const int b = 6;
-int c;
-const int d=2;
-const int e[4] = {1,2,3,4};
-int f[2];
-
-int foo(int abc) {
-    int ee = abc + 2;
-    return ee;
+int foo(int a[]) {
+    printf("%d", a[2]);
+    return a[1];
 }
 
 int main() {
-    int aa = 1;
+    int b[10] = {1,2,3,4,5};
+    foo(b);
     return 0;
 }

@@ -85,13 +85,13 @@ public final class GlobalDeclInstruction extends Instruction {
     @Override
     public String toMipsCode() {
         var sb = new StringBuilder();
-        var name = variable.getName();
+        var name = variable.getName().substring(1);
         var type = variable.getType();
         sb.append(name).append(": .word ");
-        Integer[] numbers = variable.getNumber();
+        Integer[] numbers = variable.number;
         if (type.isArray()) {
             if (numbers == null) {
-                var size = type.getSize();
+                var size = type.getArrayLength();
                 for (int i = 0; i < size; i++) {
                     if (i != 0) {
                         sb.append(", ");

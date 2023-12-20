@@ -10,16 +10,26 @@ import java.util.logging.Logger;
 
 public final class IrFunction extends GlobalValue implements GlobalObjects, MipsPrintable {
     private final static Logger LOGGER = LoggerUtil.getLogger();
+    final MipsRegisterAllocator mipsRegisterAllocator = new MipsRegisterAllocator();
     private final List<Argument> arguments = new ArrayList<>();
     private final IrType returnType;
     private final List<BasicBlock> blockList = new ArrayList<>();
-    private final MipsRegisterAllocator mipsRegisterAllocator = new MipsRegisterAllocator();
     private BasicBlock entryBlock;
 
-    IrFunction(IrType type, String name, Module module) {
+    IrFunction(IrType type, String name) {
         super(type, name);
         this.returnType = type;
-        //所属module
+    }
+
+    int getStackFrameSize() {
+        //遍历所有blockList里的所有allocatedPointers，将其大小相加
+        int size = 0;
+        for (var blk : getBlockList()) {
+            for (var pointer : blk.getAllocatedPointers()) {
+                size += pointer.getType().getMemByteSize();
+            }
+        }
+        return size;
     }
 
     void insertArgument(Argument argument) {
@@ -62,6 +72,13 @@ public final class IrFunction extends GlobalValue implements GlobalObjects, Mips
 
     @Override
     public String toIrCode() {
+        //先把所有instruction的function设为自己
+        getBlockList().forEach(blk -> {
+            blk.getInstructionList().forEach(instruction -> {
+                instruction.setFunction(this);
+            });
+        });
+
         var sb = new StringBuilder();
         sb
                 .append("define dso_local ")
@@ -106,17 +123,19 @@ public final class IrFunction extends GlobalValue implements GlobalObjects, Mips
     public String toMipsCode() {
         toIrCode(); //确保一下该加的指令都加上了
         var sb = new StringBuilder();
-        sb.append(".global ").append(this.getName().substring(1)).append('\n');
         sb.append(this.getName().substring(1)).append(":\n");
-//        addiu	$sp, $sp, -8
-//        sb.append("\taddiu\t$sp, $sp, -8\n");
+        sb
+                .append("\tmove\t$fp, $sp")
+                .append("\n");
+        for (var arg : arguments) {
+            var argName = arg.getName();
+            var size = arg.getType().getMemByteSize();
+            this.mipsRegisterAllocator.allocaMem(argName, size);
+        }
         //需要把sp存在fp里
         getBlockList().forEach(block -> {
             sb.append(block.toMipsCode());
         });
-        MipsRegisterAllocator.resetMem();
-//        addiu	$sp, $sp, 8
-//        sb.append("\taddiu\t$sp, $sp, 8\n\n");
 
         return sb.toString();
     }

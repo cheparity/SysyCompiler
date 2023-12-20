@@ -62,12 +62,13 @@ public class Module extends Value implements MipsPrintable {
             }
         }
         sb.append('\n');
+        sb.append(".text\n\tjal\t\tmain\n\tli\t\t$v0, 10\n\tsyscall\n");
+
         for (IrFunction irFunction : irFunctions) {
             if (irFunction.getEntryBlock() == null) continue; //decl的函数
-            sb.append(irFunction.toMipsCode()).append("\n");
+            sb.append(irFunction.toMipsCode()).append("\n\n");
         }
         sb.append('\n');
-        sb.append(".text\n\tjal main\n\tli $v0 10\n\tsyscall");
         return sb.toString();
     }
 }

@@ -83,7 +83,7 @@ public abstract class Symbol {
     public Optional<Integer> getNumber(int offset) {
         //数组的情况
         if (getPointer() != null) {
-            Integer[] number = getPointer().getNumber();
+            Integer[] number = getPointer().getConstNumber();
             if (number == null) return Optional.empty();
             return Optional.of(number[offset]);
         }

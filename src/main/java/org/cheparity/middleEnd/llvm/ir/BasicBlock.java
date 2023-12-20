@@ -17,6 +17,7 @@ public class BasicBlock extends Value implements MipsPrintable {
      * tag是为了方便查找某些块。比如，在for循环里需要查找forStmt2块等
      */
     private final ArrayList<String> tags = new ArrayList<>();
+    private final ArrayList<PointerValue> allocatedPointers = new ArrayList<>();
     /**
      * block所属的function。如果不是entry block，则为null
      */
@@ -186,12 +187,29 @@ public class BasicBlock extends Value implements MipsPrintable {
     public String toMipsCode() {
         var sb = new StringBuilder();
         //如果不是entryBlock，则需要打印label
-        if (isEntryBlock()) {
-            sb.append(getName().substring(1)).append(":");
-            sb.append("\n");
+//        if (!isEntryBlock()) {
+//            sb.append(getName().substring(1)).append(":\n");
+//        } else {
+        sb.append(getFunction().getName().substring(1)).append(getName().substring(1)).append(":\n");
+//        }
+        for (var inst : getInstructionList()) {
+            String irCode = inst.toIrCode();
+            String mipsCode = inst.toMipsCode();
+            sb.append("\t# ").append(irCode).append('\n');
+            if (mipsCode == null) continue;
+            sb.append('\t').append(mipsCode).append("\n");
         }
-        getInstructionList().forEach(inst -> sb.append('\t').append(inst.toMipsCode()).append("\n"));
+
         sb.append("\n");
         return sb.toString();
+    }
+
+    BasicBlock addPointerValue(PointerValue pointerValue) {
+        allocatedPointers.add(pointerValue);
+        return this;
+    }
+
+    public ArrayList<PointerValue> getAllocatedPointers() {
+        return allocatedPointers;
     }
 }

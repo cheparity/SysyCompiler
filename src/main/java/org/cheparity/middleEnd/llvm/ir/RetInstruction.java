@@ -31,8 +31,23 @@ public final class RetInstruction extends Instruction {
 
     @Override
     public String toMipsCode() {
-//        jr	$ra
-//        nop
-        return "jr\t$ra\n\tnop\n";
+        var sb = new StringBuilder();
+        //准备返回值
+        if (!retVoid) {
+            assert retValue != null;
+            if (retValue.getNumber().isPresent()) {
+                sb.append(String.format("li\t\t$v0, %s\n\t", retValue.getNumber().get()));
+            } else {
+                Integer memOff = getMipsRegisterAllocator().getMemOff(retValue.getName());
+                sb.append(String.format("lw\t\t$v0, %s($fp)\n\t", memOff));
+            }
+
+        }
+
+        sb //sp指针回到栈顶
+                .append("move\t$sp, $fp")
+                .append("\n\t")
+                .append("jr\t\t$ra\n\tnop\n");
+        return sb.toString();
     }
 }

@@ -1,41 +1,73 @@
 package middleEnd.llvm;
 
-import middleEnd.RegisterAllocator;
-
 import java.util.HashMap;
 import java.util.Map;
 
-public final class MipsRegisterAllocator implements RegisterAllocator {
-    private static final Map<String, Integer> memOff = new HashMap<>();
-    private static int spOffset = 0;
+public final class MipsRegisterAllocator {
+    /**
+     * 变量名->相对于$sp的内存偏移
+     */
+    private final Map<String, Integer> memOffsetDirectory = new HashMap<>();
+    /**
+     * 变量名->寄存器
+     */
+    private final Map<String, MipsRegister> registerAllocatedDirectory = new HashMap<>();
+    public int maxSpOffset = 0;
+    private int spOffset = 0;
 
-    public static int allocaMem(String name) {
-        spOffset -= 4;
-        memOff.put(name, spOffset);
-        return spOffset;
+    public void allocaMem(String valName, int size) {
+        //肯定不含的
+        spOffset -= size;
+        memOffsetDirectory.put(valName, spOffset);
+        maxSpOffset = Math.min(maxSpOffset, spOffset);
     }
 
-    public static Integer getMemOff(String name) {
-        assert memOff.containsKey(name);
-        return memOff.get(name);
+    public void appointMem(String valName, int offset) {
+        memOffsetDirectory.put(valName, offset);
     }
 
-    public static void resetMem() {
-        spOffset = 0;
-        memOff.clear();
+    public Integer getMemOff(String valName) {
+        if (memOffsetDirectory.containsKey(valName)) {
+            return memOffsetDirectory.get(valName);
+        } else {
+            // 从栈顶开始分配内存（默认为4字节）
+            spOffset -= 4;
+            memOffsetDirectory.put(valName, spOffset);
+            maxSpOffset = Math.min(maxSpOffset, spOffset);
+            return spOffset;
+        }
     }
 
-    @Override
-    public String allocate() {
-        return null;
+    /**
+     * 分配临时寄存器，并将其加入到寄存器分配表中
+     *
+     * @param name 变量名
+     * @return 寄存器名
+     */
+    public String allocaTempReg(String name) {
+        //循环赋予t寄存器
+        for (int i = 8; i < 16; i++) { //临时寄存器
+            String register = MipsRegister.values()[i].getName();
+            if (!registerAllocatedDirectory.containsKey(register)) {
+                registerAllocatedDirectory.put(name, MipsRegister.values()[i]);
+                return register;
+            }
+        }
+        throw new RuntimeException("寄存器不够用了");
     }
 
-    @Override
-    public void reset() {
-
+    public void freeReg(String... registers) {
+        for (String register : registers) {
+            var reg = MipsRegister.of(register);
+            registerAllocatedDirectory.entrySet().removeIf(entry -> entry.getValue().equals(reg));
+        }
     }
 
-    enum Registers {
+    public String getReg(String varName) {
+        return registerAllocatedDirectory.get(varName).getName();
+    }
+
+    enum MipsRegister {
         ZERO("$zero", "$0"),
         AT("$at", "$1"),
         V0("$v0", "$2"),
@@ -72,9 +104,18 @@ public final class MipsRegisterAllocator implements RegisterAllocator {
         private final String name;
         private final String number;
 
-        Registers(String name, String number) {
+        MipsRegister(String name, String number) {
             this.name = name;
             this.number = number;
+        }
+
+        public static MipsRegister of(String name) {
+            for (MipsRegister mipsRegister : MipsRegister.values()) {
+                if (mipsRegister.getName().equals(name)) {
+                    return mipsRegister;
+                }
+            }
+            return null;
         }
 
         public String getName() {

@@ -38,8 +38,43 @@ public final class BinInstruction extends Instruction {
 
     @Override
     public String toMipsCode() {
+        var sb = new StringBuilder();
+        //形如 %3 = add i32 %2, 2
         //就是 load 两个操作数，计算结果，然后 store 回这条指令的位置
-        
-        return null;
+        String value1Reg = "$t1", value2Reg = "$t2", resultReg = "$t3";
+        if (value1.getNumber().isPresent()) {
+            //li $t1, 2
+            sb
+                    .append(String.format("li\t\t%s, %s", value1Reg, value1.getNumber().get()))
+                    .append("\n\t");
+        } else {
+            //从内存中读取value1Reg
+            int offset = getMipsRegisterAllocator().getMemOff(value1.getName());
+            sb
+                    .append(String.format("lw\t\t%s, %s($fp)", value1Reg, offset))
+                    .append("\n\t");
+        }
+        if (value2.getNumber().isPresent()) {
+            //li $t2, 2
+            sb
+                    .append(String.format("li\t\t%s, %s", value2Reg, value2.getNumber().get()))
+                    .append("\n\t");
+        } else {
+            //从内存中读取value2Reg
+            int offset = getMipsRegisterAllocator().getMemOff(value2.getName());
+            sb
+                    .append(String.format("lw\t\t%s, %s($fp)", value2Reg, offset))
+                    .append("\n\t");
+        }
+
+
+        sb
+                .append(String.format(String.format("%s\t%s, %s, %s", operator.toMipsCode(), resultReg, value1Reg,
+                        value2Reg)))
+                .append("\n\t");
+        //将resultReg的结果store进去
+        int offset = getMipsRegisterAllocator().getMemOff(result.getName());
+        sb.append(String.format("sw\t\t%s, %s($fp)", resultReg, offset));
+        return sb.toString();
     }
 }
