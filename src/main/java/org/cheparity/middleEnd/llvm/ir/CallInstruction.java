@@ -82,54 +82,64 @@ public final class CallInstruction extends Instruction {
         var sb = new StringBuilder();
 
         //判断是否是putch或getint
-        if (funcName.equals("putch")) {
-            assert args[0].getNumber().isPresent();
-            sb
-                    .append("li\t\t$a0, ").append(args[0].getNumber().get())
-                    .append("\n\t")
-                    .append("li\t\t$v0, 11")
-                    .append("\n\t")
-                    .append("syscall");
-            return sb.toString();
-        } else if (funcName.equals("putint")) {
-            if (args[0].getNumber().isPresent()) {
+        switch (funcName) {
+            case "putch" -> {
+                assert args[0].getNumber().isPresent();
                 sb
-                        .append(String.format("li\t\t$a0, %s", args[0].getNumber().get()))
+                        .append("li\t\t$a0, ").append(args[0].getNumber().get())
                         .append("\n\t")
-                        .append("li\t\t$v0, 1")
+                        .append("li\t\t$v0, 11")
                         .append("\n\t")
                         .append("syscall");
-            } else {
-                String name = args[0].getName();
-                Integer memOff = getMipsRegisterAllocator().getMemOff(name);
-                sb
-                        .append("\n\t")
-                        .append(String.format("lw\t\t$a0, %s($fp)", memOff))
-                        .append("\n\t")
-                        .append("li\t\t$v0, 1")
-                        .append("\n\t")
-                        .append("syscall");
+                return sb.toString();
             }
+            case "putint" -> {
+                if (args[0].getNumber().isPresent()) {
+                    sb
+                            .append(String.format("li\t\t$a0, %s", args[0].getNumber().get()))
+                            .append("\n\t")
+                            .append("li\t\t$v0, 1")
+                            .append("\n\t")
+                            .append("syscall");
+                } else {
+                    String name = args[0].getName();
+                    Integer memOff = getMipsRegisterAllocator().getFpMemOff(name);
+                    sb
+                            .append("\n\t")
+                            .append("lw\t\t$a0, ").append(memOff).append("($fp)")
+                            .append("\n\t")
+                            .append("li\t\t$v0, 1")
+                            .append("\n\t")
+                            .append("syscall");
+                }
+                return sb.toString();
+            }
+            case "getint" -> {
+                sb
+                        .append("li\t\t$v0, 5")
+                        .append("\n\t")
+                        .append("syscall");
+                //完了你还要存起来
+                String receiverName = receiver.getName();
+                if (getMipsRegisterAllocator().getFpMemOff(receiverName) != null) {
+                    sb
+                            .append("\n\t")
+                            .append("sw\t\t$v0, ").append(getMipsRegisterAllocator().getFpMemOff(receiverName)).append("($fp)");
+                    return sb.toString();
+                }
 
-            return sb.toString();
-        } else if (funcName.equals("getint")) {
-            sb
-                    .append("li\t\t$v0, 5")
-                    .append("\n\t")
-                    .append("syscall");
-            //完了你还要存起来
-            String receiverName = receiver.getName();
-            Integer memOff = getMipsRegisterAllocator().getMemOff(receiverName);
-            sb
-                    .append(String.format("sw\t\t$v0, %s($fp)", memOff));
-            return sb.toString();
+                getMipsRegisterAllocator().addFpOffset(receiverName);
+                sb
+                        .append("\n\t")
+                        .append("addiu\t$sp, $sp, -4")
+                        .append("\n\t")
+                        .append("sw\t\t$v0, ($sp)");
+                return sb.toString();
+            }
         }
 
         //首先要把return addr 存起来
-        int maxSpOffset = getMipsRegisterAllocator().maxSpOffset;
         sb
-                .append("addi\t$sp, $sp, ").append(maxSpOffset) //下移到当前栈空间底部
-                .append("\n\t")
                 .append("addi\t$sp, $sp, -4") //存return add
                 .append("\n\t")
                 .append("sw\t\t$ra, 0($sp)");
@@ -148,11 +158,10 @@ public final class CallInstruction extends Instruction {
             off -= 4;
             //如果是地址，得用la指令
             if (arg.getType().isPointer()) {
-                Integer memOff = getMipsRegisterAllocator().getMemOff(arg.getName());
+                Integer memOff = getMipsRegisterAllocator().getFpMemOff(arg.getName());
                 sb
                         .append("\n\t")
-//                        .append(String.format("lw\t\t$t0, %s($fp)", memOff)) //load到t0
-                        .append(String.format("la\t\t$t0, %s($fp)", memOff)) //load到t0
+                        .append(String.format("lw\t\t$t0, %s($fp)", memOff)) //load到t0
                         .append("\n\t")
                         .append(String.format("sw\t\t$t0, %s($sp)", off)); //t0 save到sp
                 continue;
@@ -165,7 +174,7 @@ public final class CallInstruction extends Instruction {
                 sb.append("\n\t").append("sw\t\t$t0, ").append(off).append("($sp)");
             } else {
                 //肯定有，先load出来，再存进去
-                Integer memOff = getMipsRegisterAllocator().getMemOff(arg.getName());
+                Integer memOff = getMipsRegisterAllocator().getFpMemOff(arg.getName());
                 sb
                         .append("\n\t")
                         .append(String.format("lw\t\t$t0, %s($fp)", memOff)) //load到t0
@@ -186,8 +195,17 @@ public final class CallInstruction extends Instruction {
                 .append("addi\t$sp, $sp, 8"); //sp复原到调用前
 
         if (receiver != null) {
-            Integer memOff = getMipsRegisterAllocator().getMemOff(receiver.getName());
-            sb.append("\n\t").append(String.format("sw\t\t$v0, %s($fp)", memOff)); //保存返回值
+            if (getMipsRegisterAllocator().getFpMemOff(receiver.getName()) != null) {
+                sb
+                        .append("\n\t")
+                        .append("lw\t\t$v0, ").append(getMipsRegisterAllocator().getFpMemOff(receiver.getName())).append("($fp)");
+                return sb.toString();
+            }
+
+            sb.append("\n\t").append("addiu\t$sp, $sp, -4");
+            //call是存值
+            getMipsRegisterAllocator().addFpOffset(receiver.getName());
+            sb.append("\n\t").append("sw\t\t$v0, ($sp)"); //保存返回值
         }
 
         return sb.toString();

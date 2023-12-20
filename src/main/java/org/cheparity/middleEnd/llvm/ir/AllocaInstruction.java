@@ -22,16 +22,14 @@ public final class AllocaInstruction extends Instruction {
     @Override
     public String toMipsCode() {
         var offset = operand.getType().getMemByteSize();
-        var sb = new StringBuilder();
-//        getMipsRegisterAllocator().allocaMem(operand.getName(), offset);
-        Integer memOff = getMipsRegisterAllocator().getMemOff(operand.getName());
-//        sb.append("addiu\t$sp, $sp, ").append(-offset);
-        sb
-                .append("la\t\t$t0, ").append(memOff).append("($fp)")
-                .append("\n\t")
-                .append("sw\t\t$t0, ").append(memOff).append("($fp)"); //确保alloca指令存的都是地址
-
-//        return sb.toString();
-        return sb.toString();
+        String sb = "addiu\t$sp, $sp, " + -offset + //alloca了一段空间。t0存放空间的起始地址
+                "\n\t" +
+                "la\t\t$t0, " + "($sp)" +
+                "\n\t" +
+                "addiu\t$sp, $sp, -4" +
+                "\n\t" +
+                "sw\t\t$t0, ($sp)";
+        getMipsRegisterAllocator().addFpOffset(operand.getName(), offset);
+        return sb;
     }
 }

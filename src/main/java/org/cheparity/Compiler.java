@@ -48,7 +48,6 @@ public class Compiler {
     private static void ast2String(ASTNode tree) {
         var fos = getFos("ast.txt");
         PrintStream ps = new PrintStream(fos);
-//        if (tree.getChildren().isEmpty()) return;
 
         for (var child : tree.getChildren()) {
             ast2String(child);

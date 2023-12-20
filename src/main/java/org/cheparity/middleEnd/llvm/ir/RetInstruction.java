@@ -38,7 +38,7 @@ public final class RetInstruction extends Instruction {
             if (retValue.getNumber().isPresent()) {
                 sb.append(String.format("li\t\t$v0, %s\n\t", retValue.getNumber().get()));
             } else {
-                Integer memOff = getMipsRegisterAllocator().getMemOff(retValue.getName());
+                Integer memOff = getMipsRegisterAllocator().getFpMemOff(retValue.getName());
                 sb.append(String.format("lw\t\t$v0, %s($fp)\n\t", memOff));
             }
 

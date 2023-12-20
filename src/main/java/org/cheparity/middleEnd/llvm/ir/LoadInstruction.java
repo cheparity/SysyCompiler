@@ -24,21 +24,34 @@ public final class LoadInstruction extends Instruction {
     public String toMipsCode() {
         var sb = new StringBuilder();
         String t1 = "$t1";
-        if (pointerValue.getName().startsWith("@")) {
+        if (pointerValue.getName().startsWith("@")) { //全局变量
             String pointerName = pointerValue.getName().substring(1);
-            sb.append(String.format("lw\t\t%s, %s", t1, pointerName));
-            //放到内存里，先lw，再sw，这种废物的做法只有我能写出来
-            int offset = getMipsRegisterAllocator().getMemOff(result.getName());
-            sb
-                    .append("\n\t")
-                    .append(String.format("sw\t\t%s, %s($fp)", t1, offset));
-            return sb.toString();
+            sb.append(String.format("lw\t\t%s, %s", t1, pointerName)).append("\n\t");
+            if (getMipsRegisterAllocator().getFpMemOff(result.getName()) != null) {
+                sb.append("sw\t\t$t1, ").append(getMipsRegisterAllocator().getFpMemOff(result.getName())).append("($fp)"); //有的话，存进地址
+            } else {
+                sb
+                        .append("addiu\t$sp, $sp, -4") //分配新变量的空间
+                        .append("\n\t")
+                        .append("sw\t\t$t1, ($sp)"); //把值（注意是值！！）存进新变量
+                getMipsRegisterAllocator().addFpOffset(result.getName());
+            }
         }
-        Integer offset = getMipsRegisterAllocator().getMemOff(pointerValue.getName());
+        Integer fpMemOff = getMipsRegisterAllocator().getFpMemOff(pointerValue.getName());
         sb
-                .append(String.format("lw\t\t%s, %s($fp)", t1, offset))
+                .append("lw\t\t$t0, ").append(fpMemOff).append("($fp)")
                 .append("\n\t")
-                .append(String.format("sw\t\t%s, %s($fp)", t1, getMipsRegisterAllocator().getMemOff(result.getName())));
+                .append("lw\t\t$t1, ($t0)")
+                .append("\n\t");
+        if (getMipsRegisterAllocator().getFpMemOff(result.getName()) != null) {
+            sb.append("sw\t\t$t1, ").append(getMipsRegisterAllocator().getFpMemOff(result.getName())).append("($fp)"); //有的话，存进地址
+        } else {
+            sb
+                    .append("addiu\t$sp, $sp, -4") //分配新变量的空间
+                    .append("\n\t")
+                    .append("sw\t\t$t1, ($sp)"); //把值（注意是值！！）存进新变量
+            getMipsRegisterAllocator().addFpOffset(result.getName());
+        }
 
 
         return sb.toString();

@@ -49,7 +49,7 @@ public final class BinInstruction extends Instruction {
                     .append("\n\t");
         } else {
             //从内存中读取value1Reg
-            int offset = getMipsRegisterAllocator().getMemOff(value1.getName());
+            int offset = getMipsRegisterAllocator().getFpMemOff(value1.getName());
             sb
                     .append(String.format("lw\t\t%s, %s($fp)", value1Reg, offset))
                     .append("\n\t");
@@ -61,7 +61,7 @@ public final class BinInstruction extends Instruction {
                     .append("\n\t");
         } else {
             //从内存中读取value2Reg
-            int offset = getMipsRegisterAllocator().getMemOff(value2.getName());
+            int offset = getMipsRegisterAllocator().getFpMemOff(value2.getName());
             sb
                     .append(String.format("lw\t\t%s, %s($fp)", value2Reg, offset))
                     .append("\n\t");
@@ -72,9 +72,20 @@ public final class BinInstruction extends Instruction {
                 .append(String.format(String.format("%s\t%s, %s, %s", operator.toMipsCode(), resultReg, value1Reg,
                         value2Reg)))
                 .append("\n\t");
-        //将resultReg的结果store进去
-        int offset = getMipsRegisterAllocator().getMemOff(result.getName());
-        sb.append(String.format("sw\t\t%s, %s($fp)", resultReg, offset));
+        if (getMipsRegisterAllocator().getFpMemOff(result.getName()) != null) {
+            sb.append("sw\t\t$t3, ").append(getMipsRegisterAllocator().getFpMemOff(result.getName())).append("($fp)"); //有的话，存进地址
+        } else {
+            sb
+                    .append("addiu\t$sp, $sp, -4") //分配新变量的空间
+                    .append("\n\t")
+                    .append("sw\t\t$t3, ($sp)"); //把值（注意是值！！）存进新变量
+            getMipsRegisterAllocator().addFpOffset(result.getName());
+        }
+
+//        //将resultReg的结果store进去
+//        sb.append("addiu\t$sp, $sp, -4").append("\n\t");
+//        getMipsRegisterAllocator().addFpOffset(result.getName());
+//        sb.append(String.format("sw\t\t%s, ($sp)", resultReg));
         return sb.toString();
     }
 }

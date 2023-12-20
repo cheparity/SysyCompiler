@@ -6,8 +6,35 @@ declare void @putstr(i8)
 define dso_local i32 @main() {
 	%1 = alloca i32
 	store i32 1, i32* %1
-	%2 = load i32, i32* %1
-	call void @putint(i32 %2)
+	br label %2
+
+2:	; condBlk 
+	%3 = load i32, i32* %1
+	%4 = icmp slt i32 %3, 100
+	br i1 %4, label %5, label %6
+
+5:	; condSuccessBlk 
+	br label %7
+
+6:	; condFailBlk 
+	br label %13
+
+7:	; loop 
+	%8 = load i32, i32* %1
+	call void @putch(i32 10)
+	call void @putint(i32 %8)
+	%9 = load i32, i32* %1
+	%10 = mul i32 %9, 2
+	store i32 %10, i32* %1
+	%11 = load i32, i32* %1
+	call void @putch(i32 10)
+	call void @putint(i32 %11)
+	br label %12
+
+12:	; forStmt2 
+	br label %2
+
+13:	; loopEnd 
 	ret i32 0
 
 }

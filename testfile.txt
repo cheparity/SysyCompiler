@@ -1,4 +1,10 @@
-int main() {
-    int a = 1;
-    printf("%d",a);
+int main()
+{
+    int i = 1;
+    for(;i<100;) {
+        printf("\n%d",i);
+        i = i * 2;
+        printf("\n%d",i);
+    }
+    return 0;
 }

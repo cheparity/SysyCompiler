@@ -29,8 +29,7 @@ public final class StoreInstruction extends Instruction {
     @Override
     public String toMipsCode() {
         var sb = new StringBuilder();
-        String pointer = pointerValue.getName();
-        Integer memOff = getMipsRegisterAllocator().getMemOff(pointer);
+        String pointerName = pointerValue.getName();
         String t1 = "$t1";
         if (value.getNumber().isPresent() && !value.getType().isArray()) {
             sb
@@ -40,12 +39,17 @@ public final class StoreInstruction extends Instruction {
         } else {
             //load出来
             sb
-                    .append(String.format("lw\t\t%s, %s($fp)", t1, getMipsRegisterAllocator().getMemOff(value.getName())))
+                    .append(String.format("lw\t\t%s, %s($fp)", t1, getMipsRegisterAllocator().getFpMemOff(value.getName())))
                     .append("\n\t");
 
         }
-        sb.append("lw\t\t$t0, ").append(memOff).append("($fp)").append("\n\t"); //这是地址
-        sb.append("sw\t\t$t1, ($t0)"); //t1保存到t0所在的地址中
+        if (pointerName.startsWith("@")) {
+            sb.append("sw\t\t$t1, ").append(pointerName);
+        } else {
+            Integer memOff = getMipsRegisterAllocator().getFpMemOff(pointerName);
+            sb.append("lw\t\t$t0, ").append(memOff).append("($fp)").append("\n\t"); //这是地址
+            sb.append("sw\t\t$t1, ($t0)"); //t1保存到t0所在的地址中
+        }
         return sb.toString();
     }
 }

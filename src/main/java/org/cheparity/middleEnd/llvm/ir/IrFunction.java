@@ -129,8 +129,8 @@ public final class IrFunction extends GlobalValue implements GlobalObjects, Mips
                 .append("\n");
         for (var arg : arguments) {
             var argName = arg.getName();
-            var size = arg.getType().getMemByteSize();
-            this.mipsRegisterAllocator.allocaMem(argName, size);
+            sb.append("\taddiu\t$sp, $sp, -4").append("\n\t");
+            this.mipsRegisterAllocator.addFpOffset(argName);
         }
         //需要把sp存在fp里
         getBlockList().forEach(block -> {

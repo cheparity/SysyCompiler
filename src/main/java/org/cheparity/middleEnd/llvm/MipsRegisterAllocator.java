@@ -12,30 +12,29 @@ public final class MipsRegisterAllocator {
      * 变量名->寄存器
      */
     private final Map<String, MipsRegister> registerAllocatedDirectory = new HashMap<>();
-    public int maxSpOffset = 0;
+    //    public int maxSpOffset = 0;
     private int spOffset = 0;
 
-    public void allocaMem(String valName, int size) {
-        //肯定不含的
-        spOffset -= size;
+    public void addFpOffset(String valName, int extraMem) {
+        spOffset -= extraMem;
+        spOffset -= 4;
         memOffsetDirectory.put(valName, spOffset);
-        maxSpOffset = Math.min(maxSpOffset, spOffset);
+//        maxSpOffset = Math.min(maxSpOffset, spOffset);
     }
 
-    public void appointMem(String valName, int offset) {
-        memOffsetDirectory.put(valName, offset);
-    }
-
-    public Integer getMemOff(String valName) {
+    public void addFpOffset(String valName) {
+        spOffset -= 4;
         if (memOffsetDirectory.containsKey(valName)) {
-            return memOffsetDirectory.get(valName);
+            memOffsetDirectory.replace(valName, spOffset);
         } else {
-            // 从栈顶开始分配内存（默认为4字节）
-            spOffset -= 4;
             memOffsetDirectory.put(valName, spOffset);
-            maxSpOffset = Math.min(maxSpOffset, spOffset);
-            return spOffset;
         }
+//        maxSpOffset = Math.min(maxSpOffset, spOffset);
+    }
+
+    public Integer getFpMemOff(String valName) {
+        // 从栈顶开始分配内存（默认为4字节）
+        return memOffsetDirectory.getOrDefault(valName, null);
     }
 
     /**

@@ -59,7 +59,7 @@ public final class BrInstruction extends Instruction {
     public String toMipsCode() {
         if (isConditional) {
             var sb = new StringBuilder();
-            Integer condOff = getMipsRegisterAllocator().getMemOff(cond.getName());
+            Integer condOff = getMipsRegisterAllocator().getFpMemOff(cond.getName());
             sb
                     .append(String.format("lw\t\t$t0, %s($fp)", condOff))
                     .append("\n\t")

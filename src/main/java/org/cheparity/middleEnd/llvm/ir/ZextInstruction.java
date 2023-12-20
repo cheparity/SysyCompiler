@@ -24,8 +24,8 @@ public final class ZextInstruction extends Instruction {
     public String toMipsCode() {
         //直接load出来然后store即可
         var sb = new StringBuilder();
-        Integer varOff = getMipsRegisterAllocator().getMemOff(rawVariable.getName());
-        Integer resOff = getMipsRegisterAllocator().getMemOff(result.getName());
+        Integer varOff = getMipsRegisterAllocator().getFpMemOff(rawVariable.getName());
+        Integer resOff = getMipsRegisterAllocator().getFpMemOff(result.getName());
         sb
                 .append("lw\t\t$t0, ").append(varOff).append("($fp)")
                 .append("\n\t")

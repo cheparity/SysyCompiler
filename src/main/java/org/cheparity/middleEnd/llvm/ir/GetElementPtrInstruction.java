@@ -66,8 +66,8 @@ public final class GetElementPtrInstruction extends Instruction {
             sb.append("la\t\t$t0, ").append(ptrName.substring(1));
         } else {
             //否则是局部数组
-            Integer arrMemOff = getMipsRegisterAllocator().getMemOff(ptrName);
-            sb.append(String.format("la\t\t$t0, %s($fp)", arrMemOff));
+            Integer arrMemOff = getMipsRegisterAllocator().getFpMemOff(ptrName);
+            sb.append(String.format("lw\t\t$t0, %s($fp)", arrMemOff));
         }
         //循环计算偏移
         for (var offVariable : this.index) {
@@ -79,7 +79,7 @@ public final class GetElementPtrInstruction extends Instruction {
             } else {
                 //否则是个变量，需要先load出来
                 String name = offVariable.getName();
-                Integer memOff = getMipsRegisterAllocator().getMemOff(name);
+                Integer memOff = getMipsRegisterAllocator().getFpMemOff(name);
                 sb
                         .append("\n\t")
                         .append("lw\t\t$t1, ").append(memOff).append("$(fp)");
@@ -87,17 +87,24 @@ public final class GetElementPtrInstruction extends Instruction {
             //然后t1左移2
             sb.append("\n\t").append("sll\t\t$t1, $t1, 2");
             //t0再加上t1(偏移)
-            sb.append("\n\t").append("addu\t$t1, $t1, $t0");
-            //现在，偏移在寄存器t1里，把t1的地址la到t0
-            sb.append("\n\t").append("la\t\t$t0, ($t1)");
+            sb.append("\n\t").append("addu\t$t1, $t1, $t0"); //t1就是偏移的地址
         }
         //最后存数
-        var resultOff = getMipsRegisterAllocator().getMemOff(resultPointer.getName());
+        if (getMipsRegisterAllocator().getFpMemOff(resultPointer.getName()) != null) {
+            sb
+                    .append("\n\t")
+                    .append("lw\t\t$t0, ($t1)")
+                    .append("\n\t")
+                    .append("sw\t\t$t0, ").append(getMipsRegisterAllocator().getFpMemOff(resultPointer.getName())).append("($fp)");
+            return sb.toString();
+        }
+
+        sb.append("\n\t").append("addiu\t$sp, $sp, -4");
+        getMipsRegisterAllocator().addFpOffset(resultPointer.getName());
+
         sb
                 .append("\n\t")
-                .append("lw\t\t$t0, ($t0)") //取数
-                .append("\n\t")
-                .append("sw\t\t$t0, ").append(resultOff).append("($fp)") //存起来(为什么要存起来？
+                .append("sw\t\t$t1, ($sp)")
                 .append("\n\t");
         return sb.toString();
     }
