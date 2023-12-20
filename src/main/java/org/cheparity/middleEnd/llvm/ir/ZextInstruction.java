@@ -22,6 +22,15 @@ public final class ZextInstruction extends Instruction {
 
     @Override
     public String toMipsCode() {
-        return null;
+        //直接load出来然后store即可
+        var sb = new StringBuilder();
+        Integer varOff = getMipsRegisterAllocator().getMemOff(rawVariable.getName());
+        Integer resOff = getMipsRegisterAllocator().getMemOff(result.getName());
+        sb
+                .append("lw\t\t$t0, ").append(varOff).append("($fp)")
+                .append("\n\t")
+                .append("sw\t\t$t0, ").append(resOff).append("($fp)");
+        return sb.toString();
+
     }
 }

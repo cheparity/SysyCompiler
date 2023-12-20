@@ -8,6 +8,7 @@ public final class GetElementPtrInstruction extends Instruction {
     final PointerValue ptrVal;
     final Variable[] index;
 
+
     GetElementPtrInstruction(PointerValue resultPointer, PointerValue ptrVal, Variable... index) {
         assert ptrVal != null;
         this.resultPointer = resultPointer;
@@ -29,19 +30,86 @@ public final class GetElementPtrInstruction extends Instruction {
         return str1 + str2;
     }
 
-    //    li $t0, 1
-    //    sw $t0, -16($fp)
-    //    li $t0, 2
-    //    sw $t0, -12($fp)
-    //    li $t0, 3
-    //    sw $t0, -8($fp)
-    //    li $t0, 4
-    //    sw $t0, -4($fp)
+    /*
+     *
+     *   全局：
+     *   # %16 = getelementptr [5 x i32], [5 x i32]* @C, i32 0, i32 0
+     * 	 la      $t0, C(全局数组就直接这么写）
+     *   # 计算第一次偏移
+     *   la      $t0, [offset]($t0) #从基地址偏移offset的地址
+     *   # 计算第二次偏移
+     *   la      $t0, [offset]($t0) #从偏移offset的地址偏移offset
+     *
+     *   lw      $t0, ($t0)         #取数
+     *   sw      $t0, (新分配的offset)($fp) #存起来
+     *
+     *
+     *
+     *   局部：
+     *   # %4 = getelementptr i32, i32* %3, i32 2
+     *   la      $t0, [%3的offset]($t0) #拿到%3数组的的基地址
+     *   #计算偏移 => 存到t1里
+     *
+     *   la      $t0, ($t1) #基地址计算一次偏移
+     *
+     *   lw      $t0, ($t0)         #取数
+     *   sw      $t0, (新分配的offset)($fp) #存起来
+     *
+     * */
+
+//    @Override
+//    public String toMipsCode() {
+//        var sb = new StringBuilder();
+//        var ptrName = ptrVal.getName();
+//        //全局数组
+//        if (ptrName.startsWith("@")) {
+//            sb.append("la\t\t$t0, ").append(ptrName.substring(1));
+//        } else {
+//            //否则是局部数组
+//            Integer arrMemOff = getMipsRegisterAllocator().getMemOff(ptrName);
+//            sb.append(String.format("la\t\t$t0, %s($fp)", arrMemOff));
+//        }
+//        //循环计算偏移
+//        for (var offVariable : this.index) {
+//            if (offVariable.getNumber().isPresent()) {
+//                sb
+//                        .append("\n\t")
+//                        .append("li\t\t$t1, ")
+//                        .append(offVariable.getNumber().get());
+//            } else {
+//                //否则是个变量，需要先load出来
+//                String name = offVariable.getName();
+//                Integer memOff = getMipsRegisterAllocator().getMemOff(name);
+//                sb
+//                        .append("\n\t")
+//                        .append("lw\t\t$t1, ").append(memOff).append("$(fp)");
+//            }
+//            //然后t1左移2
+//            sb.append("\n\t").append("sll\t\t$t1, $t1, 2");
+//            //t0再加上t1(偏移)
+//            sb.append("\n\t").append("addu\t$t1, $t1, $t0");
+//            //现在，偏移在寄存器t1里，把t1的地址la到t0
+//            sb.append("\n\t").append("la\t\t$t0, ($t1)");
+//        }
+//        //最后存数
+//        var resultOff = getMipsRegisterAllocator().getMemOff(resultPointer.getName());
+//        sb
+//                .append("\n\t")
+//                .append("lw\t\t$t0, ($t0)") //取数
+//                .append("\n\t")
+//                .append("sw\t\t$t0, ").append(resultOff).append("($fp)") //存起来(为什么要存起来？
+//                .append("\n\t");
+//        return sb.toString();
+//    }
+
     @Override
     public String toMipsCode() {
         Integer arrMemOff = getMipsRegisterAllocator().getMemOff(ptrVal.getName());
+
         if (index[index.length - 1].getNumber().isPresent()) {
             Integer indexNum = index[index.length - 1].getNumber().get();
+            //直接指定变量所在的内存为数组基地址+偏移量
+            //不能这么做！需要货真价实地把值get出来存到对应的地址里（为什么不能这么做？
             getMipsRegisterAllocator().appointMem(resultPointer.getName(), indexNum * 4 + arrMemOff);
         } else {
             throw new RuntimeException("not implemented when index is not a number");

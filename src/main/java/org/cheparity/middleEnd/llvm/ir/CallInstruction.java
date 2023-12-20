@@ -130,8 +130,6 @@ public final class CallInstruction extends Instruction {
         sb
                 .append("addi\t$sp, $sp, ").append(maxSpOffset) //下移到当前栈空间底部
                 .append("\n\t")
-//                .append("move\t$s1, $sp")
-//                .append("\n\t")
                 .append("addi\t$sp, $sp, -4") //存return add
                 .append("\n\t")
                 .append("sw\t\t$ra, 0($sp)");
@@ -147,8 +145,19 @@ public final class CallInstruction extends Instruction {
         //保存参数，不要移动fp指针了
         int off = 0;
         for (var arg : args) {
-//            sb.append("\n\t").append("addi\t$sp, $sp, -4"); //
             off -= 4;
+            //如果是地址，得用la指令
+            if (arg.getType().isPointer()) {
+                Integer memOff = getMipsRegisterAllocator().getMemOff(arg.getName());
+                sb
+                        .append("\n\t")
+//                        .append(String.format("lw\t\t$t0, %s($fp)", memOff)) //load到t0
+                        .append(String.format("la\t\t$t0, %s($fp)", memOff)) //load到t0
+                        .append("\n\t")
+                        .append(String.format("sw\t\t$t0, %s($sp)", off)); //t0 save到sp
+                continue;
+            }
+
             if (arg.getNumber().isPresent()) {
                 Integer value = arg.getNumber().get();
                 //需要将value保存下来（保存到t0）
@@ -164,6 +173,7 @@ public final class CallInstruction extends Instruction {
                         .append(String.format("sw\t\t$t0, %s($sp)", off)); //t0 save到sp
             }
         }
+        //最后调用完函数之后，恢复现场。
         sb
                 .append("\n\t")
                 .append("jal\t\t")
