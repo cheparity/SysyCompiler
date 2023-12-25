@@ -49,18 +49,19 @@ public final class GrammarUtil {
     //UnaryExp → Ident '(' [FuncRParams] ')' | PrimaryExp | UnaryOp UnaryExp
     private static int getUnaryExpDim(ASTNode unaryExp, SymbolTable table) {
         assert unaryExp.getGrammarType().equals(GrammarType.UNARY_EXP);
-        ASTNode child = unaryExp.getChildren().get(0);
-        if (child.getGrammarType().equals(GrammarType.IDENT)) {
-            Optional<Symbol> symbol = table.getSymbol(((ASTLeaf) child).getToken().getRawValue());
+        ASTNode fstChild = unaryExp.getChild(0);
+        if (fstChild.getGrammarType().equals(GrammarType.IDENT)) {
+            Optional<Symbol> symbol = table.getSymbol(((ASTLeaf) fstChild).getToken().getRawValue());
             if (symbol.isPresent() && symbol.get().getType().equals(SymbolType.FUNC)) {
                 var s = (FuncSymbol) symbol.get();
                 if (s.getFuncType() == FuncType.VOID) return -1;
                 else return s.getDim();
             }
-        } else if (child.getGrammarType().equals(GrammarType.PRIMARY_EXP)) {
-            return getPrimaryExpDim(child, table);
-        } else if (child.getGrammarType().equals(GrammarType.UNARY_OP)) {
-            return getUnaryExpDim(child, table);
+        } else if (fstChild.getGrammarType().equals(GrammarType.PRIMARY_EXP)) {
+            return getPrimaryExpDim(fstChild, table);
+        } else if (fstChild.getGrammarType().equals(GrammarType.UNARY_OP)) {
+            ASTNode lstChild = unaryExp.getChild(-1);
+            return getUnaryExpDim(lstChild, table);
         }
         return -1;
     }

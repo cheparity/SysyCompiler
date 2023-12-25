@@ -12,7 +12,9 @@ import java.util.TreeSet;
 
 public class RecursiveDescentParserTest extends TestCase {
 
-    private final SysYParser parser = RecursiveDescentParser.getInstance().setTokens(LexerImpl.getInstance().getAllTokens());
+    private final SysYParser parser = RecursiveDescentParser
+            .getInstance()
+            .setTokens(LexerImpl.getInstance().getAllTokens());
 
     public void testAST() {
         System.out.println("=========parse result:=========");

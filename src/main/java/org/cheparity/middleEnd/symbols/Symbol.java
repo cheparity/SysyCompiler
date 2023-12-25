@@ -49,7 +49,7 @@ public abstract class Symbol {
         return dim;
     }
 
-    protected void setDim(int dim) {
+    public void setDim(int dim) {
         this.dim = dim;
         if (dim == -1) return;
         if (this.dimSize == null) {

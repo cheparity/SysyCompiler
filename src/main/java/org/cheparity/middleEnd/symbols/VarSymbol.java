@@ -7,4 +7,8 @@ public final class VarSymbol extends Symbol {
         super(table, SymbolType.VAR, token);
         super.setDim(dim);
     }
+
+    public VarSymbol(SymbolTable table, Token token) {
+        super(table, SymbolType.VAR, token);
+    }
 }

@@ -66,6 +66,10 @@ public class SymbolTable {
         errorHandler.addError(new DupIdentError(token, preToken));
     }
 
+    public void removeSymbol(String name) {
+        directory.remove(name);
+    }
+
     /**
      * Lookup a symbol in this symbol table and its outer symbol tables.
      * <p>

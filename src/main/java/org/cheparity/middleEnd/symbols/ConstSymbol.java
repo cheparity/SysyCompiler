@@ -10,6 +10,10 @@ public final class ConstSymbol extends Symbol {
         super.setDim(dim);
     }
 
+    public ConstSymbol(SymbolTable table, Token token) {
+        super(table, SymbolType.CONST, token);
+    }
+
     public int getValue() {
         return value;
     }

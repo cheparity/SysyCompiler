@@ -47,7 +47,7 @@ public class RecursiveDescentParser implements SysYParser {
         StackTraceElement ste = new Exception().getStackTrace()[1];
         String methodName = ste.getMethodName();
         int lineNumber = ste.getLineNumber();
-//        LOGGER.warning(methodName + " throws " + e.getMessage() + " at line " + lineNumber);
+        LOGGER.warning(methodName + " throws " + e.getMessage() + " at line " + lineNumber);
         node.addGrammarError(e);
     }
 
@@ -192,6 +192,15 @@ public class RecursiveDescentParser implements SysYParser {
         } else {
             return failed(initIndex);
         }
+        //预读
+        if (judgePreReadTerminal(0, GrammarType.LEFT_PAREN)) {
+            //移除符号
+            for (ASTNode node : constDefList) {
+                ASTLeaf ident = (ASTLeaf) node.getChildren().get(0);
+                this.nowSymbolTable.removeSymbol(ident.getToken().getRawValue());
+            }
+            return failed(initIndex);
+        }
 
         Optional<ASTLeaf> comma;
         while ((comma = parseTerminal(GrammarType.COMMA)).isPresent()) {
@@ -201,6 +210,11 @@ public class RecursiveDescentParser implements SysYParser {
                 constDecl.addChild(constDef.get());
                 constDefList.add(constDef.get());
             } else {
+                //remove symbols
+                for (ASTNode node : constDefList) {
+                    ASTLeaf ident = (ASTLeaf) node.getChildren().get(0);
+                    this.nowSymbolTable.removeSymbol(ident.getToken().getRawValue());
+                }
                 return failed(initIndex);
             }
         }
@@ -211,8 +225,10 @@ public class RecursiveDescentParser implements SysYParser {
             // ConstDef -> Ident { '[' ConstExp ']' } '=' ConstInitVal
             ASTLeaf ident = (ASTLeaf) node.getChildren().get(0);
             int dim = GrammarUtil.getDim4Def(node);
-            var symbol = new ConstSymbol(this.nowSymbolTable, ident.getToken(), dim);
-            this.nowSymbolTable.addSymbol(symbol, constDecl.getErrorHandler());
+            Optional<Symbol> symbolOptional = this.nowSymbolTable.getSymbol(ident.getToken().getRawValue());
+            assert symbolOptional.isPresent();
+            var symbol = symbolOptional.get();
+            symbol.setDim(dim);
         }
 
         return done(constDecl);
@@ -246,8 +262,11 @@ public class RecursiveDescentParser implements SysYParser {
 
         //Ident
         Optional<ASTLeaf> ident = parseTerminal(GrammarType.IDENT);
+
         if (ident.isPresent()) {
             constDef.addChild(ident.get());
+            var symbol = new ConstSymbol(this.nowSymbolTable, ident.get().getToken());
+            this.nowSymbolTable.addSymbol(symbol, constDef.getErrorHandler());
         } else {
             return failed(initIndex);
         }
@@ -261,6 +280,7 @@ public class RecursiveDescentParser implements SysYParser {
             if (constExp.isPresent()) {
                 constDef.addChild(constExp.get());
             } else {
+                this.nowSymbolTable.removeSymbol(ident.get().getRawValue());
                 return failed(initIndex);
             }
             parseTerminal(GrammarType.RIGHT_BRACKET).ifPresentOrElse(constDef::addChild, () -> error(constDef, new RBracketMissedError(constDef.lastToken())));
@@ -277,7 +297,7 @@ public class RecursiveDescentParser implements SysYParser {
                 return done(constDef);
             }
         }
-
+        this.nowSymbolTable.removeSymbol(ident.get().getRawValue());
         return failed(initIndex);
 
     }
@@ -352,6 +372,17 @@ public class RecursiveDescentParser implements SysYParser {
         } else {
             return failed(initIndex);
         }
+
+        //预读
+        if (judgePreReadTerminal(0, GrammarType.LEFT_PAREN)) {
+            //移除符号
+            for (ASTNode node : varDefList) {
+                ASTLeaf ident = (ASTLeaf) node.getChildren().get(0);
+                this.nowSymbolTable.removeSymbol(ident.getToken().getRawValue());
+            }
+            return failed(initIndex);
+        }
+
         Optional<ASTLeaf> comma;
         while ((comma = parseTerminal(GrammarType.COMMA)).isPresent()) {
             varDecl.addChild(comma.get());
@@ -365,18 +396,15 @@ public class RecursiveDescentParser implements SysYParser {
             }
         }
 
-        Optional<ASTLeaf> semicolon = parseTerminal(GrammarType.SEMICOLON);
-        if (semicolon.isEmpty()) {
-            error(varDecl, new SemicolonMissedError(varDecl.lastToken()));
-            return failed(initIndex);
-        }
-        varDecl.addChild(semicolon.get());
+        parseTerminal(GrammarType.SEMICOLON).ifPresentOrElse(varDecl::addChild, () -> error(varDecl, new SemicolonMissedError(varDecl.lastToken())));
         for (ASTNode node : varDefList) {
             // VarDef -> Ident { '[' ConstExp ']' } ['=' InitVal]
             ASTLeaf ident = (ASTLeaf) node.getChildren().get(0);
             int dim = GrammarUtil.getDim4Def(node);
-            var symbol = new VarSymbol(this.nowSymbolTable, ident.getToken(), dim);
-            this.nowSymbolTable.addSymbol(symbol, varDecl.getErrorHandler());
+            Optional<Symbol> symbolOptional = this.nowSymbolTable.getSymbol(ident.getToken().getRawValue());
+            assert symbolOptional.isPresent();
+            var symbol = symbolOptional.get();
+            symbol.setDim(dim);
         }
         return done(varDecl);
     }
@@ -394,6 +422,8 @@ public class RecursiveDescentParser implements SysYParser {
         Optional<ASTLeaf> ident;
         if ((ident = parseTerminal(GrammarType.IDENT)).isPresent()) {
             varDef.addChild(ident.get());
+            var symbol = new VarSymbol(this.nowSymbolTable, ident.get().getToken());
+            this.nowSymbolTable.addSymbol(symbol, varDef.getErrorHandler());
         } else {
             return failed(initIndex);
         }
@@ -406,6 +436,7 @@ public class RecursiveDescentParser implements SysYParser {
             if (constExp.isPresent()) {
                 varDef.addChild(constExp.get());
             } else {
+                this.nowSymbolTable.removeSymbol(ident.get().getRawValue());
                 return failed(initIndex);
             }
             parseTerminal(GrammarType.RIGHT_BRACKET).ifPresentOrElse(varDef::addChild, () -> error(varDef, new RBracketMissedError(varDef.lastToken())));
@@ -420,6 +451,7 @@ public class RecursiveDescentParser implements SysYParser {
             if (initVal.isPresent()) {
                 varDef.addChild(initVal.get());
             } else {
+                this.nowSymbolTable.removeSymbol(ident.get().getRawValue());
                 return failed(initIndex);
             }
         }
@@ -509,6 +541,7 @@ public class RecursiveDescentParser implements SysYParser {
         if (leftParen.isPresent()) {
             funcDef.addChild(leftParen.get());
         } else {
+            nowSymbolTable.removeSymbol(ident.get().getRawValue());
             return failed(initIndex);
         }
 
@@ -523,6 +556,7 @@ public class RecursiveDescentParser implements SysYParser {
         if (block.isPresent()) {
             funcDef.addChild(block.get());
         } else {
+            nowSymbolTable.removeSymbol(ident.get().getRawValue());
             return failed(initIndex);
         }
         Optional<ASTNode> ret = block.get().deepDownFind(GrammarType.RETURN, 3);
@@ -682,7 +716,6 @@ public class RecursiveDescentParser implements SysYParser {
         var dim = GrammarUtil.getDim4Def(funcFParam);
         VarSymbol symbol = new VarSymbol(this.nowSymbolTable, ident.get().getToken(), dim);
         funcParams.add(symbol);
-//        this.nowSymbolTable.addSymbol(symbol, funcFParam.getErrorHandler()); 修改：把symbol传递出去，在block里添加
 
         return done(funcFParam);
     }
@@ -1081,7 +1114,7 @@ public class RecursiveDescentParser implements SysYParser {
             if (rightParen.isPresent()) {
                 LVal.addChild(rightParen.get());
             } else {
-                return failed(initIndex);
+                error(LVal, new RBracketMissedError(LVal.lastToken()));
             }
         }
         return done(LVal);
@@ -1235,7 +1268,18 @@ public class RecursiveDescentParser implements SysYParser {
 
         List<ASTNode> nodeList = new ArrayList<>();
         var exp = parseExp();
-        if (exp.isEmpty()) return failed(initIndex);
+        if (exp.isEmpty()) {
+            if (funcSymbolOpt == null) {
+                return done(funcRParams);
+            }
+            int expectParamsNum = funcSymbolOpt.getParamCount();
+            int actualParamsNum = 0;
+            if (expectParamsNum != actualParamsNum) {
+                error(funcRParams, new FuncParamCntNotMatchedError(expectParamsNum, actualParamsNum, funcCallTk));
+            }
+            return done(funcRParams); //todo 想清楚
+//            return failed(initIndex);
+        }
         nodeList.add(exp.get());
         funcRParams.addChild(exp.get());
         Optional<ASTLeaf> comma;
@@ -1249,7 +1293,9 @@ public class RecursiveDescentParser implements SysYParser {
                 return failed(initIndex);
             }
         }
-        if (funcSymbolOpt == null) return done(funcRParams);
+        if (funcSymbolOpt == null) {
+            return done(funcRParams);
+        }
         int expectParamsNum = funcSymbolOpt.getParamCount();
         List<VarSymbol> expectParams = funcSymbolOpt.getParams();
         int actualParamsNum = nodeList.size();

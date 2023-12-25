@@ -18,13 +18,14 @@ public class Compiler {
     private static final Logger LOGGER = LoggerUtil.getLogger();
     private static final SysYLexer lexer = LexerImpl.getInstance();
     private static final SysYParser parser = RecursiveDescentParser.getInstance();
-    private static final CodeTranslator CODE_TRANSLATOR = CodeTranslator.getInstance();
+    private static final CodeTranslator code_translator = CodeTranslator.getInstance();
 
     public static void main(String[] args) {
 //        printLexAnswer();
 //        printGrammarAnswer();
 //        printErrorAnswer();
-        printLlvmIrAnswer();
+//        printLlvmIrAnswer();
+        printTogetherAnswer();
     }
 
     private static void printLexAnswer() {
@@ -63,9 +64,21 @@ public class Compiler {
         }
     }
 
+    private static void printTogetherAnswer() {
+        RecursiveDescentParser parser = RecursiveDescentParser.getInstance();
+        parser.setTokens(LexerImpl.getInstance().getAllTokens());
+        TreeSet<GrammarError> errors = parser.getAST().getErrors();
+        if (errors.isEmpty()) {
+            printLlvmIrAnswer();
+        } else {
+            printErrorAnswer();
+        }
+    }
+
     private static void printErrorAnswer() {
         var fos = getFos("error.txt");
         RecursiveDescentParser parser = RecursiveDescentParser.getInstance();
+        parser.setTokens(LexerImpl.getInstance().getAllTokens());
         TreeSet<GrammarError> errors = parser.getAST().getErrors();
         PrintStream ps = new PrintStream(fos);
         errors.forEach(e -> ps.println(e.getToken().getLineNum() + " " + e.getCode().getValue()));
@@ -74,7 +87,7 @@ public class Compiler {
     private static void printLlvmIrAnswer() {
         parser.setTokens(LexerImpl.getInstance().getAllTokens());
         ASTNode ast = parser.getAST();
-        IrContext irContext = CODE_TRANSLATOR.translate2LlvmIr(ast);
+        IrContext irContext = code_translator.translate2LlvmIr(ast);
         var fos = getFos("llvm_ir.txt");
 //        System.out.println(irContext.toIrCode());
         PrintStream ps = new PrintStream(fos);
@@ -84,11 +97,8 @@ public class Compiler {
     private static OutputStream getFos(String pathname) {
         File f = new File(pathname);
         FileOutputStream fos;
-        if (f.exists() && !f.delete()) {
-            throw new RuntimeException("delete file error");
-        }
         try {
-            fos = new FileOutputStream(pathname);
+            fos = new FileOutputStream(pathname, false);
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         }
